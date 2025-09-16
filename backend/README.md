@@ -6,6 +6,6 @@ How to Configure Database
   DB_USER=your_mysql_username
   DB_PASSWORD=your_mysql_password
 
-How to Build and Run Project
+How to Build and Run Project Backend
 1. mvn clean install
 2. mvn spring-boot:run
