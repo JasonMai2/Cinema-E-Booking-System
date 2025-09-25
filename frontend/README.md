@@ -4,4 +4,7 @@
 3. services/ - API calls
 
 To Start Development Server
-1. npm start
+1. Install dependencies
+    npm install
+1. Run
+    npm start
