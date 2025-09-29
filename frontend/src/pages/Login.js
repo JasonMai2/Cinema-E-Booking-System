@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   function validate() {
-    if (!email) return 'Email is required';
-    if (!password) return 'Password is required';
+    if (!email) return "Email is required";
+    if (!password) return "Password is required";
     return null;
   }
 
@@ -21,7 +21,7 @@ export default function Login() {
 
     // TODO: call backend API to authenticate. For now simulate success.
     // On success navigate to home.
-    navigate('/');
+    navigate("/");
   };
 
   return (
@@ -55,7 +55,9 @@ export default function Login() {
           </label>
 
           <div className="login-actions">
-            <button type="submit" className="btn-primary">Sign in</button>
+            <button type="submit" className="btn-primary">
+              Sign in
+            </button>
           </div>
         </form>
       </section>
