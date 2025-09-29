@@ -1,14 +1,135 @@
-import React from "react";
+import React, { useState } from "react";
+import { Home, Search, Filter, User } from "lucide-react";
 
 export default function Header() {
-    return (
-        <header style={{padding: '10px', backgroundColor: '#7d1b1d', color: '#fff'}}>
-            <h2>Cinema E-Booking</h2>
-            <nav>
-                <a href="/" style={{ marginRight: "1rem", color: "#fff" }}>Home</a>
-                <a href="/movies" style={{ marginRight: "1rem", color: "#fff" }}>Movies</a>
-                <a href="/bookings" style={{ color: "#fff" }}>My Bookings</a>
-            </nav>
-        </header>
-    );
+  const [showFilters, setShowFilters] = useState(false);
+
+  return (
+    <>
+      <header
+        style={{
+          padding: "10px 20px",
+          backgroundColor: "#7d1b1d",
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        {/* Home button with icon + site name */}
+        <a
+          href="/"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            textDecoration: "none",
+            color: "#fff",
+            fontSize: "1.2rem",
+            fontWeight: "bold",
+          }}
+        >
+          <Home size={22} style={{ marginRight: "8px" }} />
+          SITENAME
+        </a>
+
+        {/* Search bar */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            backgroundColor: "#fff",
+            borderRadius: "20px",
+            padding: "5px 10px",
+            flex: 1,
+            maxWidth: "600px",
+            margin: "0 20px",
+          }}
+        >
+          <input
+            type="text"
+            placeholder="Search..."
+            style={{
+              border: "none",
+              outline: "none",
+              flex: 1,
+              padding: "5px",
+              fontSize: "1rem",
+            }}
+          />
+          {/* Search */}
+          <Search
+            size={20}
+            color="#12151c"
+            style={{ cursor: "pointer", marginRight: "12px" }}
+          />
+          {/* Filter */}
+          <div
+            onClick={() => setShowFilters(!showFilters)}
+            style={{
+              backgroundColor: "#12151c",
+              borderRadius: "50%",
+              padding: "6px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <Filter size={18} color="#fff" />
+          </div>
+        </div>
+
+        {/* Login button */}
+        <div
+          onClick={() => {}}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            backgroundColor: "#12151c",
+            padding: "8px 16px",
+            borderRadius: "8px",
+            color: "#fff",
+            fontWeight: "500",
+            cursor: "pointer",
+          }}
+        >
+          Login
+          <User size={20} style={{ marginLeft: "8px" }} />
+        </div>
+      </header>
+
+      {/* Filter dropdown section */}
+      {showFilters && (
+        <div
+          style={{
+            backgroundColor: "#12151c",
+            padding: "15px 20px",
+            borderTop: "1px solid #333",
+            color: "#f5f5f5",
+            textAlign: "center",
+          }}
+        >
+          <h4 style={{ margin: "0 0 10px 0" }}>Filter Options</h4>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "20px",
+              flexWrap: "wrap",
+            }}
+          >
+            <label>
+              <input type="checkbox" /> Filter 1
+            </label>
+            <label>
+              <input type="checkbox" /> Filter 2
+            </label>
+            <label>
+              <input type="checkbox" /> Filter 3
+            </label>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
