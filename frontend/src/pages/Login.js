@@ -62,14 +62,14 @@ export default function Login() {
       const payload = { name, email, password };
       if (phone) payload.phone = phone;
       // TODO: implement registration endpoint on backend and replace this placeholder
-      console.log('TODO: register user (payload)', payload);
+      console.log("TODO: register user (payload)", payload);
       setLoading(false);
-      // Simulate success for now and switch to login mode with a TODO message
+      // Simulate success for now and navigate to the confirmation page
       setMode("login");
       setPassword("");
       setConfirm("");
       setPhone("");
-      setError("TODO: Registration is not implemented yet. Backend endpoint needs to be added.");
+      navigate("/registration-confirmation");
     } catch (err) {
       setLoading(false);
       setError(err?.response?.data?.message || "Registration failed");
