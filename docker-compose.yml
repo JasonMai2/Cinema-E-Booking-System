@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8
+    container_name: cinemae-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpw
+      MYSQL_DATABASE: ecinema
+      MYSQL_USER: cinemae
+      MYSQL_PASSWORD: devsecret
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build: ./backend
+    working_dir: /app
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/ecinema?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8"
+      SPRING_DATASOURCE_USERNAME: cinemae
+      SPRING_DATASOURCE_PASSWORD: devsecret
+    depends_on:
+      - mysql
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:

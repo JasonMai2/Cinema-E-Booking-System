@@ -1,7 +1,13 @@
+// frontend/src/services/api.js
 import axios from "axios";
 
+const base = process.env.REACT_APP_API_URL
+  ? process.env.REACT_APP_API_URL.replace(/\/$/, "") + "/api"
+  : "http://localhost:8080/api";
+
 const api = axios.create({
-  baseURL: "http://localhost:8080/api", // your backend endpoint
+  baseURL: base,
+  // optional: timeout: 8000
 });
 
 export default api;
