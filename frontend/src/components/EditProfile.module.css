@@ -1,0 +1,73 @@
+.profilePage {
+  padding: 20px;
+  min-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.profileTitle {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.profileCard {
+  width: 90vw;
+  max-width: 960px;
+  background: var(--container);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.profileForm {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.profileLabel {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.profileInput {
+  width: 100%;
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #2b2f35;
+  background: #1a1d23;
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.profileActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btnSave {
+  padding: 8px 14px;
+  background: var(--primary-accent);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 6px;
+  cursor: not-allowed;
+  opacity: 0.95;
+}
+
+.btnCancel {
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid #2b2f35;
+  border-radius: 6px;
+  cursor: not-allowed;
+}
