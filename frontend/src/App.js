@@ -9,6 +9,7 @@ import OrderConfirmation from './pages/OrderConfirmation';
 import { BookingProvider } from './context/BookingContext';
 import Header from './components/Header';
 import Login from './pages/Login';
+import MovieDetails from './pages/MovieDetails';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/movie-details" element={<MovieDetails />} />
           <Route path="/shows" element={<ShowTimes />} />
           <Route path="/shows/:showId/seats" element={<SeatSelection />} />
           <Route path="/checkout" element={<Checkout />} />
