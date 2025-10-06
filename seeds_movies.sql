@@ -1,0 +1,22 @@
+INSERT INTO movies (title, synopsis, mpaa_rating, trailer_video_url, trailer_image_url, created_at) VALUES
+('Inception', 'A thief infiltrates dreams to steal secrets and is tasked with planting an idea inside a CEO''s mind.', 'PG-13', 'https://www.youtube.com/watch?v=8hP9D6kZseM', 'https://image.tmdb.org/t/p/w500/qmDpIHrmpJINaRKAfWQfftjCdyi.jpg', NOW()),
+('The Matrix', 'A hacker discovers the reality he knows is a simulated world and joins a rebellion against its controllers.', 'R', 'https://www.youtube.com/watch?v=vKQi3bBA1y8', 'https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg', NOW()),
+('The Shawshank Redemption', 'Two imprisoned men bond, find hope and redemption across decades.', 'R', '', 'https://image.tmdb.org/t/p/w500/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg', NOW()),
+('The Godfather', 'Crime family patriarch passes control of his empire to his reluctant son.', 'R', '', 'https://image.tmdb.org/t/p/w500/eEslKSwcqmiNS6va24Pbxf2UKmJ.jpg', NOW()),
+('Interstellar', 'Explorers travel through a wormhole to save humanity.', 'PG-13', 'https://www.youtube.com/watch?v=zSWdZVtXT7E', 'https://image.tmdb.org/t/p/w500/rAiYTfKGqDCRIIqo664sY9XZIvQ.jpg', NOW()),
+('Avengers: Endgame', 'The remaining Avengers try to undo Thanos'' destruction.', 'PG-13', 'https://www.youtube.com/watch?v=TcMBFSGVi1c', 'https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg', NOW()),
+('Titanic', 'A rich girl and a poor artist fall in love aboard the ill-fated Titanic.', 'PG-13', 'https://www.youtube.com/watch?v=kVrqfYjkTdQ', 'https://image.tmdb.org/t/p/w500/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg', NOW()),
+('Jurassic Park', 'A theme park filled with cloned dinosaurs suffers a catastrophic breakdown.', 'PG-13', 'https://www.youtube.com/watch?v=lc0UehYemQA', 'https://image.tmdb.org/t/p/w500/c414cDeQ9b6qLPLeKmiJuLDUREJ.jpg', NOW()),
+('The Dark Knight', 'Batman faces the Joker, who seeks to plunge Gotham into chaos.', 'PG-13', 'https://www.youtube.com/watch?v=EXeTwQWrcwY', 'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg', NOW()),
+('Pulp Fiction', 'Interlocking stories of crime, redemption and unexpected humor in LA.', 'R', 'https://www.youtube.com/watch?v=s7EdQ4FqbhY', 'https://image.tmdb.org/t/p/w500/dM2w364MScsjFf8pfMbaWUcWrR.jpg', NOW()),
+('Fight Club', 'An office worker and soapmaker form an underground fight club.', 'R', 'https://www.youtube.com/watch?v=SUXWAEX2jlg', 'https://image.tmdb.org/t/p/w500/bptfVGEQuv6vDTIMVCHjJ9Dz8PX.jpg', NOW()),
+('Forrest Gump', 'The life story of Forrest Gump told from his unique perspective.', 'PG-13', 'https://www.youtube.com/watch?v=bLvqoHBptjg', 'https://image.tmdb.org/t/p/w500/saHP97rTPS5eLmrLQEcANmKrsFl.jpg', NOW()),
+('Gladiator', 'A betrayed Roman general becomes a gladiator seeking revenge.', 'R', 'https://www.youtube.com/watch?v=owK1qxDselE', 'https://image.tmdb.org/t/p/w500/ty8TGRuvJLPUmAR1H1nRIsgwvim.jpg', NOW()),
+('La La Land', 'A jazz musician and an aspiring actress chase dreams in LA.', 'PG-13', 'https://www.youtube.com/watch?v=0pdqf4P9MB8', 'https://image.tmdb.org/t/p/w500/A1OZ0i9w0t2t3Q7Wm8Z3e1zqZb.jpg', NOW()),
+('The Silence of the Lambs', 'An FBI trainee seeks the help of a brilliant psychopath to catch another killer.', 'R', '', 'https://image.tmdb.org/t/p/w500/rplLJ2hPcOQmkFhTqUte0MkEaO2.jpg', NOW()),
+('Saving Private Ryan', 'WWII drama about a mission to rescue a single soldier behind enemy lines.', 'R', 'https://www.youtube.com/watch?v=zwhP5b4tD6g', 'https://image.tmdb.org/t/p/w500/miDoEMlYDJhOCvxlzI0wZqBs9Yt.jpg', NOW()),
+('The Prestige', 'Two magicians become bitter rivals, with deadly consequences.', 'PG-13', 'https://www.youtube.com/watch?v=o4gHCmTQDVI', 'https://image.tmdb.org/t/p/w500/5MXyQfz8xUP3dIFPTubhTsbFY6N.jpg', NOW()),
+('Whiplash', 'A promising drummer endures an abusive instructor to pursue greatness.', 'R', 'https://www.youtube.com/watch?v=7d_jQycdQGo', 'https://image.tmdb.org/t/p/w500/oFxG2V4r10lU4K1x4Y3bQy8JuM8.jpg', NOW()),
+('Mad Max: Fury Road', 'A woman rebels against a tyrant in a post-apocalyptic wasteland.', 'R', 'https://www.youtube.com/watch?v=hEJnMQG9ev8', 'https://image.tmdb.org/t/p/w500/8tZYtuWezp8JbcsvHYO0O46tFbo.jpg', NOW()),
+('The Social Network', 'Founding of Facebook and the fallout among its creators.', 'PG-13', 'https://www.youtube.com/watch?v=lB95KLmpLR4', 'https://image.tmdb.org/t/p/w500/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg', NOW())
+;
