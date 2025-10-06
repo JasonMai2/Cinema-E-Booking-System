@@ -1,33 +1,16 @@
-version: "3.8"
 services:
-  mysql:
+  db:
     image: mysql:8.0
-    container_name: cinemae-mysql
-    restart: unless-stopped
-    env_file: .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ecinema
+      MYSQL_USER: cinemae
+      MYSQL_PASSWORD: devsecret
     ports:
-      - "${MYSQL_HOST_PORT:-3307}:3306"
+      - "3306:3306"          # optional for local access
     volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  adminer:
-    image: adminer
-    container_name: cinemae-adminer
-    restart: unless-stopped
-    ports:
-      - "8083:8080"
-    depends_on:
-      - mysql
+      - db-data:/var/lib/mysql
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
 
 volumes:
-  mysql_data:
+  db-data:
