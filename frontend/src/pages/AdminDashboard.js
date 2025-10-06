@@ -40,14 +40,10 @@ const styles = {
     transition: "all 0.3s ease",
     border: "3px solid transparent",
   },
-  adminCardHover: {
-    borderColor: "#661b1c",
-    transform: "translateY(-5px)",
-  },
   adminCardIcon: {
     width: "120px",
     height: "120px",
-    backgroundColor: "#661b1c", // 🔴 red background
+    backgroundColor: "#661b1c",
     borderRadius: "50%",
     marginBottom: "30px",
     display: "flex",
