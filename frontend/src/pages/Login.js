@@ -1,47 +1,49 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-<<<<<<< HEAD
-
-export default function Login() {
-=======
 import api from "../services/api";
 
 export default function Login() {
   const [mode, setMode] = useState("login"); // 'login' | 'register'
-
-  // common
->>>>>>> e8dc06508f47122fdbc81a44f27bd8c1deda6bc2
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
-  const navigate = useNavigate();
-
-<<<<<<< HEAD
-  function validate() {
-=======
-  // registration-only
   const [name, setName] = useState("");
   const [confirm, setConfirm] = useState("");
   const [phone, setPhone] = useState("");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   function validateLogin() {
->>>>>>> e8dc06508f47122fdbc81a44f27bd8c1deda6bc2
     if (!email) return "Email is required";
     if (!password) return "Password is required";
     return null;
   }
 
-  const onSubmit = (e) => {
+  function validateRegister() {
+    if (!name) return "Name is required";
+    if (!email) return "Email is required";
+    if (!password) return "Password is required";
+    if (password !== confirm) return "Passwords do not match";
+    return null;
+  }
+
+  const onSubmit = async (e) => {
     e.preventDefault();
-    const v = validate();
+    const v = validateLogin();
     if (v) return setError(v);
     setError(null);
+    setLoading(true);
+    try {
+      // TODO: replace with real auth call
+      await new Promise((r) => setTimeout(r, 500));
+      setLoading(false);
+      navigate("/");
+    } catch (err) {
+      setLoading(false);
+      setError(err?.message || "Sign in failed");
+    }
+  };
 
-<<<<<<< HEAD
-    // TODO: call backend API to authenticate. For now simulate success.
-    // On success navigate to home.
-    navigate("/");
-=======
   const onRegister = async (e) => {
     e.preventDefault();
     const v = validateRegister();
@@ -49,12 +51,9 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const payload = { name, email, password };
-      if (phone) payload.phone = phone;
-      // TODO: implement registration endpoint on backend and replace this placeholder
-      console.log("TODO: register user (payload)", payload);
+      // TODO: call registration endpoint when available
+      await new Promise((r) => setTimeout(r, 500));
       setLoading(false);
-      // Simulate success for now and navigate to the confirmation page
       setMode("login");
       setPassword("");
       setConfirm("");
@@ -62,85 +61,61 @@ export default function Login() {
       navigate("/registration-confirmation");
     } catch (err) {
       setLoading(false);
-      setError(err?.response?.data?.message || "Registration failed");
+      setError(err?.message || "Registration failed");
     }
->>>>>>> e8dc06508f47122fdbc81a44f27bd8c1deda6bc2
   };
 
   return (
     <main className="login-page">
       <section className="login-card">
-        <h2>Login</h2>
+        <h2>{mode === "login" ? "Login" : "Create account"}</h2>
 
         {error && <div className="login-error">{error}</div>}
 
-        <form onSubmit={onSubmit} className="login-form">
-          <label>
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-          </label>
+        {mode === "login" ? (
+          <form onSubmit={onSubmit} className="login-form">
+            <label>
+              Email
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                disabled={loading}
+              />
+            </label>
 
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-            />
-          </label>
+            <label>
+              Password
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                disabled={loading}
+              />
+            </label>
 
-<<<<<<< HEAD
-          <div className="login-actions">
-            <button type="submit" className="btn-primary">
-              Sign in
-            </button>
-          </div>
-        </form>
-=======
             <div className="login-actions">
               <button type="submit" className="btn-primary" disabled={loading}>
                 {loading ? "Signing in…" : "Sign in"}
               </button>
             </div>
 
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
+            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
               <span className="muted-text">No account?</span>
-              <span
-                role="button"
-                tabIndex={0}
+              <button
+                type="button"
                 className="link-action"
                 onClick={() => {
                   setMode("register");
                   setError(null);
                 }}
-                onKeyDown={(e) => {
-                  if (
-                    e.key === "Enter" ||
-                    e.key === " " ||
-                    e.key === "Spacebar"
-                  ) {
-                    setMode("register");
-                    setError(null);
-                  }
-                }}
               >
                 Create an account
-              </span>
+              </button>
             </div>
           </form>
         ) : (
@@ -224,8 +199,8 @@ export default function Login() {
             </div>
           </form>
         )}
->>>>>>> e8dc06508f47122fdbc81a44f27bd8c1deda6bc2
       </section>
     </main>
   );
 }
+
