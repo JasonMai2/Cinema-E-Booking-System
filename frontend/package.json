@@ -1,6 +1,7 @@
 {
   "name": "frontend",
   "version": "1.0.0",
+  "proxy": "http://localhost:8080",
   "description": "Frontend project placeholder",
   "main": "index.js",
   "scripts": {

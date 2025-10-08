@@ -1,0 +1,16 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ecinema
+      MYSQL_USER: cinemae
+      MYSQL_PASSWORD: devsecret
+    ports:
+      - "3306:3306"          # optional for local access
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  db-data:
