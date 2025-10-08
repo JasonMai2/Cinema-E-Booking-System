@@ -29,6 +29,35 @@ body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
+<<<<<<< HEAD
+=======
+.login-card .btn-primary {
+  display: inline-block;
+}
+
+.login-card button + button {
+  margin-left: 8px;
+}
+
+.link-action {
+  color: var(--primary-accent);
+  cursor: pointer;
+  display: inline-block;
+  text-decoration: underline;
+  margin: 0;
+}
+
+.link-action:focus {
+  outline: 2px solid rgba(102, 27, 28, 0.25);
+  outline-offset: 2px;
+}
+
+.muted-text {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+>>>>>>> e8dc06508f47122fdbc81a44f27bd8c1deda6bc2
 .login-card h2 {
   margin: 0 0 12px 0;
   color: var(--text-primary);

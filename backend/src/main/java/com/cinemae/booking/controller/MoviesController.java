@@ -7,13 +7,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/movies")
-public class MovieController {
+@RequestMapping("/api/movies-legacy")
+public class MoviesController {
 
     private final JdbcTemplate jdbc;
 
     @Autowired
-    public MovieController(JdbcTemplate jdbc) {
+    public MoviesController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
@@ -72,4 +72,3 @@ public class MovieController {
         return p;
     }
 }
-JAVA

@@ -3,11 +3,12 @@ server:
 
 spring:
   datasource:
-    # Default for local dev when MySQL container exposes 3307 on host
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/ecinema?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8}
-    username: ${SPRING_DATASOURCE_USERNAME:cinemae}
-    password: ${SPRING_DATASOURCE_PASSWORD:devsecret}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    # Default to H2 in-memory for local dev when MySQL isn't available.
+    # To use MySQL, set SPRING_DATASOURCE_URL to a MySQL JDBC URL (e.g. jdbc:mysql://localhost:3307/ecinema)
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:ecinema;DB_CLOSE_DELAY=-1;MODE=MySQL}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.h2.Driver
 
   jpa:
     hibernate:
@@ -18,7 +19,7 @@ spring:
         format_sql: true
 
   flyway:
-    enabled: true
+    enabled: ${SPRING_FLYWAY_ENABLED:false}
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
