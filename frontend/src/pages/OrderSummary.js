@@ -19,31 +19,43 @@ export default function OrderSummary() {
     }
   }
 
-  if (!orderDraft) return <div>No order draft found. Go back to start.</div>;
+  if (!orderDraft) return <div style={{ padding: 16 }}>No order draft found. Go back to start.</div>;
 
   const subtotal = useMemo(() => (selectedSeats || []).reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
 
   return (
-    <div style={{ display: 'flex', gap: 20 }}>
-      <div style={{ flex: 1 }}>
-        <h2>Order Summary</h2>
-        <div><strong>Show:</strong> {selectedShow?.id || orderDraft.showId}</div>
-        <div><strong>Customer:</strong> {customer?.name || orderDraft.customer?.name}</div>
-        <h4>Seats</h4>
-        <ul>
-          {(selectedSeats || orderDraft.seats || []).map((s) => (
-            <li key={s.id || s}>{s.row ? `${s.row}${s.number}` : s} {s.price ? `— $${s.price.toFixed(2)}` : ''}</li>
-          ))}
-        </ul>
-      </div>
+    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ width: '720px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
+        <header style={{ marginBottom: 12 }}>
+          <h1 style={{ margin: 0, color: '#fff' }}>Order Summary</h1>
+          <div style={{ color: '#cbd5da', marginTop: 6 }}>Review your booking before confirming.</div>
+        </header>
 
-      <aside style={{ width: 360, borderLeft: '1px solid #eee', paddingLeft: 16 }}>
-        <h3>Totals</h3>
-        <div>Subtotal: ${subtotal.toFixed(2)}</div>
-        <div style={{ marginTop: 12 }}>
-          <button onClick={onConfirm} disabled={loading}>{loading ? 'Confirming...' : 'Confirm Booking'}</button>
+        <div style={{ display: 'flex', gap: 20 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
+              <div style={{ color: '#cbd5da' }}><strong>Show:</strong> {selectedShow?.title || orderDraft.showId}</div>
+              <div style={{ marginTop: 6, color: '#cbd5da' }}><strong>Customer:</strong> {customer?.name || orderDraft.customer?.name}</div>
+              <h4 style={{ marginTop: 12, color: '#fff' }}>Seats</h4>
+              <ul>
+                {(selectedSeats || orderDraft.seats || []).map((s) => (
+                  <li key={s.id || s} style={{ color: '#f4f6f8' }}>{s.row ? `${s.row}${s.number}` : s} {s.price ? `— $${s.price.toFixed(2)}` : ''}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <aside style={{ width: 240 }}>
+            <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
+              <h3 style={{ marginTop: 0, color: '#fff' }}>Totals</h3>
+              <div style={{ color: '#cbd5da' }}>Subtotal: <span style={{ color: '#fff' }}>${subtotal.toFixed(2)}</span></div>
+              <div style={{ marginTop: 12 }}>
+                <button onClick={onConfirm} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Confirming...' : 'Confirm Booking'}</button>
+              </div>
+            </div>
+          </aside>
         </div>
-      </aside>
+      </div>
     </div>
   );
 }

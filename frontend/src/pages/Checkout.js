@@ -43,51 +43,64 @@ export default function Checkout() {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 20 }}>
-      <div style={{ flex: 1 }}>
-        <h2>Checkout</h2>
-        <div style={{ marginBottom: 8 }}>
-          <label>
-            Name
-            <br />
-            <input value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
-        </div>
-        <div style={{ marginBottom: 8 }}>
-          <label>
-            Email
-            <br />
-            <input value={email} onChange={(e) => setEmail(e.target.value)} />
-          </label>
-        </div>
-        <div style={{ marginBottom: 8 }}>
-          <label>
-            Phone
-            <br />
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </label>
-        </div>
+    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ width: '640px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
+        <header style={{ marginBottom: 12 }}>
+          <h1 style={{ margin: 0, color: '#fff' }}>Checkout</h1>
+          <div style={{ color: '#cbd5da', marginTop: 6 }}>Enter your details to complete the booking.</div>
+        </header>
 
-        <div style={{ marginTop: 12 }}>
-          <button onClick={submit} disabled={loading}>{loading ? 'Creating...' : 'Continue to Summary'}</button>
+        <div style={{ display: 'flex', gap: 20 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ background: '#0b0d0f', padding: 16, borderRadius: 8 }}>
+              <h3 style={{ marginTop: 0, color: '#fff' }}>Contact Details</h3>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ color: '#cbd5da', fontWeight: 500 }}>
+                  Name
+                  <br />
+                  <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
+                </label>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ color: '#cbd5da', fontWeight: 500 }}>
+                  Email
+                  <br />
+                  <input value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
+                </label>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ color: '#cbd5da', fontWeight: 500 }}>
+                  Phone
+                  <br />
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
+                </label>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <button onClick={submit} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Creating...' : 'Continue to Summary'}</button>
+              </div>
+            </div>
+          </div>
+
+          <aside style={{ width: 260 }}>
+            <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
+              <h3 style={{ marginTop: 0, color: '#fff' }}>Order Preview</h3>
+              <div style={{ color: '#cbd5da' }}><strong>Show:</strong> {selectedShow?.title || selectedShow?.id || '—'}</div>
+              <div style={{ marginTop: 6, color: '#cbd5da' }}><strong>Seats:</strong></div>
+              {selectedSeats.length === 0 ? (
+                <div style={{ color: '#cbd5da' }}>No seats selected</div>
+              ) : (
+                <ul>
+                  {selectedSeats.map((s) => (
+                    <li key={s.id} style={{ color: '#f4f6f8' }}>{`${s.row}${s.number} — $${(s.price||0).toFixed(2)}`}</li>
+                  ))}
+                </ul>
+              )}
+              <div style={{ marginTop: 8, color: '#cbd5da' }}><strong>Subtotal:</strong> <span style={{ color: '#fff' }}>${subtotal.toFixed(2)}</span></div>
+            </div>
+          </aside>
         </div>
       </div>
-
-      <aside style={{ width: 360, borderLeft: '1px solid #eee', paddingLeft: 16 }}>
-        <h3>Order Preview</h3>
-        <div><strong>Show:</strong> {selectedShow?.id || '—'}</div>
-        <div><strong>Seats:</strong></div>
-        {selectedSeats.length === 0 ? (
-          <div>No seats selected</div>
-        ) : (
-          <ul>
-            {selectedSeats.map((s) => (
-              <li key={s.id}>{`${s.row}${s.number} — $${(s.price||0).toFixed(2)}`}</li>
-            ))}
-          </ul>
-        )}
-        <div style={{ marginTop: 8 }}><strong>Subtotal:</strong> ${subtotal.toFixed(2)}</div>
-      </aside>
     </div>
   );
 }
