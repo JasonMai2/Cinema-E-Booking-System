@@ -3,6 +3,10 @@ package com.cinemae.booking.controller;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.*;
 
@@ -66,10 +70,9 @@ public class MovieController {
     // quick ping for health of movie endpoint
     @GetMapping("/ping")
     public Map<String, Object> ping() {
-        Map<String,Object> p = new HashMap<>();
+        Map<String, Object> p = new HashMap<>();
         p.put("ok", true);
         p.put("time", new Date());
         return p;
     }
 }
-JAVA

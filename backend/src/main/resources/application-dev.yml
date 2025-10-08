@@ -4,9 +4,9 @@ server:
 spring:
   datasource:
     # Default for local dev when MySQL container exposes 3307 on host
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/ecinema?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8}
-    username: ${SPRING_DATASOURCE_USERNAME:cinemae}
-    password: ${SPRING_DATASOURCE_PASSWORD:devsecret}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/ecinema?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:M@s0nJ@i2005}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
