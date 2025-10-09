@@ -109,42 +109,49 @@ export default function Login() {
               />
             </label>
 
-            <div className="login-actions">
-              <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? "Signing in…" : "Sign in"}
-              </button>
-            </div>
-
             <div
               style={{
-                marginTop: 12,
                 display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
-                gap: 8,
+                gap: 12,
+                marginTop: 12,
               }}
             >
-              <span className="muted-text">No account?</span>
-              <span
-                role="button"
-                tabIndex={0}
-                className="link-action"
-                onClick={() => {
-                  setMode("register");
-                  setError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (
-                    e.key === "Enter" ||
-                    e.key === " " ||
-                    e.key === "Spacebar"
-                  ) {
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className="muted-text">No account?</span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="link-action"
+                  onClick={() => {
                     setMode("register");
                     setError(null);
-                  }
-                }}
-              >
-                Create an account
-              </span>
+                  }}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" ||
+                      e.key === " " ||
+                      e.key === "Spacebar"
+                    ) {
+                      setMode("register");
+                      setError(null);
+                    }
+                  }}
+                >
+                  Create an account
+                </span>
+              </div>
+
+              <div className="login-actions" style={{ margin: 0 }}>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? "Signing in…" : "Sign in"}
+                </button>
+              </div>
             </div>
           </form>
         ) : (
@@ -208,23 +215,48 @@ export default function Login() {
               />
             </label>
 
-            <div className="login-actions">
-              <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? "Creating…" : "Create account"}
-              </button>
-            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                marginTop: 12,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="link-action"
+                  onClick={() => {
+                    setMode("login");
+                    setError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" ||
+                      e.key === " " ||
+                      e.key === "Spacebar"
+                    ) {
+                      setMode("login");
+                      setError(null);
+                    }
+                  }}
+                >
+                  Back to sign in
+                </span>
+              </div>
 
-            <div style={{ marginTop: 12 }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("login");
-                  setError(null);
-                }}
-                className="btn-primary"
-              >
-                Back to sign in
-              </button>
+              <div className="login-actions" style={{ margin: 0 }}>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={loading}
+                >
+                  {loading ? "Creating…" : "Create account"}
+                </button>
+              </div>
             </div>
           </form>
         )}
