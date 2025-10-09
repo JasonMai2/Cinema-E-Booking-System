@@ -47,7 +47,7 @@ public class MovieController {
 
         // fetch page
         int offset = page * size;
-        String sql = "SELECT id, title, release_date, mpaa_rating, synopsis FROM movies"
+        String sql = "SELECT id, title, mpaa_rating, synopsis FROM movies"
                 + where + " ORDER BY id ASC LIMIT ? OFFSET ?";
 
         // add pagination params
