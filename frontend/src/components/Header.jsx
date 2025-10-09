@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Home, Search, Filter, User } from "lucide-react";
 import { useSearch } from "../context/SearchContext.js";
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,17 @@ export default function Header() {
   const [showFilters, setShowFilters] = useState(false);
   const { query, setQuery } = useSearch();
   const navigate = useNavigate();
+  const location = window.location || {};
+
+  // local input state prevents the field from being locked by external URL/context updates
+  const [localQuery, setLocalQuery] = useState(query || '');
+  const isFocusedRef = useRef(false);
+
+  // keep localQuery in sync when the global query changes (for example when loading /movies?q=...)
+  // Only update the input when it is not focused so the user can continue editing after initial search
+  useEffect(() => {
+    if (!isFocusedRef.current) setLocalQuery(query || '');
+  }, [query]);
 
   return (
     <>
@@ -50,9 +61,17 @@ export default function Header() {
           }}
         >
           <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { window.location.href = '/movies'; } }}
+            value={localQuery}
+            onFocus={() => { isFocusedRef.current = true; }}
+            onBlur={() => { isFocusedRef.current = false; }}
+            onChange={(e) => setLocalQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                // update global query and navigate; keep input editable because we use local state
+                setQuery(localQuery);
+                navigate(`/movies?q=${encodeURIComponent(localQuery || '')}`);
+              }
+            }}
             type="text"
             placeholder="Search movies..."
             style={{
@@ -68,7 +87,7 @@ export default function Header() {
             size={20}
             color="#12151c"
             style={{ cursor: "pointer", marginRight: "12px" }}
-            onClick={() => { window.location.href = '/movies'; }}
+            onClick={() => { setQuery(localQuery); navigate(`/movies?q=${encodeURIComponent(localQuery || '')}`); }}
           />
           {/* Filter */}
           <div
