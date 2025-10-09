@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import bookingApi from '../services/bookingApi';
-import { useBooking } from '../context/BookingContext';
+import bookingApi from '../services/bookingApi.js';
+import { useBooking } from '../context/BookingContext.js';
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();

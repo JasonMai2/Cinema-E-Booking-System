@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBooking } from '../context/BookingContext';
+import { useBooking } from '../context/BookingContext.js';
 
 export default function OrderSummary() {
   const { orderDraft, confirmOrder, selectedSeats, selectedShow, customer, createOrderDraft, updateSeat, removeSeat, setCustomer } = useBooking();

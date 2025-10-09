@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import bookingApi from '../services/bookingApi';
-import SeatMap from '../components/SeatMap';
-import { useBooking } from '../context/BookingContext';
+import bookingApi from '../services/bookingApi.js';
+import SeatMap from '../components/SeatMap.jsx';
+import { useBooking } from '../context/BookingContext.js';
 
 export default function SeatSelection() {
   const { showId } = useParams();

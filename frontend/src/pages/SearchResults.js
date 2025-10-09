@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import bookingApi from '../services/bookingApi';
-import ShowList from '../components/ShowList';
-import { useSearch } from '../context/SearchContext';
+import bookingApi from '../services/bookingApi.js';
+import ShowList from '../components/ShowList.jsx';
+import { useSearch } from '../context/SearchContext.js';
 
 export default function SearchResults() {
   const { query, filters } = useSearch();

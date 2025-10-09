@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Home, Search, Filter, User } from "lucide-react";
-import { useSearch } from "../context/SearchContext";
+import { useSearch } from "../context/SearchContext.js";
 import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
