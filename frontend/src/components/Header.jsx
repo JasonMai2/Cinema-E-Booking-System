@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Home, Search, Filter, User } from "lucide-react";
+import { useSearch } from "../context/SearchContext";
 
 export default function Header() {
   const [showFilters, setShowFilters] = useState(false);
+  const { query, setQuery } = useSearch();
 
   return (
     <>
@@ -46,8 +48,10 @@ export default function Header() {
           }}
         >
           <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             type="text"
-            placeholder="Search..."
+            placeholder="Search movies..."
             style={{
               border: "none",
               outline: "none",
@@ -118,9 +122,8 @@ export default function Header() {
               flexWrap: "wrap",
             }}
           >
-            <label>
-              <input type="checkbox" /> Filter 1
-            </label>
+            {/* Name filter (first option) */}
+            <NameFilterCheckbox />
             <label>
               <input type="checkbox" /> Filter 2
             </label>
@@ -131,5 +134,24 @@ export default function Header() {
         </div>
       )}
     </>
+  );
+}
+
+function NameFilterCheckbox() {
+  const { filters, toggleNameFilter, setQuery } = useSearch();
+
+  function onChange() {
+    // toggling off the name filter should clear the query to avoid confusion
+    toggleNameFilter();
+    if (filters && filters.name) {
+      // it was enabled, now disabling -> clear query
+      setQuery('');
+    }
+  }
+
+  return (
+    <label>
+      <input type="checkbox" checked={!!(filters && filters.name)} onChange={onChange} /> Name
+    </label>
   );
 }
