@@ -58,7 +58,6 @@ export default function Home() {
   return (
     <div style={{ padding: 24 }}>
       <h1>Welcome to Cinema E-Booking</h1>
-
       {error && (
         <div style={{ padding: 12, background: "#fee", border: "1px solid #f99", marginBottom: 12 }}>
           <strong>Warning:</strong> {error}

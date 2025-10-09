@@ -4,9 +4,22 @@ import { Link } from 'react-router-dom';
 export default function MovieCard({ movie, compact }) {
   if (!movie) return null;
 
+  console.log(movie.title, movie.trailer_image_url, movie.id);
+  
   return (
     <div style={{ background: '#1f2226', padding: 12, borderRadius: 6 }}>
       <h3 style={{ margin: '0 0 8px 0' }}>{movie.title}</h3>
+
+      {/* Display trailer image if available */}
+      {movie.trailer_image_url && (
+        <img
+          src={movie.trailer_image_url}
+          alt={`${movie.title} trailer`}
+          style={{ width: '100%', borderRadius: 6, marginBottom: 8 }}
+        />
+      )}
+
+
       {!compact && (
         <>
           <p style={{ margin: 0, color: '#cfcfcf' }}>{movie.synopsis}</p>
