@@ -8,6 +8,7 @@ export default function Checkout() {
   const [email, setEmail] = useState(customer?.email || '');
   const [phone, setPhone] = useState(customer?.phone || '');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,9 +22,13 @@ export default function Checkout() {
   const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
 
   async function submit() {
-    if (!name || !email) return alert('Please provide name and email');
-    if (!selectedShow) return alert('No show selected');
-    if (!selectedSeats || selectedSeats.length === 0) return alert('No seats selected');
+    const errs = {};
+    if (!name) errs.name = 'Name is required';
+    if (!email) errs.email = 'Email is required';
+    if (!selectedShow) errs.show = 'No show selected';
+    if (!selectedSeats || selectedSeats.length === 0) errs.seats = 'No seats selected';
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
 
     const payload = {
       showId: selectedShow.id,
@@ -58,14 +63,16 @@ export default function Checkout() {
                 <label style={{ color: '#cbd5da', fontWeight: 500 }}>
                   Name
                   <br />
-                  <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
+                  <input required value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
+                  {errors.name && <div style={{ color: '#ff6b6b', marginTop: 6 }}>{errors.name}</div>}
                 </label>
               </div>
               <div style={{ marginBottom: 8 }}>
                 <label style={{ color: '#cbd5da', fontWeight: 500 }}>
                   Email
                   <br />
-                  <input value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
+                  <input required value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
+                  {errors.email && <div style={{ color: '#ff6b6b', marginTop: 6 }}>{errors.email}</div>}
                 </label>
               </div>
               <div style={{ marginBottom: 8 }}>
@@ -78,6 +85,7 @@ export default function Checkout() {
 
               <div style={{ marginTop: 12 }}>
                 <button onClick={submit} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Creating...' : 'Continue to Summary'}</button>
+                <button onClick={() => navigate('/order-summary')} style={{ marginLeft: 8, background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 14px', borderRadius: 6 }}>Cancel</button>
                 <button onClick={async () => {
                   // create a demo order draft and go straight to order summary
                   const demoSeats = (selectedSeats && selectedSeats.length > 0) ? selectedSeats : [

@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Home, Search, Filter, User } from "lucide-react";
 import { useSearch } from "../context/SearchContext";
+import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
   const [showFilters, setShowFilters] = useState(false);
   const { query, setQuery } = useSearch();
+  const navigate = useNavigate();
 
   return (
     <>
@@ -50,6 +52,7 @@ export default function Header() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/search'); }}
             type="text"
             placeholder="Search movies..."
             style={{
@@ -65,6 +68,7 @@ export default function Header() {
             size={20}
             color="#12151c"
             style={{ cursor: "pointer", marginRight: "12px" }}
+            onClick={() => navigate('/search')}
           />
           {/* Filter */}
           <div

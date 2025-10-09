@@ -15,6 +15,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import RegistrationConfirmation from './pages/RegistrationConfirmation';
 import EditProfile from './pages/EditProfile';
 import MovieSelection from './pages/MovieSelection';
+import SearchResults from './pages/SearchResults';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/movie-details" element={<MovieDetails />} />
           <Route path="/shows" element={<ShowTimes />} />
+          <Route path="/shows/:movieId" element={<ShowTimes />} />
           <Route path="/shows/:showId/seats" element={<SeatSelection />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-summary" element={<OrderSummary />} />
@@ -37,6 +39,7 @@ function App() {
           <Route path="/registration-confirmation" element={<RegistrationConfirmation />} />
           <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/movies" element={<MovieSelection />} />
+          <Route path="/search" element={<SearchResults />} />
         </Routes>
         </Router>
       </SearchProvider>

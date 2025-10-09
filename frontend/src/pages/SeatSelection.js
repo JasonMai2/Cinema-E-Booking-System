@@ -17,6 +17,8 @@ export default function SeatSelection() {
     setSelectedShow,
   } = useBooking();
 
+  const [ageCategory, setAgeCategory] = useState('adult');
+
   const [seats, setSeats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -77,7 +79,12 @@ export default function SeatSelection() {
     if (exists) {
       removeSeat(seat.id);
     } else {
-      addSeat(seat);
+      // apply age-based pricing modifier when adding the seat
+      const modifiers = { adult: 1.0, child: 0.5, senior: 0.8 };
+      const basePrice = seat.price || 0;
+      const price = +(basePrice * (modifiers[ageCategory] || 1)).toFixed(2);
+      const seatWithAge = { ...seat, price, ageCategory };
+      addSeat(seatWithAge);
     }
   }
 
@@ -182,12 +189,38 @@ export default function SeatSelection() {
             <aside style={{ width: 320, paddingLeft: 8 }}>
               <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
                 <h3 style={{ marginTop: 0, color: '#fff' }}>Selected Seats</h3>
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ color: '#cbd5da', fontSize: 13, display: 'block', marginBottom: 6 }}>Age category for new seats</label>
+                  <select value={ageCategory} onChange={(e) => setAgeCategory(e.target.value)} style={{ padding: '6px 8px', borderRadius: 6, background: '#0b0d0f', color: '#fff', border: '1px solid #222' }}>
+                    <option value="adult">Adult</option>
+                    <option value="child">Child (50%)</option>
+                    <option value="senior">Senior (20% off)</option>
+                  </select>
+                </div>
                 {selectedSeats.length === 0 ? (
                   <div style={{ color: '#cbd5da' }}>No seats selected</div>
                 ) : (
                   <ul>
                     {selectedSeats.map((s) => (
-                      <li key={s.id} style={{ color: '#f4f6f8' }}>{`${s.row}${s.number} — $${(s.price || 0).toFixed(2)}`}</li>
+                      <li key={s.id} style={{ color: '#f4f6f8', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>{`${s.row}${s.number} — $${(s.price || 0).toFixed(2)}`}</div>
+                          <div>
+                            <select value={s.ageCategory || ageCategory} onChange={(e) => {
+                              const newAge = e.target.value;
+                              const modifiers = { adult: 1.0, child: 0.5, senior: 0.8 };
+                              const basePrice = (s.originalPrice || s.price || 0);
+                              const newPrice = +(basePrice * (modifiers[newAge] || 1)).toFixed(2);
+                              // update seat in context: store originalPrice if not present
+                              updateSeat(s.id, { ageCategory: newAge, price: newPrice, originalPrice: s.originalPrice || s.price || 0 });
+                            }} style={{ background: '#0b0d0f', color: '#fff', border: '1px solid #222', borderRadius: 6, padding: '4px 6px' }}>
+                              <option value="adult">Adult</option>
+                              <option value="child">Child</option>
+                              <option value="senior">Senior</option>
+                            </select>
+                          </div>
+                        </div>
+                      </li>
                     ))}
                   </ul>
                 )}
