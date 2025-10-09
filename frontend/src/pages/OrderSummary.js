@@ -63,6 +63,7 @@ export default function OrderSummary() {
               <h3 style={{ marginTop: 0, color: '#fff' }}>Totals</h3>
               <div style={{ color: '#cbd5da' }}>Subtotal: <span style={{ color: '#fff' }}>${subtotal.toFixed(2)}</span></div>
               <div style={{ marginTop: 12 }}>
+                <button onClick={() => navigate('/checkout')} style={{ marginRight: 8, background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 12px', borderRadius: 6 }}>Back</button>
                 <button onClick={onConfirm} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Confirming...' : 'Confirm Booking'}</button>
               </div>
             </div>
