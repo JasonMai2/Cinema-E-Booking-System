@@ -40,7 +40,7 @@ export default function MovieCard({ movie, compact }) {
             src={`https://www.youtube.com/embed/${videoId}`}
             title={`${movie.title} Trailer`}
             frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="clipboard-write; encrypted-media; picture-in-picture"
             allowFullScreen
             style={{
               position: 'absolute',

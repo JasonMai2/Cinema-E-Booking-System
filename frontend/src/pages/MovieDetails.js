@@ -8,16 +8,6 @@ export default function MovieDetails() {
       color: "#f5f5f5",
       fontFamily: "Arial, sans-serif",
     },
-    header: {
-      backgroundColor: "#661b1c",
-      padding: "20px 40px",
-      boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-    },
-    headerTitle: {
-      margin: 0,
-      fontSize: "24px",
-      fontWeight: "bold",
-    },
     mainContent: {
       maxWidth: "1200px",
       margin: "0 auto",
@@ -40,6 +30,13 @@ export default function MovieDetails() {
       fontSize: "18px",
       color: "#888",
       overflow: "hidden",
+    },
+    posterImg: {
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      borderRadius: "8px",
+      display: "block",
     },
     rightSection: {
       display: "flex",
@@ -74,6 +71,12 @@ export default function MovieDetails() {
       minHeight: "300px",
       fontSize: "18px",
       color: "#888",
+    },
+    trailerIframe: {
+      width: "90%",
+      height: "90%",
+      border: "none",
+      borderRadius: "8px",
     },
     descriptionSection: {
       backgroundColor: "#12151c",
@@ -110,30 +113,39 @@ export default function MovieDetails() {
 
   return (
     <div style={styles.container}>
-      {/* Header */}
-      <header style={styles.header}>
-        <h1 style={styles.headerTitle}>Cinema Booking System</h1>
-      </header>
-
       {/* Main Content */}
       <div style={styles.mainContent}>
         {/* Top Section - Poster and Info */}
         <div style={styles.topSection}>
-          <div style={styles.poster}>Movie Poster</div>
+          <div style={styles.poster}>
+            <img
+              src="/images/Inception.jpg"
+              alt="Inception Poster"
+              style={styles.posterImg}
+            />
+          </div>
           <div style={styles.rightSection}>
             <div style={styles.movieTitle}>
-              <h2 style={styles.title}>Movie Title</h2>
+              <h2 style={styles.title}>Inception</h2>
               <div style={styles.metaInfo}>
-                <span>Year Placeholder</span>
+                <span>2010</span>
                 <span>•</span>
-                <span>Length Placeholder</span>
+                <span>2 hr 28 min</span>
                 <span>•</span>
-                <span>Movie Rating Placeholder</span>
+                <span>PG-13</span>
                 <span>•</span>
-                <span>Critic Rating Placeholder</span>
+                <span>8.8/10</span>
               </div>
             </div>
-            <div style={styles.trailer}>Trailer Placeholder</div>
+            <div style={styles.trailer}>
+              <iframe
+                style={styles.trailerIframe}
+                src="https://www.youtube.com/embed/YoHD9XEInc0"
+                title="Inception Trailer"
+                allow="clipboard-write; encrypted-media; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
           </div>
         </div>
 
@@ -143,7 +155,7 @@ export default function MovieDetails() {
             Description
           </h3>
           <p style={styles.description}>
-            Description Placeholder.
+            A thief who steals corporate secrets through dream-sharing technology.
           </p>
         </div>
 
