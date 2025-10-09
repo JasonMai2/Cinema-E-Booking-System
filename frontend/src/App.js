@@ -15,6 +15,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import RegistrationConfirmation from './pages/RegistrationConfirmation';
 import EditProfile from './pages/EditProfile';
 import MovieSelection from './pages/MovieSelection';
+import SearchResults from './pages/SearchResults';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
           <Route path="/registration-confirmation" element={<RegistrationConfirmation />} />
           <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/movies" element={<MovieSelection />} />
+          <Route path="/search" element={<SearchResults />} />
         </Routes>
         </Router>
       </SearchProvider>

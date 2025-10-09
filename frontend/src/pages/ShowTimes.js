@@ -17,18 +17,16 @@ export default function ShowTimes() {
     // clear previous error only when starting a fresh request
     setError(null);
 
+    // initial fetch: if there's an active name query, let the search effect handle it.
     bookingApi
       .getMovies()
       .then((res) => {
-        // ignore responses from stale requests
         if (!mounted || id !== fetchId.current) return;
-        // backend returns paginated shape { content: [...], page, size, totalElements }
         const payload = res && res.data ? (res.data.content || res.data) : [];
         setMovies(payload || []);
       })
       .catch((err) => {
         if (!mounted || id !== fetchId.current) return;
-        // preserve the full error object in the message so user can inspect details
         const msg = (err && (err.message || (err.response && err.response.statusText))) || 'Failed to load shows';
         setError(msg);
       })
@@ -76,6 +74,40 @@ export default function ShowTimes() {
     if (!q) return movies;
     return movies.filter((m) => (m.title || '').toLowerCase().includes(q));
   }, [movies, query, filters]);
+
+  // Server-backed search: when name filter is enabled, debounce queries to the backend
+  useEffect(() => {
+    if (!filters || !filters.name) return; // only search by name when enabled
+    const q = (query || '').trim();
+    // if empty query, don't call server — we already have the full list
+    if (!q) return;
+
+    let mounted = true;
+    const id = ++fetchId.current;
+    setLoading(true);
+    const timer = setTimeout(() => {
+      bookingApi.getMovies({ q })
+        .then((res) => {
+          if (!mounted || id !== fetchId.current) return;
+          const payload = res && res.data ? (res.data.content || res.data) : [];
+          setMovies(payload || []);
+        })
+        .catch((err) => {
+          if (!mounted || id !== fetchId.current) return;
+          const msg = (err && (err.message || (err.response && err.response.statusText))) || 'Search failed';
+          setError(msg);
+        })
+        .finally(() => {
+          if (!mounted || id !== fetchId.current) return;
+          setLoading(false);
+        });
+    }, 300);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, [query, filters]);
 
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'transparent' }}>
