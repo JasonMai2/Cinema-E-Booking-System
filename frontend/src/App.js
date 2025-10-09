@@ -8,6 +8,7 @@ import Checkout from './pages/Checkout';
 import OrderSummary from './pages/OrderSummary';
 import OrderConfirmation from './pages/OrderConfirmation';
 import { BookingProvider } from './context/BookingContext';
+import { SearchProvider } from './context/SearchContext';
 import Login from './pages/Login';
 import MovieDetails from './pages/MovieDetails';
 import AdminDashboard from './pages/AdminDashboard';
@@ -18,8 +19,9 @@ import MovieSelection from './pages/MovieSelection';
 function App() {
   return (
     <BookingProvider>
-      <Router>
-        <Header />
+      <SearchProvider>
+        <Router>
+          <Header />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -36,7 +38,8 @@ function App() {
           <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/movies" element={<MovieSelection />} />
         </Routes>
-      </Router>
+        </Router>
+      </SearchProvider>
     </BookingProvider>
   );
 }

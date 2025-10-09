@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import bookingApi from '../services/bookingApi';
 import ShowList from '../components/ShowList';
+import { useSearch } from '../context/SearchContext';
 
 export default function ShowTimes() {
   const [movies, setMovies] = useState([]);
@@ -64,6 +65,15 @@ export default function ShowTimes() {
       });
   }
 
+  // Apply client-side name filter using global search query and filters
+  const { query, filters } = useSearch();
+  const moviesFiltered = useMemo(() => {
+    const q = (query || '').trim().toLowerCase();
+    if (!filters || !filters.name) return movies;
+    if (!q) return movies;
+    return movies.filter((m) => (m.title || '').toLowerCase().includes(q));
+  }, [movies, query, filters]);
+
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'transparent' }}>
       <div style={{ width: '720px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
@@ -84,10 +94,10 @@ export default function ShowTimes() {
         ) : (
           <div>
             {movies.length === 0 ? (
-              <div style={{ color: '#cbd5da' }}>No shows available right now.</div>
-            ) : (
-              <ShowList movies={movies} />
-            )}
+                <div style={{ color: '#cbd5da' }}>No shows available right now.</div>
+              ) : (
+                <ShowList movies={moviesFiltered} />
+              )}
           </div>
         )}
       </div>
