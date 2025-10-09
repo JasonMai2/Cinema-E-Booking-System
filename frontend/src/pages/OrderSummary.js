@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 
 export default function OrderSummary() {
-  const { orderDraft, confirmOrder, selectedSeats, selectedShow, customer } = useBooking();
+  const { orderDraft, confirmOrder, selectedSeats, selectedShow, customer, createOrderDraft } = useBooking();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -19,7 +19,20 @@ export default function OrderSummary() {
     }
   }
 
-  if (!orderDraft) return <div style={{ padding: 16 }}>No order draft found. Go back to start.</div>;
+  // If there's no orderDraft, suggest going to Checkout to create one
+  if (!orderDraft) {
+    return (
+      <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ width: '720px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
+          <h2 style={{ color: '#fff' }}>No order draft</h2>
+          <div style={{ color: '#cbd5da', marginBottom: 12 }}>You don't have an order draft yet. Go to Checkout to create one or use the demo option there.</div>
+          <div>
+            <button onClick={() => navigate('/checkout')} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>Go to Checkout</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const subtotal = useMemo(() => (selectedSeats || []).reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
 

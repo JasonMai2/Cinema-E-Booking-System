@@ -10,10 +10,10 @@ export default function SeatSelection() {
   const {
     selectedShow,
     selectedSeats,
-    setSelectedSeats,
-    createReservation,
+    addSeat,
+    removeSeat,
     reservation,
-    setReservation,
+    setOrderDetails,
     setSelectedShow,
   } = useBooking();
 
@@ -21,6 +21,7 @@ export default function SeatSelection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reserving, setReserving] = useState(false);
+  const [useDemo, setUseDemo] = useState(false);
 
   const pollRef = useRef(null);
 
@@ -33,19 +34,36 @@ export default function SeatSelection() {
         if (!mounted) return;
         // support multiple shapes: array, { seats: [...] }, or paginated { content: [...] }
         const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
-        setSeats(payload || []);
+        if (!payload || payload.length === 0) {
+          // if API returned nothing, automatically show demo seatmap so the user can continue
+          const demo = generateDemoSeats();
+          setSeats(demo);
+          setUseDemo(true);
+          setError(null);
+        } else {
+          setSeats(payload || []);
+        }
       })
-      .catch((err) => mounted && setError(err.message || 'Failed to load seat map'))
+      .catch((err) => {
+        if (!mounted) return;
+        const msg = err && (err.message || (err.response && err.response.statusText)) || 'Failed to load seat map';
+        // on error, fall back to demo seatmap automatically
+        const demo = generateDemoSeats();
+        setSeats(demo);
+        setUseDemo(true);
+        setError(msg);
+      })
       .finally(() => mounted && setLoading(false));
     return () => (mounted = false);
   }, [showId]);
 
   useEffect(() => {
     // Optionally poll seat map every 15s to keep availability fresh
+    if (useDemo) return; // skip polling when demo mode is active
     pollRef.current = setInterval(() => {
       bookingApi.getSeatMap(showId).then((res) => {
         const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
-        setSeats(payload || []);
+        if (payload && payload.length > 0) setSeats(payload || []);
       }).catch(() => {});
     }, 15000);
     return () => clearInterval(pollRef.current);
@@ -57,9 +75,9 @@ export default function SeatSelection() {
     if (seat.status !== 'available') return;
     const exists = selectedSeats.find((s) => s.id === seat.id);
     if (exists) {
-      setSelectedSeats(selectedSeats.filter((s) => s.id !== seat.id));
+      removeSeat(seat.id);
     } else {
-      setSelectedSeats([...selectedSeats, seat]);
+      addSeat(seat);
     }
   }
 
@@ -68,10 +86,27 @@ export default function SeatSelection() {
     setReserving(true);
     try {
       const seatIds = selectedSeats.map((s) => s.id);
-      const data = await createReservation(showId, seatIds);
-      // reservation stored in context
-      // start a countdown or show expiry info if provided
-      navigate('/checkout');
+      if (useDemo) {
+        // create a simple order draft in context and go to checkout
+        const draft = {
+          showId: showId,
+          show: selectedShow,
+          seats: selectedSeats,
+          customer: null,
+        };
+        if (typeof createOrderDraft === 'function') {
+          await createOrderDraft(draft);
+        }
+        navigate('/checkout');
+      } else {
+        // call API to reserve seats; bookingApi.reserveSeats returns reservation/order data
+        const res = await bookingApi.reserveSeats(showId, { seats: seatIds });
+        const data = res && res.data ? res.data : res;
+        // store resulting reservation/order in context if setter exists
+        if (setOrderDetails) setOrderDetails(data);
+        // start a countdown or show expiry info if provided
+        navigate('/checkout');
+      }
     } catch (err) {
       // Try to refresh seat map and show helpful message
       await bookingApi.getSeatMap(showId).then((res) => setSeats(res.data.seats || [])).catch(() => {});
@@ -94,6 +129,26 @@ export default function SeatSelection() {
     }
   }
 
+  function generateDemoSeats() {
+    const rows = 'ABCDEFGHIJ'.split('');
+    const seats = [];
+    let id = 1;
+    for (const r of rows) {
+      for (let n = 1; n <= 12; n++) {
+        seats.push({ id: `demo-${r}${n}-${id}`, row: r, number: n, status: 'available', price: 10.0 });
+        id += 1;
+      }
+    }
+    return seats;
+  }
+
+  function showDemoSeatmap() {
+    setUseDemo(true);
+    setError(null);
+    const demo = generateDemoSeats();
+    setSeats(demo);
+  }
+
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '820px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
@@ -109,6 +164,7 @@ export default function SeatSelection() {
             <div style={{ color: '#ff6b6b' }}>Error: {error}</div>
             <div style={{ marginTop: 8 }}>
               <button onClick={refreshSeats} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 12px', borderRadius: 6, border: 'none' }}>Retry</button>
+              <button onClick={showDemoSeatmap} style={{ marginLeft: 8, background: '#444', color: '#fff', padding: '8px 12px', borderRadius: 6, border: 'none' }}>Show demo seatmap</button>
             </div>
           </div>
         ) : (

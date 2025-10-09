@@ -78,6 +78,31 @@ export default function Checkout() {
 
               <div style={{ marginTop: 12 }}>
                 <button onClick={submit} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Creating...' : 'Continue to Summary'}</button>
+                <button onClick={async () => {
+                  // create a demo order draft and go straight to order summary
+                  const demoSeats = (selectedSeats && selectedSeats.length > 0) ? selectedSeats : [
+                    { id: 'demo-A1', row: 'A', number: 1, price: 10 },
+                    { id: 'demo-A2', row: 'A', number: 2, price: 10 }
+                  ];
+                  const draft = {
+                    id: `demo-draft-${Date.now()}`,
+                    orderId: `demo-draft-${Date.now()}`,
+                    showId: selectedShow?.id || 'demo-show-1',
+                    show: selectedShow || { id: 'demo-show-1', title: 'Demo Movie — 7:00 PM' },
+                    seats: demoSeats,
+                    customer: { name: name || 'Demo User', email: email || 'demo@example.com', phone: phone || '' }
+                  };
+                  setLoading(true);
+                  try {
+                    await createOrderDraft(draft);
+                    setCustomer({ name: draft.customer.name, email: draft.customer.email, phone: draft.customer.phone });
+                    navigate('/order-summary');
+                  } catch (err) {
+                    alert('Failed to create demo order: ' + (err.message || err));
+                  } finally {
+                    setLoading(false);
+                  }
+                }} style={{ marginLeft: 8, background: '#444', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>Generate demo order</button>
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import bookingApi from '../services/bookingApi';
+import { useBooking } from '../context/BookingContext';
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
@@ -8,14 +9,30 @@ export default function OrderConfirmation() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { orderDetails } = useBooking();
 
   useEffect(() => {
     let mounted = true;
-    bookingApi
-      .getOrder(orderId)
-      .then((res) => mounted && setOrder(res.data))
-      .catch((err) => mounted && setError(err.message || 'Failed to fetch'))
-      .finally(() => mounted && setLoading(false));
+    const doLoad = async () => {
+      try {
+        if (!orderId && orderDetails) {
+          if (mounted) setOrder(orderDetails);
+          return;
+        }
+        const res = await bookingApi.getOrder(orderId);
+        if (mounted) setOrder(res.data);
+      } catch (err) {
+        // If fetching from server fails (likely in demo mode), use context-stored confirmation if available
+        if (orderDetails) {
+          if (mounted) setOrder(orderDetails);
+        } else if (mounted) {
+          setError(err.message || 'Failed to fetch');
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    doLoad();
     return () => (mounted = false);
   }, [orderId]);
 
