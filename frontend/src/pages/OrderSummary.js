@@ -68,7 +68,14 @@ export default function OrderSummary() {
     );
   }
 
-  const subtotal = useMemo(() => (selectedSeats || []).reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
+  // Normalize seats: selectedSeats preferred (full objects), otherwise map orderDraft.seats
+  const seatsList = useMemo(() => {
+    if (selectedSeats && selectedSeats.length > 0) return selectedSeats;
+    const draftSeats = orderDraft?.seats || [];
+    return draftSeats.map((s) => (typeof s === 'string' || typeof s === 'number' ? { id: s, price: 0 } : s));
+  }, [selectedSeats, orderDraft]);
+
+  const subtotal = useMemo(() => (seatsList || []).reduce((s, x) => s + (x.price || 0), 0), [seatsList]);
 
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -85,7 +92,7 @@ export default function OrderSummary() {
               <div style={{ marginTop: 6, color: '#cbd5da' }}><strong>Customer:</strong> {customer?.name || orderDraft.customer?.name}</div>
               <h4 style={{ marginTop: 12, color: '#fff' }}>Seats</h4>
               <ul>
-                {(selectedSeats || orderDraft.seats || []).map((s) => (
+                {(seatsList || []).map((s) => (
                   <li key={s.id || s} style={{ color: '#f4f6f8', marginBottom: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>{s.row ? `${s.row}${s.number}` : s} {s.price ? `— $${(s.price||0).toFixed(2)}` : ''}</div>
