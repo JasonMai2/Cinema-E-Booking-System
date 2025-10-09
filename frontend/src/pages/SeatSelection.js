@@ -31,7 +31,9 @@ export default function SeatSelection() {
       .getSeatMap(showId)
       .then((res) => {
         if (!mounted) return;
-        setSeats(res.data.seats || []);
+        // support multiple shapes: array, { seats: [...] }, or paginated { content: [...] }
+        const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
+        setSeats(payload || []);
       })
       .catch((err) => mounted && setError(err.message || 'Failed to load seat map'))
       .finally(() => mounted && setLoading(false));
@@ -41,7 +43,10 @@ export default function SeatSelection() {
   useEffect(() => {
     // Optionally poll seat map every 15s to keep availability fresh
     pollRef.current = setInterval(() => {
-      bookingApi.getSeatMap(showId).then((res) => setSeats(res.data.seats || [])).catch(() => {});
+      bookingApi.getSeatMap(showId).then((res) => {
+        const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
+        setSeats(payload || []);
+      }).catch(() => {});
     }, 15000);
     return () => clearInterval(pollRef.current);
   }, [showId]);
@@ -79,8 +84,9 @@ export default function SeatSelection() {
   async function refreshSeats() {
     setLoading(true);
     try {
-      const res = await bookingApi.getSeatMap(showId);
-      setSeats(res.data.seats || []);
+  const res = await bookingApi.getSeatMap(showId);
+  const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
+  setSeats(payload || []);
     } catch (err) {
       setError(err.message || 'Failed to refresh');
     } finally {

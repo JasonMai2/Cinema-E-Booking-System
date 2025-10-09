@@ -22,7 +22,9 @@ export default function ShowTimes() {
       .then((res) => {
         // ignore responses from stale requests
         if (!mounted || id !== fetchId.current) return;
-        setMovies(res.data || []);
+        // backend returns paginated shape { content: [...], page, size, totalElements }
+        const payload = res && res.data ? (res.data.content || res.data) : [];
+        setMovies(payload || []);
       })
       .catch((err) => {
         if (!mounted || id !== fetchId.current) return;
@@ -52,7 +54,8 @@ export default function ShowTimes() {
       .getMovies()
       .then((res) => {
         if (id !== fetchId.current) return;
-        setMovies(res.data || []);
+        const payload = res && res.data ? (res.data.content || res.data) : [];
+        setMovies(payload || []);
       })
       .catch((err) => {
         if (id !== fetchId.current) return;

@@ -9,7 +9,10 @@ export default function MovieSelection() {
 
   useEffect(() => {
     api.get('/movies')
-      .then(res => setMovies(res.data || []))
+      .then(res => {
+        const payload = res && res.data ? (res.data.content || res.data) : [];
+        setMovies(payload || []);
+      })
       .catch(err => console.error('Failed to load movies:', err))
       .finally(() => setLoading(false));
   }, []);
