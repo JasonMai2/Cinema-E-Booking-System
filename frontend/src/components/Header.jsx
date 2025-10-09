@@ -52,7 +52,7 @@ export default function Header() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/movies'); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { window.location.href = '/movies'; } }}
             type="text"
             placeholder="Search movies..."
             style={{
@@ -68,7 +68,7 @@ export default function Header() {
             size={20}
             color="#12151c"
             style={{ cursor: "pointer", marginRight: "12px" }}
-            onClick={() => navigate('/movies')}
+            onClick={() => { window.location.href = '/movies'; }}
           />
           {/* Filter */}
           <div

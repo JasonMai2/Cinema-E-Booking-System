@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import bookingApi from '../services/bookingApi.js';
 import ShowList from '../components/ShowList.jsx';
 import { useSearch } from '../context/SearchContext.js';
@@ -96,15 +96,25 @@ export default function ShowTimes() {
 
   // Apply client-side name filter using global search query and filters
   const { query, filters } = useSearch();
+  const navigate = useNavigate();
   const moviesFiltered = useMemo(() => {
     // If we're showing demo data (ids start with 'demo'), bypass the global search
     const isDemo = Array.isArray(movies) && movies.length > 0 && movies.every((m) => String(m.id).startsWith('demo'));
+    // If demo, keep local behavior
     if (isDemo) return movies;
 
-    const q = (query || '').trim().toLowerCase();
+    // If name filter is active and a query exists, redirect user to /movies so search results are shown there
+    const qRaw = (query || '').trim();
+    if (filters && filters.name && qRaw) {
+      // navigate to /movies which will render search results using SearchContext
+      // Use a short timeout to avoid calling navigate during render of useMemo
+      setTimeout(() => navigate('/movies'), 0);
+      return movies;
+    }
+    const qLower = qRaw.toLowerCase();
     if (!filters || !filters.name) return movies;
-    if (!q) return movies;
-    return movies.filter((m) => (m.title || '').toLowerCase().includes(q));
+    if (!qLower) return movies;
+    return movies.filter((m) => (m.title || '').toLowerCase().includes(qLower));
   }, [movies, query, filters]);
 
   // Server-backed search disabled while disconnected from DB. Client-side filtering still applies.
