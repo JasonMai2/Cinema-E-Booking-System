@@ -32,7 +32,8 @@ export default function MovieCard({ movie, compact }) {
   const trailerUrl = movie.trailer_video_url || DEFAULT_TRAILER;
   const embedSrc = getYouTubeEmbedSrc(trailerUrl);
   const hasVideo = !!trailerUrl && !embedSrc; // non-YouTube direct video URL
-  const poster = movie.trailer_image_url || movie.poster || null;
+  const poster = movie.trailer_image_url || null;
+  console.log("Rendering MovieCard for:", movie.trailer_image_url);
 
   return (
     <div
@@ -43,9 +44,43 @@ export default function MovieCard({ movie, compact }) {
         color: "#fff",
       }}
     >
-      <h3 style={{ margin: "0 0 8px 0" }}>{movie.title}</h3>
+      {/* header: thumbnail + title/synopsis */}
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "flex-start",
+          marginBottom: 8,
+        }}
+      >
+        {poster ? (
+          <img
+            src={poster}
+            alt={`${movie.title} poster`}
+            style={{
+              width: 96,
+              height: 140,
+              objectFit: "cover",
+              borderRadius: 6,
+              flex: "0 0 96px",
+            }}
+          />
+        ) : null}
 
-      {/* media area */}
+        <div style={{ flex: 1 }}>
+          <h3 style={{ margin: "0 0 8px 0" }}>{movie.title}</h3>
+          {!compact && (
+            <>
+              <p style={{ margin: 0, color: "#cfcfcf" }}>{movie.synopsis}</p>
+              <p style={{ marginTop: 8, fontSize: 12, color: "#9aa" }}>
+                {movie.mpaa_rating}
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* media area (video/embed/full-size image) */}
       <div style={{ marginBottom: 8 }}>
         {embedSrc ? (
           <div
@@ -82,6 +117,7 @@ export default function MovieCard({ movie, compact }) {
             Your browser does not support the video tag.
           </video>
         ) : poster ? (
+          // show a larger poster when no video/embed is available
           <img
             src={poster}
             alt={`${movie.title} poster`}
@@ -89,15 +125,6 @@ export default function MovieCard({ movie, compact }) {
           />
         ) : null}
       </div>
-
-      {!compact && (
-        <>
-          <p style={{ margin: 0, color: "#cfcfcf" }}>{movie.synopsis}</p>
-          <p style={{ marginTop: 8, fontSize: 12, color: "#9aa" }}>
-            {movie.mpaa_rating}
-          </p>
-        </>
-      )}
 
       <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
         <Link
