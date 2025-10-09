@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 
 export default function OrderSummary() {
-  const { orderDraft, confirmOrder, selectedSeats, selectedShow, customer, createOrderDraft } = useBooking();
+  const { orderDraft, confirmOrder, selectedSeats, selectedShow, customer, createOrderDraft, updateSeat, removeSeat, setCustomer } = useBooking();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -14,6 +14,40 @@ export default function OrderSummary() {
       navigate(`/order-confirmation/${res.orderId || res.id}`);
     } catch (err) {
       alert('Failed to confirm: ' + (err.message || err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onUpdateOrder() {
+    setLoading(true);
+    try {
+      const payload = {
+        showId: selectedShow?.id || orderDraft?.showId,
+        seats: selectedSeats || orderDraft?.seats || [],
+        customer: customer || orderDraft?.customer || null,
+      };
+      await createOrderDraft(payload);
+      alert('Order draft updated');
+    } catch (err) {
+      alert('Failed to update order: ' + (err.message || err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onConfirmAndCheckout() {
+    setLoading(true);
+    try {
+      const payload = {
+        showId: selectedShow?.id || orderDraft?.showId,
+        seats: selectedSeats || orderDraft?.seats || [],
+        customer: customer || orderDraft?.customer || null,
+      };
+      await createOrderDraft(payload);
+      navigate('/checkout');
+    } catch (err) {
+      alert('Failed to prepare checkout: ' + (err.message || err));
     } finally {
       setLoading(false);
     }
@@ -52,7 +86,25 @@ export default function OrderSummary() {
               <h4 style={{ marginTop: 12, color: '#fff' }}>Seats</h4>
               <ul>
                 {(selectedSeats || orderDraft.seats || []).map((s) => (
-                  <li key={s.id || s} style={{ color: '#f4f6f8' }}>{s.row ? `${s.row}${s.number}` : s} {s.price ? `— $${s.price.toFixed(2)}` : ''}</li>
+                  <li key={s.id || s} style={{ color: '#f4f6f8', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>{s.row ? `${s.row}${s.number}` : s} {s.price ? `— $${(s.price||0).toFixed(2)}` : ''}</div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <select value={s.ageCategory || 'adult'} onChange={(e) => {
+                          const newAge = e.target.value;
+                          const modifiers = { adult: 1.0, child: 0.5, senior: 0.8 };
+                          const basePrice = (s.originalPrice || s.price || 0);
+                          const newPrice = +(basePrice * (modifiers[newAge] || 1)).toFixed(2);
+                          updateSeat(s.id, { ageCategory: newAge, price: newPrice, originalPrice: basePrice });
+                        }} style={{ background: '#0b0d0f', color: '#fff', border: '1px solid #222', borderRadius: 6, padding: '4px 6px' }}>
+                          <option value="adult">Adult</option>
+                          <option value="child">Child</option>
+                          <option value="senior">Senior</option>
+                        </select>
+                        <button onClick={() => removeSeat(s.id)} style={{ background: 'transparent', color: '#ff6b6b', border: 'none' }}>Delete</button>
+                      </div>
+                    </div>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -63,7 +115,9 @@ export default function OrderSummary() {
               <h3 style={{ marginTop: 0, color: '#fff' }}>Totals</h3>
               <div style={{ color: '#cbd5da' }}>Subtotal: <span style={{ color: '#fff' }}>${subtotal.toFixed(2)}</span></div>
               <div style={{ marginTop: 12 }}>
-                <button onClick={() => navigate('/checkout')} style={{ marginRight: 8, background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 12px', borderRadius: 6 }}>Back</button>
+                {/* Back button removed per request */}
+                <button onClick={onUpdateOrder} style={{ marginRight: 8, background: '#336', color: '#fff', padding: '8px 12px', borderRadius: 6, border: 'none' }}>Update Order</button>
+                <button onClick={onConfirmAndCheckout} disabled={loading} style={{ marginRight: 8, background: '#1b5e20', color: '#fff', padding: '8px 12px', borderRadius: 6, border: 'none' }}>{loading ? 'Preparing...' : 'Return to Checkout'}</button>
                 <button onClick={onConfirm} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Confirming...' : 'Confirm Booking'}</button>
               </div>
             </div>
