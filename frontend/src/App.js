@@ -39,7 +39,8 @@ function App() {
           <Route path="/registration-confirmation" element={<RegistrationConfirmation />} />
           <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/movies" element={<MovieSelection />} />
-          <Route path="/search" element={<SearchResults />} />
+          {/* Keep /search for compatibility but render MovieSelection so results live on /movies */}
+          <Route path="/search" element={<MovieSelection />} />
         </Routes>
         </Router>
       </SearchProvider>
