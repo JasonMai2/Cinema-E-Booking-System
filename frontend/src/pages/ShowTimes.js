@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import bookingApi from '../services/bookingApi';
 import ShowList from '../components/ShowList';
 import { useSearch } from '../context/SearchContext';
 
@@ -13,43 +12,30 @@ export default function ShowTimes() {
   const fetchId = useRef(0);
 
   useEffect(() => {
-    // When no shows exist, create demo shows so the user can continue booking
-    let mounted = true;
-    const id = ++fetchId.current; // request identifier to avoid race conditions
+    // For now run entirely in demo mode: initialize local demo movies and don't call the backend.
     setLoading(true);
-    // clear previous error only when starting a fresh request
     setError(null);
-    // If a movieId is present, fetch shows for that specific movie and shape
-    // them into the expected `movies` array where each movie has a `shows` list.
-    const fetchPromise = movieId
-      ? bookingApi.getShowsForMovie(movieId).then((res) => {
-          const payload = res && res.data ? (res.data.shows || res.data.content || res.data) : [];
-          // shape into movie-like object for ShowList: include title, synopsis, shows
-          const movieObj = { id: movieId, title: `Movie ${movieId}`, synopsis: '', shows: payload };
-          return [movieObj];
-        })
-      : bookingApi.getMovies().then((res) => (res && res.data ? (res.data.content || res.data) : []));
-
-    fetchPromise
-      .then((payload) => {
-        if (!mounted || id !== fetchId.current) return;
-        setMovies(payload || []);
-      })
-      .catch((err) => {
-        if (!mounted || id !== fetchId.current) return;
-        const msg = (err && (err.message || (err.response && err.response.statusText))) || 'Failed to load shows';
-        setError(msg);
-        // leave movies empty so demo message appears in UI
-      })
-      .finally(() => {
-        if (!mounted || id !== fetchId.current) return;
-        setLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    if (movieId) {
+      const demoId = movieId || 'demo-1';
+      const singleDemo = {
+        id: demoId,
+        title: movieId ? `Demo Movie ${movieId}` : 'Demo Movie 1',
+        synopsis: 'Demo synopsis',
+        shows: generateDemoShows(demoId),
+      };
+      setMovies([singleDemo]);
+    } else {
+      // show a couple of demo movies for the general showtimes page
+      const demoMovies = [1, 2].map((n) => ({
+        id: `demo-${n}`,
+        title: `Demo Movie ${n}`,
+        synopsis: `Demo synopsis ${n}`,
+        shows: generateDemoShows(`demo-${n}`),
+      }));
+      setMovies(demoMovies);
+    }
+    setLoading(false);
+  }, [movieId]);
 
   useEffect(() => {
     if (movies && movies.length > 0) {
@@ -117,39 +103,7 @@ export default function ShowTimes() {
     return movies.filter((m) => (m.title || '').toLowerCase().includes(q));
   }, [movies, query, filters]);
 
-  // Server-backed search: when name filter is enabled, debounce queries to the backend
-  useEffect(() => {
-    if (!filters || !filters.name) return; // only search by name when enabled
-    const q = (query || '').trim();
-    // if empty query, don't call server — we already have the full list
-    if (!q) return;
-
-    let mounted = true;
-    const id = ++fetchId.current;
-    setLoading(true);
-    const timer = setTimeout(() => {
-      bookingApi.getMovies({ q })
-        .then((res) => {
-          if (!mounted || id !== fetchId.current) return;
-          const payload = res && res.data ? (res.data.content || res.data) : [];
-          setMovies(payload || []);
-        })
-        .catch((err) => {
-          if (!mounted || id !== fetchId.current) return;
-          const msg = (err && (err.message || (err.response && err.response.statusText))) || 'Search failed';
-          setError(msg);
-        })
-        .finally(() => {
-          if (!mounted || id !== fetchId.current) return;
-          setLoading(false);
-        });
-    }, 300);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [query, filters]);
+  // Note: server-backed search is disabled while disconnected from DB. Client-side filtering below still applies.
 
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'transparent' }}>
