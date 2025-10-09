@@ -29,7 +29,7 @@ export default function Header() {
           }}
         >
           <Home size={22} style={{ marginRight: "8px" }} />
-          SITENAME
+          Cinema E-Booking
         </a>
 
         {/* Search bar */}

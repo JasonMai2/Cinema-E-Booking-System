@@ -93,43 +93,6 @@ export default function Home() {
           </div>
         )}
       </section>
-
-      {/* Trending top-3 posters */}
-      <TrendingMovies limit={3} />
-
-      <hr style={{ margin: "20px 0" }} />
-      <h2>All movies (debug list)</h2>
-
-      {loading ? (
-        <p>Loading movies…</p>
-      ) : movies.length === 0 ? (
-        <p>No movies available yet.</p>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-            marginTop: 16,
-          }}
-        >
-          {movies.map((m) => (
-            <div
-              key={m.id}
-              style={{
-                background: "#1f2226",
-                padding: 12,
-                borderRadius: 6,
-                color: "#fff",
-              }}
-            >
-              <h3 style={{ margin: "0 0 8px 0" }}>{m.title}</h3>
-              <p style={{ margin: 0, color: "#cfcfcf" }}>{m.synopsis}</p>
-              <p style={{ marginTop: 8, fontSize: 12, color: "#9aa" }}>{m.mpaa_rating}</p>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
