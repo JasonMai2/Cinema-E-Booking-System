@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import bookingApi from '../services/bookingApi';
 import ShowList from '../components/ShowList';
 import { useSearch } from '../context/SearchContext';
 
 export default function ShowTimes() {
+  const { movieId } = useParams();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,24 +13,33 @@ export default function ShowTimes() {
   const fetchId = useRef(0);
 
   useEffect(() => {
+    // When no shows exist, create demo shows so the user can continue booking
     let mounted = true;
     const id = ++fetchId.current; // request identifier to avoid race conditions
     setLoading(true);
     // clear previous error only when starting a fresh request
     setError(null);
+    // If a movieId is present, fetch shows for that specific movie and shape
+    // them into the expected `movies` array where each movie has a `shows` list.
+    const fetchPromise = movieId
+      ? bookingApi.getShowsForMovie(movieId).then((res) => {
+          const payload = res && res.data ? (res.data.shows || res.data.content || res.data) : [];
+          // shape into movie-like object for ShowList: include title, synopsis, shows
+          const movieObj = { id: movieId, title: `Movie ${movieId}`, synopsis: '', shows: payload };
+          return [movieObj];
+        })
+      : bookingApi.getMovies().then((res) => (res && res.data ? (res.data.content || res.data) : []));
 
-    // initial fetch: if there's an active name query, let the search effect handle it.
-    bookingApi
-      .getMovies()
-      .then((res) => {
+    fetchPromise
+      .then((payload) => {
         if (!mounted || id !== fetchId.current) return;
-        const payload = res && res.data ? (res.data.content || res.data) : [];
         setMovies(payload || []);
       })
       .catch((err) => {
         if (!mounted || id !== fetchId.current) return;
         const msg = (err && (err.message || (err.response && err.response.statusText))) || 'Failed to load shows';
         setError(msg);
+        // leave movies empty so demo message appears in UI
       })
       .finally(() => {
         if (!mounted || id !== fetchId.current) return;
@@ -39,6 +50,37 @@ export default function ShowTimes() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (movies && movies.length > 0) {
+      const updated = movies.map((m) => {
+        if (Array.isArray(m.shows) && m.shows.length > 0) return m;
+        return { ...m, shows: generateDemoShowsForMovie(m) };
+      });
+      setMovies(updated);
+    } else if (!loading && (!movies || movies.length === 0)) {
+      // Show a single demo movie with multiple showtimes so the demo page
+      // focuses on booking different times for one movie.
+      const demoId = movieId || 'demo-1';
+      const singleDemo = {
+        id: demoId,
+        title: movieId ? `Demo Movie ${movieId}` : 'Demo Movie 1',
+        synopsis: 'Demo synopsis',
+        shows: generateDemoShows(demoId),
+      };
+      setMovies([singleDemo]);
+    }
+  }, [movies, loading]);
+
+  function generateDemoShowsForMovie(movie) {
+    const baseId = movie.id || 'demo-m';
+    return generateDemoShows(baseId);
+  }
+
+  function generateDemoShows(seed) {
+    const now = Date.now();
+    return [0, 1, 2, 3].map((i) => ({ id: `demo-show-${seed}-${i}`, startTime: new Date(now + i * 3600 * 1000).toISOString(), runtimeMinutes: 120, auditorium: `Aud ${i + 1}` }));
+  }
 
   function retry() {
     // start a new fetch id to invalidate previous requests

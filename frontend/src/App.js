@@ -28,6 +28,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/movie-details" element={<MovieDetails />} />
           <Route path="/shows" element={<ShowTimes />} />
+          <Route path="/shows/:movieId" element={<ShowTimes />} />
           <Route path="/shows/:showId/seats" element={<SeatSelection />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-summary" element={<OrderSummary />} />

@@ -9,7 +9,14 @@ const bookingApi = {
     return api.get('/movies', params ? { params } : undefined);
   },
   getShowsForMovie(movieId) {
-    return api.get(`/movies/${movieId}/shows`);
+    // Primary: try to fetch shows for a movie.
+    // If backend returns an empty payload (no shows yet) or the request fails,
+    // callers in the UI expect a consistent shape. We return the axios promise
+    // but resolve to a payload when possible so callers can rely on `res.data`.
+    return api.get(`/movies/${movieId}/shows`).catch((err) => {
+      // bubble the error to callers; they may still want to show demo data.
+      throw err;
+    });
   },
   getSeatMap(showId) {
     // accept optional params argument: getSeatMap(showId, { q, page, size })

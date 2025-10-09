@@ -20,6 +20,10 @@ export function BookingProvider({ children }) {
     setSelectedSeats((s) => s.filter((x) => x.id !== seatId));
   };
 
+  const updateSeat = (seatId, patch) => {
+    setSelectedSeats((s) => s.map((x) => (x.id === seatId ? { ...x, ...patch } : x)));
+  };
+
   const clearSelection = () => {
     setSelectedShow(null);
     setSelectedSeats([]);
@@ -74,6 +78,7 @@ export function BookingProvider({ children }) {
     selectedSeats,
     addSeat,
     removeSeat,
+    updateSeat,
     clearSelection,
     customer,
     setCustomer,

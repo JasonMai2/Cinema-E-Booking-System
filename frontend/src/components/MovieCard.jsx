@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function MovieCard({ movie, compact }) {
   if (!movie) return null;
+  const navigate = useNavigate();
 
   return (
     <div style={{ background: '#1f2226', padding: 12, borderRadius: 6 }}>
@@ -17,7 +18,7 @@ export default function MovieCard({ movie, compact }) {
         <Link to={`/movies/${movie.id}`} style={{ color: '#fff', textDecoration: 'none' }}>
           <button style={{ padding: '6px 10px', borderRadius: 6 }}>Details</button>
         </Link>
-        <button style={{ padding: '6px 10px', borderRadius: 6, background: '#7d1b1d', color: '#fff' }}>
+        <button onClick={() => navigate(`/shows/${movie.id}`)} style={{ padding: '6px 10px', borderRadius: 6, background: '#7d1b1d', color: '#fff' }}>
           Book
         </button>
       </div>
