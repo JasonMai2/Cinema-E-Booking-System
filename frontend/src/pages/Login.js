@@ -177,6 +177,7 @@ export default function Login() {
                 placeholder="you@example.com"
                 required
                 disabled={loading}
+                readOnly
               />
             </label>
 
