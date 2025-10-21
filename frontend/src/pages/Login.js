@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [mode, setMode] = useState("login"); // 'login' | 'register'
@@ -11,9 +13,12 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   // registration-only
   const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [confirm, setConfirm] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -24,7 +29,8 @@ export default function Login() {
   }
 
   function validateRegister() {
-    if (!name) return "Full name is required";
+    if (!firstName) return "First name is required";
+    // last name optional
     if (!email) return "Email is required";
     if (!password) return "Password is required";
     if (password.length < 6) return "Password must be at least 6 characters";
@@ -39,13 +45,17 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      // TODO: replace with real auth endpoint when available
-      // const res = await api.post('/auth/login', { email, password });
-      // handle tokens / session
-      setTimeout(() => {
-        setLoading(false);
-        navigate("/");
-      }, 400);
+      const res = await api.post('/auth/login', { email, password });
+      setLoading(false);
+      if (res?.data?.ok) {
+        // set auth user (backend returns { ok: true, user: { ... } })
+        if (res.data.user) {
+          authLogin(res.data.user);
+        }
+        navigate('/');
+      } else {
+        setError(res?.data?.message || 'Login failed');
+      }
     } catch (err) {
       setLoading(false);
       setError(err?.response?.data?.message || "Login failed");
@@ -59,17 +69,21 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const payload = { name, email, password };
-      if (phone) payload.phone = phone;
-      // TODO: implement registration endpoint on backend and replace this placeholder
-      console.log("TODO: register user (payload)", payload);
+  // prefer explicit first/last_name fields
+  const payload = { first_name: firstName, last_name: lastName, email, password };
+  if (phone) payload.phone = phone;
+      const res = await api.post('/auth/register', payload);
       setLoading(false);
-      // Simulate success for now and navigate to the confirmation page
-      setMode("login");
-      setPassword("");
-      setConfirm("");
-      setPhone("");
-      navigate("/registration-confirmation");
+      if (res?.data?.ok) {
+        // clear form and show confirmation
+        setMode('login');
+        setPassword('');
+        setConfirm('');
+        setPhone('');
+        navigate('/registration-confirmation');
+      } else {
+        setError(res?.data?.message || 'Registration failed');
+      }
     } catch (err) {
       setLoading(false);
       setError(err?.response?.data?.message || "Registration failed");
@@ -148,6 +162,7 @@ export default function Login() {
                   type="submit"
                   className="btn-primary"
                   disabled={loading}
+                  onClick={(e) => onLogin(e)}
                 >
                   {loading ? "Signing in…" : "Sign in"}
                 </button>
@@ -157,13 +172,24 @@ export default function Login() {
         ) : (
           <form onSubmit={onRegister} className="login-form">
             <label>
-              Full name
+              First name
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your full name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="First name"
                 required
+                disabled={loading}
+              />
+            </label>
+
+            <label>
+              Last name (optional)
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Last name"
                 disabled={loading}
               />
             </label>
@@ -177,7 +203,6 @@ export default function Login() {
                 placeholder="you@example.com"
                 required
                 disabled={loading}
-                readOnly
               />
             </label>
 
@@ -254,6 +279,7 @@ export default function Login() {
                   type="submit"
                   className="btn-primary"
                   disabled={loading}
+                  onClick={(e) => onRegister(e)}
                 >
                   {loading ? "Creating…" : "Create account"}
                 </button>

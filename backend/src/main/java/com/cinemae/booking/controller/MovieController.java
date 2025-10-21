@@ -1,14 +1,19 @@
 package com.cinemae.booking.controller;
 
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/movies")
@@ -64,6 +69,28 @@ public class MovieController {
         resp.put("totalPages", (int) Math.ceil(total / (double) size));
         resp.put("content", rows);
 
+        return resp;
+    }
+
+    @GetMapping("/{id}")
+    public Map<String, Object> getById(@PathVariable("id") Integer id) {
+        Map<String, Object> resp = new HashMap<>();
+        if (id == null) {
+            resp.put("ok", false);
+            resp.put("message", "id required");
+            return resp;
+        }
+
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, title, mpaa_rating, synopsis, trailer_video_url, trailer_image_url FROM movies WHERE id = ?", id);
+        if (rows.isEmpty()) {
+            resp.put("ok", false);
+            resp.put("message", "movie not found");
+            return resp;
+        }
+
+        Map<String, Object> movie = rows.get(0);
+        resp.put("ok", true);
+        resp.put("movie", movie);
         return resp;
     }
 

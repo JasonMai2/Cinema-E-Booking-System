@@ -1,6 +1,22 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+
+import api from "../services/api";
 
 export default function MovieDetails() {
+  const { movieId } = useParams();
+  const [movie, setMovie] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!movieId) return;
+    setLoading(true);
+    api.get(`/movies/${movieId}`).then((res) => {
+      if (res?.data?.ok) setMovie(res.data.movie);
+      else setMovie(null);
+    }).catch(() => setMovie(null)).finally(() => setLoading(false));
+  }, [movieId]);
   const styles = {
     container: {
       minHeight: "100vh",
@@ -111,6 +127,14 @@ export default function MovieDetails() {
     },
   };
 
+  if (loading) return <div style={{ padding: 40 }}>Loading…</div>;
+  if (!movie) return (
+    <div style={{ padding: 40 }}>
+      <h3>Movie not found</h3>
+      <button onClick={() => navigate('/movies')}>Back to movies</button>
+    </div>
+  );
+
   return (
     <div style={styles.container}>
       {/* Main Content */}
@@ -118,49 +142,37 @@ export default function MovieDetails() {
         {/* Top Section - Poster and Info */}
         <div style={styles.topSection}>
           <div style={styles.poster}>
-            <img
-              src="/images/Inception.jpg"
-              alt="Inception Poster"
-              style={styles.posterImg}
-            />
+            {movie.trailer_image_url ? (
+              <img src={movie.trailer_image_url} alt={`${movie.title} Poster`} style={styles.posterImg} />
+            ) : (
+              <div style={{ color: '#888' }}>No poster</div>
+            )}
           </div>
           <div style={styles.rightSection}>
             <div style={styles.movieTitle}>
-              <h2 style={styles.title}>Inception</h2>
+              <h2 style={styles.title}>{movie.title}</h2>
               <div style={styles.metaInfo}>
-                <span>2010</span>
-                <span>•</span>
-                <span>2 hr 28 min</span>
-                <span>•</span>
-                <span>PG-13</span>
-                <span>•</span>
-                <span>8.8/10</span>
+                <span>{movie.mpaa_rating || ''}</span>
               </div>
             </div>
             <div style={styles.trailer}>
-              <iframe
-                style={styles.trailerIframe}
-                src="https://www.youtube.com/embed/YoHD9XEInc0"
-                title="Inception Trailer"
-                allow="clipboard-write; encrypted-media; picture-in-picture"
-                allowFullScreen
-              ></iframe>
+              {movie.trailer_video_url ? (
+                <iframe style={styles.trailerIframe} src={movie.trailer_video_url} title={`${movie.title} Trailer`} allow="clipboard-write; encrypted-media; picture-in-picture" allowFullScreen></iframe>
+              ) : (
+                <div style={{ color: '#888' }}>No trailer available</div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Description */}
         <div style={styles.descriptionSection}>
-          <h3 style={styles.sectionTitle}>
-            Description
-          </h3>
-          <p style={styles.description}>
-            A thief who steals corporate secrets through dream-sharing technology.
-          </p>
+            <h3 style={styles.sectionTitle}>Description</h3>
+            <p style={styles.description}>{movie.synopsis}</p>
         </div>
 
-        {/* Book Button */}
-        <button style={styles.bookButton}>Book Now</button>
+  {/* Book Button */}
+  <button style={styles.bookButton} onClick={() => navigate(`/shows/${movie.id}`)}>Book Now</button>
       </div>
     </div>
   );

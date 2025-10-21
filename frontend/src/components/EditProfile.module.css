@@ -59,7 +59,7 @@
   color: var(--text-primary);
   border: none;
   border-radius: 6px;
-  cursor: not-allowed;
+  cursor: pointer;
   opacity: 0.95;
 }
 
@@ -69,5 +69,12 @@
   color: var(--text-primary);
   border: 1px solid #2b2f35;
   border-radius: 6px;
+  cursor: pointer;
+}
+
+/* visually indicate disabled state */
+.btnSave:disabled,
+.btnCancel:disabled {
   cursor: not-allowed;
+  opacity: 0.6;
 }
