@@ -172,8 +172,6 @@ export default function EditProfile() {
             />
           </div>
 
-          <hr />
-
           <h3>Billing Address</h3>
           <div>
             <label className={styles.profileLabel}>Street</label>
@@ -218,8 +216,6 @@ export default function EditProfile() {
               className={styles.profileInput}
             />
           </div>
-
-          <hr />
 
           <h3>Payment Card</h3>
           <div>
@@ -266,8 +262,6 @@ export default function EditProfile() {
             />
           </div>
 
-          <hr />
-
           <div>
             <label>
               <input
@@ -291,8 +285,6 @@ export default function EditProfile() {
             </button>
           </div>
         </form>
-
-        <hr />
 
         <h3>Change Password</h3>
         <form className={styles.profileForm}>
