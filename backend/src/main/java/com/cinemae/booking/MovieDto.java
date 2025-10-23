@@ -1,4 +1,4 @@
-package com.cinemae.booking.api;
+package com.cinemae.booking;
 
 public class MovieDto {
     public Long id;

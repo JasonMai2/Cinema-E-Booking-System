@@ -1,12 +1,17 @@
+import { Filter, Home, Search, User } from "lucide-react";
 import React, { useState } from "react";
-import { Home, Search, Filter, User } from "lucide-react";
-import { useSearch } from "../context/SearchContext.js";
+
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useSearch } from "../context/SearchContext.js";
 
 export default function Header() {
   const [showFilters, setShowFilters] = useState(false);
   const { query, setQuery } = useSearch();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const displayName = user ? `${user.first_name || user.email}${user.last_name ? ' ' + user.last_name : ''}` : '';
 
   return (
     <>
@@ -87,23 +92,68 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Login button */}
-        <div
-          onClick={() => {}}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            backgroundColor: "#12151c",
-            padding: "8px 16px",
-            borderRadius: "8px",
-            color: "#fff",
-            fontWeight: "500",
-            cursor: "pointer",
-          }}
-        >
-          Login
-          <User size={20} style={{ marginLeft: "8px" }} />
-        </div>
+        {/* Login / user area */}
+        {user ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                backgroundColor: "#12151c",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                color: "#fff",
+                fontWeight: "500",
+                cursor: "pointer",
+              }}
+              onClick={() => { navigate('/profile/edit'); }}
+            >
+              {displayName}
+              <User size={20} style={{ marginLeft: "8px" }} />
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                logout();
+                navigate('/');
+              }}
+              style={{
+                backgroundColor: "transparent",
+                color: "#12151c",
+                border: "1px solid #12151c",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: 500,
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <div
+            onClick={() => { navigate('/login'); }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              backgroundColor: "#12151c",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              color: "#fff",
+              fontWeight: "500",
+              cursor: "pointer",
+            }}
+          >
+            Login
+            <User size={20} style={{ marginLeft: "8px" }} />
+          </div>
+        )}
       </header>
 
       {/* Filter dropdown section */}
