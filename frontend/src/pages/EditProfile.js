@@ -53,7 +53,6 @@ export default function EditProfile() {
     try {
       const response = await api.get(`/users/profile?userId=${userId}`);
       const data = response.data;
-      // normalize paymentCard state for form (use empty object if none)
       const paymentCard = data.paymentCard || {};
       setProfile({ ...data, paymentCard });
     } catch (error) {
@@ -67,7 +66,6 @@ export default function EditProfile() {
   const handleProfileChange = (e) => {
     const { name, value, type, checked } = e.target;
     const key = name.replace(".", "_");
-    // mark touched
     setTouched((prev) => ({ ...prev, [key]: true }));
 
     let newProfile;
@@ -83,7 +81,6 @@ export default function EditProfile() {
         ...profile,
         paymentCard: { ...profile.paymentCard, [field]: value },
       };
-      // fullNumber handled; last4 removed
     } else {
       newProfile = {
         ...profile,
@@ -150,7 +147,6 @@ export default function EditProfile() {
           expMonth: profile.paymentCard.expMonth,
           expYear: profile.paymentCard.expYear,
         };
-        // clear sensitive fields from local state after tokenizing
         setProfile((prev) => ({
           ...prev,
           paymentCard: {
@@ -174,7 +170,6 @@ export default function EditProfile() {
       setMessage("Profile updated successfully!");
     } catch (error) {
       console.error("Error updating profile:", error);
-      // display backend validation message if present
       const msg = error?.response?.data?.message || "Failed to update profile.";
       setMessage(msg);
     } finally {
@@ -187,7 +182,6 @@ export default function EditProfile() {
     try {
       await api.delete(`/users/payment-cards/${cardId}?userId=${userId}`);
       setMessage("Card removed");
-      // refresh profile
       setLoading(true);
       await fetchProfile();
     } catch (err) {
@@ -218,7 +212,6 @@ export default function EditProfile() {
         newPassword: "",
         confirmPassword: "",
       });
-      // clear password errors
       setErrors((prev) => {
         const copy = { ...prev };
         delete copy.currentPassword;
@@ -235,21 +228,17 @@ export default function EditProfile() {
     }
   };
 
-  // Validation helpers
   const validateProfile = (p) => {
     const errs = {};
-    // first/last name required (presence only)
     if (!p.firstName || p.firstName.trim().length === 0) {
       errs.firstName = "First name is required.";
     }
     if (!p.lastName || p.lastName.trim().length === 0) {
       errs.lastName = "Last name is required.";
     }
-    // phone optional but if present should be digits 7-15
     if (p.phone && !/^\+?[0-9\s()-]{7,15}$/.test(p.phone)) {
       errs.phone = "Enter a valid phone number.";
     }
-    // postal code simple check (alphanumeric 3-10)
     if (p.billingAddress && p.billingAddress.postalCode) {
       if (!/^[A-Za-z0-9 \-]{3,10}$/.test(p.billingAddress.postalCode)) {
         errs.billingAddress_postalCode = "Enter a valid postal code.";
@@ -297,7 +286,6 @@ export default function EditProfile() {
       if (p.paymentCard.expYear && (isNaN(y) || y < currentYear || y > 2100)) {
         errs.paymentCard_expYear = "Enter a valid year.";
       }
-      // check not expired roughly
       if (m && y) {
         const now = new Date();
         const exp = new Date(y, m - 1, 1);

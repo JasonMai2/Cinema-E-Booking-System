@@ -104,6 +104,9 @@ public class UserService {
                 : new java.util.ArrayList<>(user.getPaymentCards());
 
         if (paymentCard != null) {
+            if (paymentCards.size() >= 3) {
+                throw new IllegalArgumentException("Max 3 payment cards per user");
+            }
             PaymentCard existing = paymentCards.stream()
                     .filter(pc -> Boolean.TRUE.equals(pc.getIsDefault()))
                     .findFirst().orElse(null);
@@ -145,6 +148,33 @@ public class UserService {
     }
 
     @Transactional
+    public void deletePaymentCard(Long userId, Long cardId) {
+        if (userId == null || cardId == null) {
+            throw new IllegalArgumentException("userId and cardId must not be null");
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<PaymentCard> cards = user.getPaymentCards() == null ? new java.util.ArrayList<>()
+                : new java.util.ArrayList<>(user.getPaymentCards());
+
+        PaymentCard toRemove = cards.stream().filter(c -> c.getId() != null && c.getId().equals(cardId)).findFirst().orElse(null);
+        if (toRemove == null) {
+            throw new IllegalArgumentException("Payment card not found");
+        }
+
+        boolean wasDefault = Boolean.TRUE.equals(toRemove.getIsDefault());
+        cards.remove(toRemove);
+
+        if (wasDefault && !cards.isEmpty()) {
+            cards.get(0).setIsDefault(true);
+        }
+
+        user.setPaymentCards(cards);
+        userRepository.save(user);
+    }
+
+    @Transactional
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
@@ -160,7 +190,11 @@ public class UserService {
         String storedHash = stored == null ? "" : new String(stored, StandardCharsets.UTF_8);
 
         if (!passwordEncoder.matches(currentPassword, storedHash)) {
-            throw new RuntimeException("Current password is incorrect");
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+
+        if (newPassword.length() < 4) {
+            throw new IllegalArgumentException("New password does not meet complexity requirements");
         }
 
         byte[] newHash = passwordEncoder.encode(newPassword).getBytes(StandardCharsets.UTF_8);
