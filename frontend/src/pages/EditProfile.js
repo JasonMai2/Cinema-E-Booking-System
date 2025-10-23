@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import styles from "../components/EditProfile.module.css";
 import api from "../services/api";
+import CardManager from "../components/CardManager";
 
 export default function EditProfile() {
   const [profile, setProfile] = useState({
@@ -39,6 +40,8 @@ export default function EditProfile() {
   const [touched, setTouched] = useState({});
   const [showAllErrors, setShowAllErrors] = useState(false);
 
+  const CARD_LIMIT = 3;
+
   // Assume userId is 1 for demo, in real app get from auth context
   const userId = 1;
 
@@ -49,7 +52,10 @@ export default function EditProfile() {
   const fetchProfile = async () => {
     try {
       const response = await api.get(`/users/profile?userId=${userId}`);
-      setProfile(response.data);
+      const data = response.data;
+      // normalize paymentCard state for form (use empty object if none)
+      const paymentCard = data.paymentCard || {};
+      setProfile({ ...data, paymentCard });
     } catch (error) {
       console.error("Error fetching profile:", error);
       setMessage("Failed to load profile.");
@@ -168,9 +174,26 @@ export default function EditProfile() {
       setMessage("Profile updated successfully!");
     } catch (error) {
       console.error("Error updating profile:", error);
-      setMessage("Failed to update profile.");
+      // display backend validation message if present
+      const msg = error?.response?.data?.message || "Failed to update profile.";
+      setMessage(msg);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemoveCard = async (cardId) => {
+    setMessage("");
+    try {
+      await api.delete(`/users/payment-cards/${cardId}?userId=${userId}`);
+      setMessage("Card removed");
+      // refresh profile
+      setLoading(true);
+      await fetchProfile();
+    } catch (err) {
+      console.error("Error removing card:", err);
+      const msg = err?.response?.data?.message || "Failed to remove card.";
+      setMessage(msg);
     }
   };
 
@@ -435,119 +458,17 @@ export default function EditProfile() {
           </div>
 
           <h3>Payment Card</h3>
-          <div>
-            <label className={styles.profileLabel}>Brand</label>
-            <input
-              type="text"
-              name="paymentCard.brand"
-              value={profile.paymentCard?.brand || ""}
-              onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, paymentCard_brand: true }))
-              }
-              className={inputClass("paymentCard_brand")}
-            />
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>Card Holder Name</label>
-            <input
-              type="text"
-              name="paymentCard.cardHolderName"
-              value={profile.paymentCard?.cardHolderName || ""}
-              onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, paymentCard_cardHolderName: true }))
-              }
-              className={inputClass("paymentCard_cardHolderName")}
-            />
-            {(touched.paymentCard_cardHolderName || showAllErrors) &&
-              errors.paymentCard_cardHolderName && (
-                <div className={styles.fieldError}>
-                  {errors.paymentCard_cardHolderName}
-                </div>
-              )}
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>Full Card Number</label>
-            <input
-              type="text"
-              name="paymentCard.fullNumber"
-              value={profile.paymentCard?.fullNumber || ""}
-              onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, paymentCard_fullNumber: true }))
-              }
-              className={inputClass("paymentCard_fullNumber")}
-            />
-            {(touched.paymentCard_fullNumber || showAllErrors) &&
-              errors.paymentCard_fullNumber && (
-                <div className={styles.fieldError}>
-                  {errors.paymentCard_fullNumber}
-                </div>
-              )}
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>Expiration Month</label>
-            <input
-              type="number"
-              name="paymentCard.expMonth"
-              value={profile.paymentCard?.expMonth || ""}
-              onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, paymentCard_expMonth: true }))
-              }
-              className={inputClass("paymentCard_expMonth")}
-            />
-            {(touched.paymentCard_expMonth || showAllErrors) &&
-              errors.paymentCard_expMonth && (
-                <div className={styles.fieldError}>
-                  {errors.paymentCard_expMonth}
-                </div>
-              )}
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>Expiration Year</label>
-            <input
-              type="number"
-              name="paymentCard.expYear"
-              value={profile.paymentCard?.expYear || ""}
-              onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, paymentCard_expYear: true }))
-              }
-              className={inputClass("paymentCard_expYear")}
-            />
-            {(touched.paymentCard_expYear || showAllErrors) &&
-              errors.paymentCard_expYear && (
-                <div className={styles.fieldError}>
-                  {errors.paymentCard_expYear}
-                </div>
-              )}
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>Security Code (CVV)</label>
-            <input
-              type="text"
-              name="paymentCard.securityCode"
-              value={profile.paymentCard?.securityCode || ""}
-              onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, paymentCard_securityCode: true }))
-              }
-              className={inputClass("paymentCard_securityCode")}
-            />
-            {(touched.paymentCard_securityCode || showAllErrors) &&
-              errors.paymentCard_securityCode && (
-                <div className={styles.fieldError}>
-                  {errors.paymentCard_securityCode}
-                </div>
-              )}
-          </div>
+          <CardManager
+            userId={userId}
+            cards={profile.paymentCards || []}
+            cardLimit={CARD_LIMIT}
+            firstName={profile.firstName}
+            lastName={profile.lastName}
+            onRefresh={() => {
+              setLoading(true);
+              fetchProfile();
+            }}
+          />
 
           <div>
             <label>
@@ -571,7 +492,6 @@ export default function EditProfile() {
               {saving ? "Saving..." : "Save Profile"}
             </button>
           </div>
-          {/* show profile-level message directly under Save Profile button */}
           {message && (
             <p
               className={`${styles.formMessage} ${
