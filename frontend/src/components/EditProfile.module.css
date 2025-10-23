@@ -71,3 +71,14 @@
   border-radius: 6px;
   cursor: not-allowed;
 }
+
+.fieldError {
+  color: #e74c3c;
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+
+.inputError {
+  border-color: #e74c3c !important;
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.08);
+}

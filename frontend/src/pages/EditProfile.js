@@ -16,7 +16,9 @@ export default function EditProfile() {
     },
     paymentCard: {
       brand: "",
-      last4: "",
+      cardHolderName: "",
+      fullNumber: "",
+      securityCode: "",
       expMonth: "",
       expYear: "",
       processorToken: "",
@@ -33,6 +35,9 @@ export default function EditProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [showAllErrors, setShowAllErrors] = useState(false);
 
   // Assume userId is 1 for demo, in real app get from auth context
   const userId = 1;
@@ -55,36 +60,111 @@ export default function EditProfile() {
 
   const handleProfileChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const key = name.replace(".", "_");
+    // mark touched
+    setTouched((prev) => ({ ...prev, [key]: true }));
+
+    let newProfile;
     if (name.startsWith("billingAddress.")) {
       const field = name.split(".")[1];
-      setProfile((prev) => ({
-        ...prev,
-        billingAddress: { ...prev.billingAddress, [field]: value },
-      }));
+      newProfile = {
+        ...profile,
+        billingAddress: { ...profile.billingAddress, [field]: value },
+      };
     } else if (name.startsWith("paymentCard.")) {
       const field = name.split(".")[1];
-      setProfile((prev) => ({
-        ...prev,
-        paymentCard: { ...prev.paymentCard, [field]: value },
-      }));
+      newProfile = {
+        ...profile,
+        paymentCard: { ...profile.paymentCard, [field]: value },
+      };
+      // fullNumber handled; last4 removed
     } else {
-      setProfile((prev) => ({
-        ...prev,
+      newProfile = {
+        ...profile,
         [name]: type === "checkbox" ? checked : value,
-      }));
+      };
+    }
+    setProfile(newProfile);
+
+    const validation = validateProfile(newProfile);
+    if (validation.errors && validation.errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: validation.errors[key] }));
+    } else {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        if (copy[key]) delete copy[key];
+        return copy;
+      });
     }
   };
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
-    setPasswords((prev) => ({ ...prev, [name]: value }));
+    const newPasswords = { ...passwords, [name]: value };
+    setPasswords(newPasswords);
+    const key = name;
+    setTouched((prev) => ({ ...prev, [key]: true }));
+    const validation = validatePasswords(newPasswords);
+    if (validation.errors && validation.errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: validation.errors[key] }));
+    } else {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        if (copy[key]) delete copy[key];
+        return copy;
+      });
+    }
   };
 
   const handleSaveProfile = async () => {
-    setSaving(true);
     setMessage("");
+    const validation = validateProfile(profile);
+    if (!validation.valid) {
+      setErrors(validation.errors);
+      setShowAllErrors(true);
+      setMessage("Please fix the highlighted errors before saving.");
+      return;
+    }
+    setSaving(true);
     try {
-      await api.put(`/users/profile?userId=${userId}`, profile);
+      // TODO: If a full card number is present, tokenize it client-side (placeholder)
+      const payload = { ...profile };
+      if (profile.paymentCard && profile.paymentCard.fullNumber) {
+        const digits = (profile.paymentCard.fullNumber || "").replace(
+          /\D/g,
+          ""
+        );
+        const last4 = digits.slice(-4);
+        // TODO: placeholder tokenization
+        const processorToken = `tok_${btoa(last4 + Date.now())}`;
+        payload.paymentCard = {
+          brand: profile.paymentCard.brand,
+          processorToken,
+          last4,
+          expMonth: profile.paymentCard.expMonth,
+          expYear: profile.paymentCard.expYear,
+        };
+        // clear sensitive fields from local state after tokenizing
+        setProfile((prev) => ({
+          ...prev,
+          paymentCard: {
+            ...prev.paymentCard,
+            fullNumber: "",
+            securityCode: "",
+            processorToken,
+          },
+        }));
+      } else if (profile.paymentCard && profile.paymentCard.processorToken) {
+        payload.paymentCard = {
+          brand: profile.paymentCard.brand,
+          processorToken: profile.paymentCard.processorToken,
+          last4: profile.paymentCard.last4,
+          expMonth: profile.paymentCard.expMonth,
+          expYear: profile.paymentCard.expYear,
+        };
+      }
+
+      await api.put(`/users/profile?userId=${userId}`, payload);
       setMessage("Profile updated successfully!");
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -95,12 +175,15 @@ export default function EditProfile() {
   };
 
   const handleChangePassword = async () => {
-    if (passwords.newPassword !== passwords.confirmPassword) {
-      setMessage("New passwords do not match.");
+    setMessage("");
+    const validation = validatePasswords(passwords);
+    if (!validation.valid) {
+      setErrors(validation.errors);
+      setShowAllErrors(true);
+      setMessage("Please fix the highlighted password errors.");
       return;
     }
     setSaving(true);
-    setMessage("");
     try {
       await api.put(`/users/change-password?userId=${userId}`, {
         currentPassword: passwords.currentPassword,
@@ -112,12 +195,116 @@ export default function EditProfile() {
         newPassword: "",
         confirmPassword: "",
       });
+      // clear password errors
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.currentPassword;
+        delete copy.newPassword;
+        delete copy.confirmPassword;
+        return copy;
+      });
+      setShowAllErrors(false);
     } catch (error) {
       console.error("Error changing password:", error);
       setMessage("Failed to change password.");
     } finally {
       setSaving(false);
     }
+  };
+
+  // Validation helpers
+  const validateProfile = (p) => {
+    const errs = {};
+    // first/last name required (presence only)
+    if (!p.firstName || p.firstName.trim().length === 0) {
+      errs.firstName = "First name is required.";
+    }
+    if (!p.lastName || p.lastName.trim().length === 0) {
+      errs.lastName = "Last name is required.";
+    }
+    // phone optional but if present should be digits 7-15
+    if (p.phone && !/^\+?[0-9\s()-]{7,15}$/.test(p.phone)) {
+      errs.phone = "Enter a valid phone number.";
+    }
+    // postal code simple check (alphanumeric 3-10)
+    if (p.billingAddress && p.billingAddress.postalCode) {
+      if (!/^[A-Za-z0-9 \-]{3,10}$/.test(p.billingAddress.postalCode)) {
+        errs.billingAddress_postalCode = "Enter a valid postal code.";
+      }
+    }
+
+    const hasCardInfo =
+      p.paymentCard &&
+      (p.paymentCard.fullNumber ||
+        p.paymentCard.last4 ||
+        p.paymentCard.brand ||
+        p.paymentCard.processorToken);
+    if (hasCardInfo) {
+      if (
+        !p.paymentCard.cardHolderName ||
+        p.paymentCard.cardHolderName.trim().length === 0
+      ) {
+        errs.paymentCard_cardHolderName =
+          "Card holder name is required when adding card details.";
+      }
+    }
+    if (p.paymentCard && p.paymentCard.fullNumber) {
+      const digits = (p.paymentCard.fullNumber || "").replace(/\D/g, "");
+      if (!/^\d{13,19}$/.test(digits)) {
+        errs.paymentCard_fullNumber =
+          "Enter a valid card number (13-19 digits).";
+      }
+    }
+    if (
+      p.paymentCard &&
+      p.paymentCard.securityCode &&
+      p.paymentCard.fullNumber
+    ) {
+      if (!/^\d{3,4}$/.test(p.paymentCard.securityCode)) {
+        errs.paymentCard_securityCode = "Security code must be 3 or 4 digits.";
+      }
+    }
+    if (p.paymentCard) {
+      const m = Number(p.paymentCard.expMonth);
+      const y = Number(p.paymentCard.expYear);
+      if (p.paymentCard.expMonth && (isNaN(m) || m < 1 || m > 12)) {
+        errs.paymentCard_expMonth = "Enter a valid month (1-12).";
+      }
+      const currentYear = new Date().getFullYear();
+      if (p.paymentCard.expYear && (isNaN(y) || y < currentYear || y > 2100)) {
+        errs.paymentCard_expYear = "Enter a valid year.";
+      }
+      // check not expired roughly
+      if (m && y) {
+        const now = new Date();
+        const exp = new Date(y, m - 1, 1);
+        if (exp < new Date(now.getFullYear(), now.getMonth(), 1)) {
+          errs.paymentCard_expMonth = "Card appears expired.";
+        }
+      }
+    }
+    return { valid: Object.keys(errs).length === 0, errors: errs };
+  };
+
+  const inputClass = (key) =>
+    `${styles.profileInput} ${
+      (touched[key] || showAllErrors) && errors[key]
+        ? " " + styles.inputError
+        : ""
+    }`;
+
+  const validatePasswords = (pw) => {
+    const errs = {};
+    if (!pw.currentPassword || pw.currentPassword.length === 0) {
+      errs.currentPassword = "Current password is required.";
+    }
+    if (!pw.newPassword || pw.newPassword.length < 4) {
+      errs.newPassword = "New password must be at least 4 characters.";
+    }
+    if (pw.newPassword !== pw.confirmPassword) {
+      errs.confirmPassword = "Passwords do not match.";
+    }
+    return { valid: Object.keys(errs).length === 0, errors: errs };
   };
 
   if (loading) return <div>Loading...</div>;
@@ -135,8 +322,12 @@ export default function EditProfile() {
               name="firstName"
               value={profile.firstName || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() => setTouched((t) => ({ ...t, firstName: true }))}
+              className={inputClass("firstName")}
             />
+            {(touched.firstName || showAllErrors) && errors.firstName && (
+              <div className={styles.fieldError}>{errors.firstName}</div>
+            )}
           </div>
 
           <div>
@@ -146,8 +337,12 @@ export default function EditProfile() {
               name="lastName"
               value={profile.lastName || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() => setTouched((t) => ({ ...t, lastName: true }))}
+              className={inputClass("lastName")}
             />
+            {(touched.lastName || showAllErrors) && errors.lastName && (
+              <div className={styles.fieldError}>{errors.lastName}</div>
+            )}
           </div>
 
           <div>
@@ -156,7 +351,7 @@ export default function EditProfile() {
               type="email"
               name="email"
               value={profile.email || ""}
-              className={styles.profileInput}
+              className={inputClass("email")}
               disabled
             />
           </div>
@@ -168,8 +363,12 @@ export default function EditProfile() {
               name="phone"
               value={profile.phone || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() => setTouched((t) => ({ ...t, phone: true }))}
+              className={inputClass("phone")}
             />
+            {(touched.phone || showAllErrors) && errors.phone && (
+              <div className={styles.fieldError}>{errors.phone}</div>
+            )}
           </div>
 
           <h3>Billing Address</h3>
@@ -180,7 +379,10 @@ export default function EditProfile() {
               name="billingAddress.street"
               value={profile.billingAddress?.street || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, billingAddress_street: true }))
+              }
+              className={inputClass("billingAddress_street")}
             />
           </div>
 
@@ -191,7 +393,10 @@ export default function EditProfile() {
               name="billingAddress.city"
               value={profile.billingAddress?.city || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, billingAddress_city: true }))
+              }
+              className={inputClass("billingAddress_city")}
             />
           </div>
 
@@ -202,7 +407,10 @@ export default function EditProfile() {
               name="billingAddress.state"
               value={profile.billingAddress?.state || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, billingAddress_state: true }))
+              }
+              className={inputClass("billingAddress_state")}
             />
           </div>
 
@@ -213,8 +421,17 @@ export default function EditProfile() {
               name="billingAddress.postalCode"
               value={profile.billingAddress?.postalCode || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, billingAddress_postalCode: true }))
+              }
+              className={inputClass("billingAddress_postalCode")}
             />
+            {(touched.billingAddress_postalCode || showAllErrors) &&
+              errors.billingAddress_postalCode && (
+                <div className={styles.fieldError}>
+                  {errors.billingAddress_postalCode}
+                </div>
+              )}
           </div>
 
           <h3>Payment Card</h3>
@@ -225,19 +442,51 @@ export default function EditProfile() {
               name="paymentCard.brand"
               value={profile.paymentCard?.brand || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, paymentCard_brand: true }))
+              }
+              className={inputClass("paymentCard_brand")}
             />
           </div>
 
           <div>
-            <label className={styles.profileLabel}>Last 4 Digits</label>
+            <label className={styles.profileLabel}>Card Holder Name</label>
             <input
               type="text"
-              name="paymentCard.last4"
-              value={profile.paymentCard?.last4 || ""}
+              name="paymentCard.cardHolderName"
+              value={profile.paymentCard?.cardHolderName || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, paymentCard_cardHolderName: true }))
+              }
+              className={inputClass("paymentCard_cardHolderName")}
             />
+            {(touched.paymentCard_cardHolderName || showAllErrors) &&
+              errors.paymentCard_cardHolderName && (
+                <div className={styles.fieldError}>
+                  {errors.paymentCard_cardHolderName}
+                </div>
+              )}
+          </div>
+
+          <div>
+            <label className={styles.profileLabel}>Full Card Number</label>
+            <input
+              type="text"
+              name="paymentCard.fullNumber"
+              value={profile.paymentCard?.fullNumber || ""}
+              onChange={handleProfileChange}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, paymentCard_fullNumber: true }))
+              }
+              className={inputClass("paymentCard_fullNumber")}
+            />
+            {(touched.paymentCard_fullNumber || showAllErrors) &&
+              errors.paymentCard_fullNumber && (
+                <div className={styles.fieldError}>
+                  {errors.paymentCard_fullNumber}
+                </div>
+              )}
           </div>
 
           <div>
@@ -247,8 +496,17 @@ export default function EditProfile() {
               name="paymentCard.expMonth"
               value={profile.paymentCard?.expMonth || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, paymentCard_expMonth: true }))
+              }
+              className={inputClass("paymentCard_expMonth")}
             />
+            {(touched.paymentCard_expMonth || showAllErrors) &&
+              errors.paymentCard_expMonth && (
+                <div className={styles.fieldError}>
+                  {errors.paymentCard_expMonth}
+                </div>
+              )}
           </div>
 
           <div>
@@ -258,8 +516,37 @@ export default function EditProfile() {
               name="paymentCard.expYear"
               value={profile.paymentCard?.expYear || ""}
               onChange={handleProfileChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, paymentCard_expYear: true }))
+              }
+              className={inputClass("paymentCard_expYear")}
             />
+            {(touched.paymentCard_expYear || showAllErrors) &&
+              errors.paymentCard_expYear && (
+                <div className={styles.fieldError}>
+                  {errors.paymentCard_expYear}
+                </div>
+              )}
+          </div>
+
+          <div>
+            <label className={styles.profileLabel}>Security Code (CVV)</label>
+            <input
+              type="text"
+              name="paymentCard.securityCode"
+              value={profile.paymentCard?.securityCode || ""}
+              onChange={handleProfileChange}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, paymentCard_securityCode: true }))
+              }
+              className={inputClass("paymentCard_securityCode")}
+            />
+            {(touched.paymentCard_securityCode || showAllErrors) &&
+              errors.paymentCard_securityCode && (
+                <div className={styles.fieldError}>
+                  {errors.paymentCard_securityCode}
+                </div>
+              )}
           </div>
 
           <div>
@@ -267,7 +554,7 @@ export default function EditProfile() {
               <input
                 type="checkbox"
                 name="promotions"
-                checked={profile.promotions}
+                checked={!!profile.promotions}
                 onChange={handleProfileChange}
               />
               Register for promotions
@@ -284,6 +571,16 @@ export default function EditProfile() {
               {saving ? "Saving..." : "Save Profile"}
             </button>
           </div>
+          {/* show profile-level message directly under Save Profile button */}
+          {message && (
+            <p
+              className={`${styles.formMessage} ${
+                showAllErrors ? styles.fieldError : ""
+              }`}
+            >
+              {message}
+            </p>
+          )}
         </form>
 
         <h3>Change Password</h3>
@@ -295,8 +592,17 @@ export default function EditProfile() {
               name="currentPassword"
               value={passwords.currentPassword}
               onChange={handlePasswordChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, currentPassword: true }))
+              }
+              className={inputClass("currentPassword")}
             />
+            {(touched.currentPassword || showAllErrors) &&
+              errors.currentPassword && (
+                <div className={styles.fieldError}>
+                  {errors.currentPassword}
+                </div>
+              )}
           </div>
 
           <div>
@@ -306,8 +612,12 @@ export default function EditProfile() {
               name="newPassword"
               value={passwords.newPassword}
               onChange={handlePasswordChange}
-              className={styles.profileInput}
+              onFocus={() => setTouched((t) => ({ ...t, newPassword: true }))}
+              className={inputClass("newPassword")}
             />
+            {(touched.newPassword || showAllErrors) && errors.newPassword && (
+              <div className={styles.fieldError}>{errors.newPassword}</div>
+            )}
           </div>
 
           <div>
@@ -317,8 +627,17 @@ export default function EditProfile() {
               name="confirmPassword"
               value={passwords.confirmPassword}
               onChange={handlePasswordChange}
-              className={styles.profileInput}
+              onFocus={() =>
+                setTouched((t) => ({ ...t, confirmPassword: true }))
+              }
+              className={inputClass("confirmPassword")}
             />
+            {(touched.confirmPassword || showAllErrors) &&
+              errors.confirmPassword && (
+                <div className={styles.fieldError}>
+                  {errors.confirmPassword}
+                </div>
+              )}
           </div>
 
           <div className={styles.profileActions}>
@@ -332,8 +651,6 @@ export default function EditProfile() {
             </button>
           </div>
         </form>
-
-        {message && <p>{message}</p>}
       </section>
     </main>
   );
