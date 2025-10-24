@@ -1,5 +1,5 @@
 import React from "react";
-import styles from "./EditProfile.module.css";
+import styles from "./PromotionsToggle.module.css";
 
 export default function PromotionsToggle({ id, checked, onToggle, label }) {
   return (

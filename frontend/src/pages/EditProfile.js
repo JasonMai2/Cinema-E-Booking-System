@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useId, useCallback } from "react";
 import styles from "../components/EditProfile.module.css";
+import cardStyles from "../components/CardManager.module.css";
 import api from "../services/api";
 import CardManager from "../components/CardManager";
 import PromotionsToggle from "../components/PromotionsToggle";
@@ -452,6 +453,7 @@ export default function EditProfile() {
               setLoading(true);
               fetchProfile();
             }}
+            addButtonClassName={cardStyles.clearAddCard}
           />
 
           <PromotionsToggle

@@ -63,59 +63,6 @@
   opacity: 0.95;
 }
 
-.btnSmall {
-  padding: 6px 10px;
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid #2b2f35;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.storedCardRow {
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 6px;
-}
-
-.modalBackdrop {
-  position: fixed;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modalCard {
-  width: 90%;
-  max-width: 520px;
-  background: var(--container);
-  padding: 18px;
-  border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-}
-
-.modalActions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-
-.btnCancel {
-  padding: 8px 14px;
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid #2b2f35;
-  border-radius: 6px;
-  cursor: not-allowed;
-}
-
 .fieldError {
   color: #e74c3c;
   font-size: 0.9rem;
@@ -125,52 +72,6 @@
 .inputError {
   border-color: #e74c3c !important;
   box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.08);
-}
-
-.promoWrapper {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 8px 0;
-  justify-content: flex-start;
-}
-
-.switchLabel {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.checkBtn {
-  padding: 6px 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid #2b2f35;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.checkBtn:active {
-  transform: scale(0.98);
-}
-
-.checkOn {
-  background: var(--primary-accent);
-  border-color: transparent;
-  color: var(--text-primary);
-}
-
-.checkIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: inherit;
-}
-
-.checkBtn:not(.checkOn) .checkIcon {
-  visibility: hidden;
 }
 
 @media (max-width: 480px) {

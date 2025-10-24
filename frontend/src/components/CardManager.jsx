@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import api from "../services/api";
-import styles from "./EditProfile.module.css";
+import styles from "./CardManager.module.css";
+import pageStyles from "./EditProfile.module.css";
 
 export default function CardManager({
   userId,
@@ -9,6 +10,7 @@ export default function CardManager({
   firstName,
   lastName,
   onRefresh,
+  addButtonClassName,
 }) {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -94,7 +96,8 @@ export default function CardManager({
     });
   };
 
-  const inputClass = (key) => `${styles.profileInput} ${errors[key] ? " " + styles.inputError : ""}`;
+  const inputClass = (key) =>
+    `${pageStyles.profileInput} ${errors[key] ? " " + pageStyles.inputError : ""}`;
 
   const handleDelete = async (cardId) => {
     setMessage("");
@@ -272,7 +275,9 @@ export default function CardManager({
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className={styles.btnSave}
+            className={`${pageStyles.btnSave} ${
+              addButtonClassName ? addButtonClassName : ""
+            }`}
           >
             Add Card
           </button>
@@ -306,7 +311,6 @@ export default function CardManager({
                       className={inputClass("cardHolderName")}
                       inputMode="text"
                       aria-label="Card holder name"
-                      placeholder="Name on card"
                     />
                     {errors.cardHolderName && (
                       <div className={styles.fieldError}>
