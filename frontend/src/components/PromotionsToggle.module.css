@@ -1,0 +1,45 @@
+.promoWrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+  justify-content: flex-start;
+}
+
+.switchLabel {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.checkBtn {
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid #2b2f35;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.checkBtn:active {
+  transform: scale(0.98);
+}
+
+.checkOn {
+  background: var(--primary-accent);
+  border-color: transparent;
+  color: var(--text-primary);
+}
+
+.checkIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.checkBtn:not(.checkOn) .checkIcon {
+  visibility: hidden;
+}
