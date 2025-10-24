@@ -37,7 +37,6 @@ export default function EditProfile() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
   const [showAllErrors, setShowAllErrors] = useState(false);
 
   const CARD_LIMIT = 3;
@@ -66,7 +65,6 @@ export default function EditProfile() {
   const handleProfileChange = (e) => {
     const { name, value, type, checked } = e.target;
     const key = name.replace(".", "_");
-    setTouched((prev) => ({ ...prev, [key]: true }));
 
     let newProfile;
     if (name.startsWith("billingAddress.")) {
@@ -106,7 +104,6 @@ export default function EditProfile() {
     const newPasswords = { ...passwords, [name]: value };
     setPasswords(newPasswords);
     const key = name;
-    setTouched((prev) => ({ ...prev, [key]: true }));
     const validation = validatePasswords(newPasswords);
     if (validation.errors && validation.errors[key]) {
       setErrors((prev) => ({ ...prev, [key]: validation.errors[key] }));
@@ -298,11 +295,7 @@ export default function EditProfile() {
   };
 
   const inputClass = (key) =>
-    `${styles.profileInput} ${
-      (touched[key] || showAllErrors) && errors[key]
-        ? " " + styles.inputError
-        : ""
-    }`;
+    `${styles.profileInput} ${errors[key] ? " " + styles.inputError : ""}`;
 
   const validatePasswords = (pw) => {
     const errs = {};
@@ -333,10 +326,9 @@ export default function EditProfile() {
               name="firstName"
               value={profile.firstName || ""}
               onChange={handleProfileChange}
-              onFocus={() => setTouched((t) => ({ ...t, firstName: true }))}
               className={inputClass("firstName")}
             />
-            {(touched.firstName || showAllErrors) && errors.firstName && (
+            {errors.firstName && (
               <div className={styles.fieldError}>{errors.firstName}</div>
             )}
           </div>
@@ -348,10 +340,9 @@ export default function EditProfile() {
               name="lastName"
               value={profile.lastName || ""}
               onChange={handleProfileChange}
-              onFocus={() => setTouched((t) => ({ ...t, lastName: true }))}
               className={inputClass("lastName")}
             />
-            {(touched.lastName || showAllErrors) && errors.lastName && (
+            {errors.lastName && (
               <div className={styles.fieldError}>{errors.lastName}</div>
             )}
           </div>
@@ -374,10 +365,9 @@ export default function EditProfile() {
               name="phone"
               value={profile.phone || ""}
               onChange={handleProfileChange}
-              onFocus={() => setTouched((t) => ({ ...t, phone: true }))}
               className={inputClass("phone")}
             />
-            {(touched.phone || showAllErrors) && errors.phone && (
+            {errors.phone && (
               <div className={styles.fieldError}>{errors.phone}</div>
             )}
           </div>
@@ -390,9 +380,6 @@ export default function EditProfile() {
               name="billingAddress.street"
               value={profile.billingAddress?.street || ""}
               onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, billingAddress_street: true }))
-              }
               className={inputClass("billingAddress_street")}
             />
           </div>
@@ -404,9 +391,6 @@ export default function EditProfile() {
               name="billingAddress.city"
               value={profile.billingAddress?.city || ""}
               onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, billingAddress_city: true }))
-              }
               className={inputClass("billingAddress_city")}
             />
           </div>
@@ -418,9 +402,6 @@ export default function EditProfile() {
               name="billingAddress.state"
               value={profile.billingAddress?.state || ""}
               onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, billingAddress_state: true }))
-              }
               className={inputClass("billingAddress_state")}
             />
           </div>
@@ -432,17 +413,13 @@ export default function EditProfile() {
               name="billingAddress.postalCode"
               value={profile.billingAddress?.postalCode || ""}
               onChange={handleProfileChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, billingAddress_postalCode: true }))
-              }
               className={inputClass("billingAddress_postalCode")}
             />
-            {(touched.billingAddress_postalCode || showAllErrors) &&
-              errors.billingAddress_postalCode && (
-                <div className={styles.fieldError}>
-                  {errors.billingAddress_postalCode}
-                </div>
-              )}
+            {errors.billingAddress_postalCode && (
+              <div className={styles.fieldError}>
+                {errors.billingAddress_postalCode}
+              </div>
+            )}
           </div>
 
           <h3>Payment Card</h3>
@@ -500,17 +477,11 @@ export default function EditProfile() {
               name="currentPassword"
               value={passwords.currentPassword}
               onChange={handlePasswordChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, currentPassword: true }))
-              }
               className={inputClass("currentPassword")}
             />
-            {(touched.currentPassword || showAllErrors) &&
-              errors.currentPassword && (
-                <div className={styles.fieldError}>
-                  {errors.currentPassword}
-                </div>
-              )}
+            {errors.currentPassword && (
+              <div className={styles.fieldError}>{errors.currentPassword}</div>
+            )}
           </div>
 
           <div>
@@ -520,10 +491,9 @@ export default function EditProfile() {
               name="newPassword"
               value={passwords.newPassword}
               onChange={handlePasswordChange}
-              onFocus={() => setTouched((t) => ({ ...t, newPassword: true }))}
               className={inputClass("newPassword")}
             />
-            {(touched.newPassword || showAllErrors) && errors.newPassword && (
+            {errors.newPassword && (
               <div className={styles.fieldError}>{errors.newPassword}</div>
             )}
           </div>
@@ -535,17 +505,11 @@ export default function EditProfile() {
               name="confirmPassword"
               value={passwords.confirmPassword}
               onChange={handlePasswordChange}
-              onFocus={() =>
-                setTouched((t) => ({ ...t, confirmPassword: true }))
-              }
               className={inputClass("confirmPassword")}
             />
-            {(touched.confirmPassword || showAllErrors) &&
-              errors.confirmPassword && (
-                <div className={styles.fieldError}>
-                  {errors.confirmPassword}
-                </div>
-              )}
+            {errors.confirmPassword && (
+              <div className={styles.fieldError}>{errors.confirmPassword}</div>
+            )}
           </div>
 
           <div className={styles.profileActions}>

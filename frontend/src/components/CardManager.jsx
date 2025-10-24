@@ -14,7 +14,6 @@ export default function CardManager({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
   const [form, setForm] = useState({
     brand: "",
     cardHolderName: "",
@@ -95,10 +94,7 @@ export default function CardManager({
     });
   };
 
-  const inputClass = (key) =>
-    `${styles.profileInput} ${
-      touched[key] && errors[key] ? " " + styles.inputError : ""
-    }`;
+  const inputClass = (key) => `${styles.profileInput} ${errors[key] ? " " + styles.inputError : ""}`;
 
   const handleDelete = async (cardId) => {
     setMessage("");
@@ -187,11 +183,6 @@ export default function CardManager({
     const v = validateForm();
     if (v) {
       setErrors(v);
-      const newTouched = { ...touched };
-      Object.keys(v).forEach((k) => {
-        newTouched[k] = true;
-      });
-      setTouched(newTouched);
       setMessage("Fix the highlighted errors before adding the card.");
       return;
     }
@@ -303,7 +294,6 @@ export default function CardManager({
                       name="brand"
                       value={form.brand}
                       onChange={handleChange}
-                      onFocus={() => setTouched((t) => ({ ...t, brand: true }))}
                       className={inputClass("brand")}
                     />
                   </div>
@@ -313,9 +303,6 @@ export default function CardManager({
                       name="cardHolderName"
                       value={form.cardHolderName}
                       onChange={handleChange}
-                      onFocus={() =>
-                        setTouched((t) => ({ ...t, cardHolderName: true }))
-                      }
                       className={inputClass("cardHolderName")}
                       inputMode="text"
                       aria-label="Card holder name"
@@ -333,9 +320,6 @@ export default function CardManager({
                       name="fullNumber"
                       value={form.fullNumber}
                       onChange={handleChange}
-                      onFocus={() =>
-                        setTouched((t) => ({ ...t, fullNumber: true }))
-                      }
                       className={inputClass("fullNumber")}
                       inputMode="numeric"
                       pattern="[0-9 ]*"
@@ -356,9 +340,6 @@ export default function CardManager({
                         name="expMonth"
                         value={form.expMonth}
                         onChange={handleChange}
-                        onFocus={() =>
-                          setTouched((t) => ({ ...t, expMonth: true }))
-                        }
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
@@ -384,9 +365,6 @@ export default function CardManager({
                         name="expYear"
                         value={form.expYear}
                         onChange={handleChange}
-                        onFocus={() =>
-                          setTouched((t) => ({ ...t, expYear: true }))
-                        }
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
@@ -413,9 +391,6 @@ export default function CardManager({
                       name="securityCode"
                       value={form.securityCode}
                       onChange={handleChange}
-                      onFocus={() =>
-                        setTouched((t) => ({ ...t, securityCode: true }))
-                      }
                       className={inputClass("securityCode")}
                     />
                     {errors.securityCode && (
