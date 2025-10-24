@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -10,6 +10,7 @@ export default function Login() {
   // common
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -21,6 +22,14 @@ export default function Login() {
   const [lastName, setLastName] = useState("");
   const [confirm, setConfirm] = useState("");
   const [phone, setPhone] = useState("");
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberedEmail");
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   function validateLogin() {
     if (!email) return "Email is required";
@@ -45,16 +54,22 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post("/auth/login", { email, password });
       setLoading(false);
       if (res?.data?.ok) {
+        if (rememberMe) {
+          localStorage.setItem("rememberedEmail", email);
+        } else {
+          localStorage.removeItem("rememberedEmail");
+        }
+
         // set auth user (backend returns { ok: true, user: { ... } })
         if (res.data.user) {
           authLogin(res.data.user);
         }
-        navigate('/');
+        navigate("/");
       } else {
-        setError(res?.data?.message || 'Login failed');
+        setError(res?.data?.message || "Login failed");
       }
     } catch (err) {
       setLoading(false);
@@ -69,20 +84,25 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-  // prefer explicit first/last_name fields
-  const payload = { first_name: firstName, last_name: lastName, email, password };
-  if (phone) payload.phone = phone;
-      const res = await api.post('/auth/register', payload);
+      // prefer explicit first/last_name fields
+      const payload = {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        password,
+      };
+      if (phone) payload.phone = phone;
+      const res = await api.post("/auth/register", payload);
       setLoading(false);
       if (res?.data?.ok) {
         // clear form and show confirmation
-        setMode('login');
-        setPassword('');
-        setConfirm('');
-        setPhone('');
-        navigate('/registration-confirmation');
+        setMode("login");
+        setPassword("");
+        setConfirm("");
+        setPhone("");
+        navigate("/registration-confirmation");
       } else {
-        setError(res?.data?.message || 'Registration failed');
+        setError(res?.data?.message || "Registration failed");
       }
     } catch (err) {
       setLoading(false);
@@ -129,32 +149,59 @@ export default function Login() {
                 justifyContent: "space-between",
                 alignItems: "center",
                 gap: 12,
-                marginTop: 12,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="muted-text">No account?</span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className="link-action"
-                  onClick={() => {
-                    setMode("register");
-                    setError(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" ||
-                      e.key === " " ||
-                      e.key === "Spacebar"
-                    ) {
-                      setMode("register");
-                      setError(null);
-                    }
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 8,
+                }}
+              >
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  Create an account
-                </span>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    disabled={loading}
+                    style={{ margin: 0 }}
+                  />
+                  <span>Remember me</span>
+                </label>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="muted-text">No account?</span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="link-action"
+                    onClick={() => {
+                      setMode("register");
+                      setError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" ||
+                        e.key === " " ||
+                        e.key === "Spacebar"
+                      ) {
+                        setMode("register");
+                        setError(null);
+                      }
+                    }}
+                  >
+                    Create an account
+                  </span>
+                </div>
               </div>
 
               <div className="login-actions" style={{ margin: 0 }}>
