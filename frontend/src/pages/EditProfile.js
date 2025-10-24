@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useId, useCallback } from "react";
 import styles from "../components/EditProfile.module.css";
 import api from "../services/api";
 import CardManager from "../components/CardManager";
+import PromotionsToggle from "../components/PromotionsToggle";
 
 export default function EditProfile() {
   const [profile, setProfile] = useState({
@@ -43,6 +44,24 @@ export default function EditProfile() {
 
   // Assume userId is 1 for demo, in real app get from auth context
   const userId = 1;
+
+  const promotionsId = useId();
+
+  const togglePromotions = useCallback(() => {
+    const newProfile = { ...profile, promotions: !profile.promotions };
+    setProfile(newProfile);
+    const key = "promotions";
+    const validation = validateProfile(newProfile);
+    if (validation.errors && validation.errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: validation.errors[key] }));
+    } else {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        if (copy[key]) delete copy[key];
+        return copy;
+      });
+    }
+  }, [profile]);
 
   useEffect(() => {
     fetchProfile();
@@ -435,17 +454,12 @@ export default function EditProfile() {
             }}
           />
 
-          <div>
-            <label>
-              <input
-                type="checkbox"
-                name="promotions"
-                checked={!!profile.promotions}
-                onChange={handleProfileChange}
-              />
-              Register for promotions
-            </label>
-          </div>
+          <PromotionsToggle
+            id={promotionsId}
+            checked={!!profile.promotions}
+            onToggle={togglePromotions}
+            label="Register for promotions"
+          />
 
           <div className={styles.profileActions}>
             <button
