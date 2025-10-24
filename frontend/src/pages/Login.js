@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Login() {
   const [mode, setMode] = useState("login"); // 'login' | 'register'
@@ -11,9 +11,23 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login: authLogin } = useAuth();
+
+  // Handle messages from navigation state (like from email verification)
+  useEffect(() => {
+    if (location.state?.email) {
+      setEmail(location.state.email);
+    }
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+      // Clear the state after showing the message
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // registration-only
   const [name, setName] = useState("");
@@ -129,6 +143,7 @@ export default function Login() {
     const v = validateLogin();
     if (v) return setError(v);
     setError(null);
+    setSuccessMessage(null);
     setLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
@@ -140,7 +155,17 @@ export default function Login() {
         }
         navigate('/');
       } else {
-        setError(res?.data?.message || 'Login failed');
+        // Check if email verification is required
+        if (res?.data?.email_verification_required) {
+          navigate('/verify-email', { 
+            state: { 
+              email: email,
+              message: res?.data?.message || 'Please verify your email address before logging in'
+            } 
+          });
+        } else {
+          setError(res?.data?.message || 'Login failed');
+        }
       }
     } catch (err) {
       setLoading(false);
@@ -153,6 +178,7 @@ export default function Login() {
     const v = validateRegister();
     if (v) return setError(v);
     setError(null);
+    setSuccessMessage(null);
     setLoading(true);
     try {
       // Prepare comprehensive registration payload
@@ -195,9 +221,13 @@ export default function Login() {
         setUseSeparateBillingAddress(false);
         setPaymentCards([{cardType: "", cardNumber: "", nameOnCard: "", expirationMonth: "", expirationYear: "", cvv: ""}]);
         
-        // Show success message and redirect to email verification
-        alert('Registration successful! Please check your email for a verification code to activate your account.');
-        navigate('/registration-confirmation');
+        // Navigate to email verification page with email pre-filled
+        navigate('/verify-email', { 
+          state: { 
+            email: email,
+            message: 'Registration successful! Please check your email for a verification code to activate your account.'
+          } 
+        });
       } else {
         setError(res?.data?.message || 'Registration failed');
       }
@@ -213,6 +243,18 @@ export default function Login() {
         <h2>{mode === "login" ? "Login" : "Create account"}</h2>
 
         {error && <div className="login-error">{error}</div>}
+        {successMessage && (
+          <div className="login-success" style={{
+            background: '#d4edda',
+            color: '#155724',
+            padding: '12px',
+            borderRadius: '4px',
+            marginBottom: '16px',
+            border: '1px solid #c3e6cb'
+          }}>
+            {successMessage}
+          </div>
+        )}
 
         {mode === "login" ? (
           <form onSubmit={onLogin} className="login-form">
@@ -240,6 +282,25 @@ export default function Login() {
               />
             </label>
 
+            <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "12px" }}>
+              <span
+                role="button"
+                tabIndex={0}
+                className="link-action"
+                onClick={() => {
+                  window.location.href = '/forgot-password';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+                    window.location.href = '/forgot-password';
+                  }
+                }}
+                style={{ fontSize: "14px" }}
+              >
+                Forgot Password?
+              </span>
+            </div>
+
             <div
               style={{
                 display: "flex",
@@ -258,6 +319,7 @@ export default function Login() {
                   onClick={() => {
                     setMode("register");
                     setError(null);
+                    setSuccessMessage(null);
                   }}
                   onKeyDown={(e) => {
                     if (
@@ -267,6 +329,7 @@ export default function Login() {
                     ) {
                       setMode("register");
                       setError(null);
+                      setSuccessMessage(null);
                     }
                   }}
                 >
@@ -324,7 +387,7 @@ export default function Login() {
             </label>
 
             <label>
-              Phone
+              Phone (Optional)
               <input
                 type="tel"
                 value={phone}
@@ -634,6 +697,7 @@ export default function Login() {
                   onClick={() => {
                     setMode("login");
                     setError(null);
+                    setSuccessMessage(null);
                   }}
                   onKeyDown={(e) => {
                     if (
@@ -643,6 +707,7 @@ export default function Login() {
                     ) {
                       setMode("login");
                       setError(null);
+                      setSuccessMessage(null);
                     }
                   }}
                 >
