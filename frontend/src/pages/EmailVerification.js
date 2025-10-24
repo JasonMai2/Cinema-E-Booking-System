@@ -1,22 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import styles from './EmailVerification.module.css';
 
 const EmailVerification = () => {
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
 
   // Get email from navigation state if available
-  React.useEffect(() => {
+  useEffect(() => {
     if (location.state?.email) {
       setEmail(location.state.email);
     }
+    if (location.state?.message) {
+      setMessage(location.state.message);
+    }
   }, [location.state]);
+
+  // Countdown timer for resend button
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   const handleVerification = async (e) => {
     e.preventDefault();
@@ -33,6 +47,7 @@ const EmailVerification = () => {
 
     setLoading(true);
     setError('');
+    setMessage('');
     
     try {
       const response = await api.post('/auth/verify-email', {
@@ -41,9 +56,14 @@ const EmailVerification = () => {
       });
 
       if (response.data.ok) {
-        setMessage('Email verified successfully! You can now log in.');
+        setMessage('Email verified successfully! Redirecting to login...');
         setTimeout(() => {
-          navigate('/login');
+          navigate('/login', { 
+            state: { 
+              email: email,
+              message: 'Email verified successfully! You can now log in.' 
+            } 
+          });
         }, 2000);
       } else {
         setError(response.data.message || 'Verification failed');
@@ -61,113 +81,118 @@ const EmailVerification = () => {
       return;
     }
 
-    setLoading(true);
+    if (countdown > 0) {
+      return;
+    }
+
+    setResendLoading(true);
     setError('');
+    setMessage('');
     
     try {
-      // In a real app, you'd have a resend endpoint
-      setMessage('If an account exists with this email, a new verification code has been sent.');
+      const response = await api.post('/auth/resend-verification', {
+        email: email
+      });
+
+      if (response.data.ok) {
+        setMessage(response.data.message || 'Verification code sent! Please check your email.');
+        setCountdown(60); // 1 minute cooldown
+      } else {
+        setError(response.data.message || 'Failed to resend verification code');
+      }
     } catch (err) {
-      setError('Failed to resend verification code');
+      setError(err.response?.data?.message || 'Failed to resend verification code');
     } finally {
-      setLoading(false);
+      setResendLoading(false);
     }
   };
 
   return (
-    <main className="login-page">
-      <section className="login-card">
-        <h2>Verify Your Email</h2>
-        <p style={{ marginBottom: '20px', color: '#666', textAlign: 'center' }}>
-          We've sent a 6-digit verification code to your email address. 
-          Please enter it below to activate your account.
-        </p>
+    <main className={styles.verificationPage}>
+      <div className={styles.verificationContainer}>
+        <div className={styles.verificationCard}>
+          <h2 className={styles.title}>Email Verification</h2>
+          <p className={styles.subtitle}>
+            We've sent a 6-digit verification code to your email address. 
+            Please enter it below to activate your account.
+          </p>
 
-        {error && <div className="login-error">{error}</div>}
-        {message && <div className="login-success" style={{
-          background: '#d4edda',
-          color: '#155724',
-          padding: '12px',
-          borderRadius: '4px',
-          marginBottom: '16px',
-          border: '1px solid #c3e6cb'
-        }}>{message}</div>}
+          {error && <div className={`${styles.message} ${styles.error}`}>{error}</div>}
+          {message && <div className={`${styles.message} ${styles.success}`}>{message}</div>}
 
-        <form onSubmit={handleVerification} className="login-form">
-          <label>
-            Email Address
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email address"
-              required
-              disabled={loading}
-            />
-          </label>
+          <form onSubmit={handleVerification} className={styles.verificationForm}>
+            <div className={styles.formGroup}>
+              <label htmlFor="email" className={styles.label}>Email Address</label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={styles.input}
+                placeholder="Enter your email address"
+                required
+                disabled={loading || resendLoading}
+              />
+            </div>
 
-          <label>
-            Verification Code
-            <input
-              type="text"
-              value={verificationCode}
-              onChange={(e) => setVerificationCode(e.target.value)}
-              placeholder="Enter 6-digit code"
-              maxLength="6"
-              pattern="[0-9]{6}"
-              required
-              disabled={loading}
-              style={{ fontSize: '1.2em', letterSpacing: '0.2em', textAlign: 'center' }}
-            />
-          </label>
+            <div className={styles.formGroup}>
+              <label htmlFor="code" className={styles.label}>Verification Code</label>
+              <input
+                type="text"
+                id="code"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                className={styles.input}
+                placeholder="Enter 6-digit code"
+                maxLength="6"
+                pattern="[0-9]{6}"
+                required
+                disabled={loading || resendLoading}
+              />
+            </div>
 
-          <div className="login-actions">
             <button
               type="submit"
-              className="btn-primary"
-              disabled={loading}
-              style={{ width: '100%', marginBottom: '12px' }}
+              className={styles.verifyButton}
+              disabled={loading || resendLoading}
             >
               {loading ? 'Verifying...' : 'Verify Email'}
             </button>
-          </div>
-        </form>
+          </form>
 
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
-          <p style={{ color: '#666', fontSize: '0.9em', marginBottom: '12px' }}>
-            Didn't receive the code?
-          </p>
-          <button
-            onClick={resendCode}
-            disabled={loading}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#667eea',
-              textDecoration: 'underline',
-              cursor: 'pointer',
-              fontSize: '0.9em',
-              marginBottom: '12px'
-            }}
-          >
-            Resend verification code
-          </button>
-          <br />
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#667eea',
-              textDecoration: 'underline',
-              cursor: 'pointer',
-              fontSize: '0.9em'
-            }}
-          >
-            Back to login
-          </button>
+          <div className={styles.resendSection}>
+            <p className={styles.resendText}>
+              Didn't receive the code?
+            </p>
+            <button
+              type="button"
+              onClick={resendCode}
+              disabled={resendLoading || countdown > 0 || loading}
+              className={styles.resendButton}
+            >
+              {resendLoading 
+                ? 'Sending...' 
+                : countdown > 0 
+                  ? `Resend in ${countdown}s` 
+                  : 'Resend verification code'
+              }
+            </button>
+          </div>
+
+          <div className={styles.loginLink}>
+            <p>
+              Already verified?{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className={styles.linkButton}
+              >
+                Back to login
+              </button>
+            </p>
+          </div>
         </div>
-      </section>
+      </div>
     </main>
   );
 };
