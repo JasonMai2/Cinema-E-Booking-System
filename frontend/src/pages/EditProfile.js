@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import api from "../services/api";
 import styles from "../components/EditProfile.module.css";
 import { useAuth } from "../context/AuthContext";
 
 export default function EditProfile() {
-  const { user, login } = useAuth();
+  const { user, login, logout } = useAuth();
+  const navigate = useNavigate();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -14,6 +16,7 @@ export default function EditProfile() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -67,6 +70,31 @@ export default function EditProfile() {
       setPassword("");
       setConfirm("");
       setMessage(null);
+    }
+  };
+
+  const onDeleteAccount = async () => {
+    if (!showDeleteConfirm) {
+      setShowDeleteConfirm(true);
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await api.delete(`/auth/profile/${user?.id}`);
+      setLoading(false);
+      if (res?.data?.ok) {
+        logout();
+        navigate('/');
+      } else {
+        setMessage({ type: 'error', text: res?.data?.message || 'Delete failed' });
+        setShowDeleteConfirm(false);
+      }
+    } catch (err) {
+      setLoading(false);
+      setMessage({ type: 'error', text: err?.response?.data?.message || 'Delete failed' });
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -158,6 +186,51 @@ export default function EditProfile() {
             <button type="button" className={styles.btnCancel} onClick={onCancel} disabled={loading || !user}>
               Cancel
             </button>
+          </div>
+
+          {/* Delete Account Section */}
+          <hr style={{margin: "24px 0"}} />
+          <div style={{marginBottom: "16px"}}>
+            <p style={{margin: "0 0 8px 0", color: "#dc3545", fontWeight: "500"}}>Danger Zone</p>
+            <p style={{margin: "0 0 12px 0", fontSize: "0.9em", color: "#666"}}>
+              Once you delete your account, there is no going back. Please be certain.
+            </p>
+            <button 
+              type="button" 
+              onClick={onDeleteAccount}
+              disabled={loading || !user}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: showDeleteConfirm ? "#dc3545" : "#fff",
+                color: showDeleteConfirm ? "#fff" : "#dc3545",
+                border: "1px solid #dc3545",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "0.9em",
+                fontWeight: "500"
+              }}
+            >
+              {showDeleteConfirm ? "Click again to confirm deletion" : "Delete Account"}
+            </button>
+            {showDeleteConfirm && (
+              <button 
+                type="button" 
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={loading}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#fff",
+                  color: "#666",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "0.9em",
+                  marginLeft: "8px"
+                }}
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </form>
       </section>

@@ -414,4 +414,52 @@ public class AuthController {
     public Map<String, Object> updateProfilePost(@RequestBody Map<String, Object> payload) {
         return updateProfile(payload);
     }
+
+    @DeleteMapping("/profile/{userId}")
+    public Map<String, Object> deleteAccount(@PathVariable Integer userId) {
+        Map<String, Object> resp = new HashMap<>();
+        try {
+            // Check if user exists
+            List<Map<String, Object>> users = jdbc.queryForList(
+                "SELECT id FROM users WHERE id = ?", userId
+            );
+            
+            if (users.isEmpty()) {
+                resp.put("ok", false);
+                resp.put("message", "User not found");
+                return resp;
+            }
+
+            // Delete related data in order (due to foreign key constraints)
+            // Delete promotion subscriptions
+            jdbc.update("DELETE FROM promotion_subscriptions WHERE user_id = ?", userId);
+            
+            // Delete payment methods
+            jdbc.update("DELETE FROM payment_methods WHERE user_id = ?", userId);
+            
+            // Delete addresses
+            jdbc.update("DELETE FROM addresses WHERE user_id = ?", userId);
+            
+            // Delete verification codes
+            jdbc.update("DELETE FROM verification_codes WHERE user_id = ?", userId);
+            
+            // Finally delete the user
+            int rowsAffected = jdbc.update("DELETE FROM users WHERE id = ?", userId);
+            
+            if (rowsAffected > 0) {
+                resp.put("ok", true);
+                resp.put("message", "Account deleted successfully");
+            } else {
+                resp.put("ok", false);
+                resp.put("message", "Failed to delete account");
+            }
+            
+            return resp;
+        } catch (Exception e) {
+            e.printStackTrace();
+            resp.put("ok", false);
+            resp.put("message", "Delete failed: " + e.getMessage());
+            return resp;
+        }
+    }
 }
