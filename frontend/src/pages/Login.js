@@ -21,6 +21,72 @@ export default function Login() {
   const [lastName, setLastName] = useState("");
   const [confirm, setConfirm] = useState("");
   const [phone, setPhone] = useState("");
+  
+  // Enhanced registration fields
+  const [subscribeToPromotions, setSubscribeToPromotions] = useState(false);
+  
+  // Optional address fields
+  const [useSeparateBillingAddress, setUseSeparateBillingAddress] = useState(false);
+  const [address, setAddress] = useState({
+    street: "",
+    city: "",
+    state: "",
+    zipCode: ""
+  });
+  const [billingAddress, setBillingAddress] = useState({
+    street: "",
+    city: "",
+    state: "",
+    zipCode: ""
+  });
+  
+  // Optional payment card
+  const [paymentCards, setPaymentCards] = useState([{
+    cardType: "",
+    cardNumber: "",
+    nameOnCard: "",
+    expirationMonth: "",
+    expirationYear: "",
+    cvv: ""
+  }]);
+
+  // Helper functions for payment cards
+  const updatePaymentCard = (index, field, value) => {
+    const updatedCards = [...paymentCards];
+    updatedCards[index] = {
+      ...updatedCards[index],
+      [field]: value
+    };
+    setPaymentCards(updatedCards);
+  };
+
+  // Auto-fill name on card when first/last name changes
+  React.useEffect(() => {
+    const fullName = `${firstName} ${lastName}`.trim();
+    if (fullName && firstName && lastName) {
+      setPaymentCards(prevCards => 
+        prevCards.map(card => ({
+          ...card,
+          nameOnCard: fullName
+        }))
+      );
+    }
+  }, [firstName, lastName]);
+  
+  const updateAddress = (type, field, value) => {
+    if (type === 'main') {
+      setAddress(prev => {
+        const newAddress = { ...prev, [field]: value };
+        // If not using separate billing address, also update billing address
+        if (!useSeparateBillingAddress) {
+          setBillingAddress(newAddress);
+        }
+        return newAddress;
+      });
+    } else if (type === 'billing') {
+      setBillingAddress(prev => ({ ...prev, [field]: value }));
+    }
+  };
 
   function validateLogin() {
     if (!email) return "Email is required";
@@ -30,11 +96,31 @@ export default function Login() {
 
   function validateRegister() {
     if (!firstName) return "First name is required";
-    // last name optional
+    // last name optional but recommended
     if (!email) return "Email is required";
     if (!password) return "Password is required";
     if (password.length < 6) return "Password must be at least 6 characters";
     if (password !== confirm) return "Passwords do not match";
+    
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return "Please enter a valid email address";
+    
+    // Payment card validation (if any card information is provided)
+    const card = paymentCards[0];
+    if (card.cardNumber || card.cardType || card.expirationMonth || card.expirationYear) {
+      if (!card.cardNumber) return "Payment card: Card number is required";
+      if (!card.cardType) return "Payment card: Card type is required";
+      if (!card.expirationMonth) return "Payment card: Expiration month is required";
+      if (!card.expirationYear) return "Payment card: Expiration year is required";
+      if (!card.cvv) return "Payment card: CVV is required";
+      
+      // Require billing address if adding a payment card
+      if (!billingAddress.street || !billingAddress.city || !billingAddress.state || !billingAddress.zipCode) {
+        return "Payment card: Billing address is required (please fill in the address section above)";
+      }
+    }
+    
     return null;
   }
 
@@ -69,17 +155,48 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-  // prefer explicit first/last_name fields
-  const payload = { first_name: firstName, last_name: lastName, email, password };
-  if (phone) payload.phone = phone;
+      // Prepare comprehensive registration payload
+      const payload = { 
+        first_name: firstName, 
+        last_name: lastName, 
+        email, 
+        password,
+        phone,
+        subscribe_to_promotions: subscribeToPromotions
+      };
+      
+      // Add optional address if provided (UI mapping: Address -> shipping_address, Billing Address -> home_address)
+      if (address.street) {
+        payload.shipping_address = address; // UI "Address" field goes to shipping_address in DB
+      }
+      if (billingAddress.street) {
+        payload.home_address = billingAddress; // UI "Billing Address" field goes to home_address in DB
+      }
+      
+      // Add payment cards if provided (max 3)
+      const validCards = paymentCards.filter(card => 
+        card.cardNumber && card.cardType && card.expirationMonth && card.expirationYear
+      );
+      if (validCards.length > 0) {
+        payload.payment_cards = validCards;
+      }
+      
       const res = await api.post('/auth/register', payload);
       setLoading(false);
       if (res?.data?.ok) {
-        // clear form and show confirmation
+        // Clear form and show email verification message
         setMode('login');
         setPassword('');
         setConfirm('');
         setPhone('');
+        setSubscribeToPromotions(false);
+        setAddress({street: "", city: "", state: "", zipCode: ""});
+        setBillingAddress({street: "", city: "", state: "", zipCode: ""});
+        setUseSeparateBillingAddress(false);
+        setPaymentCards([{cardType: "", cardNumber: "", nameOnCard: "", expirationMonth: "", expirationYear: "", cvv: ""}]);
+        
+        // Show success message and redirect to email verification
+        alert('Registration successful! Please check your email for a verification code to activate your account.');
         navigate('/registration-confirmation');
       } else {
         setError(res?.data?.message || 'Registration failed');
@@ -172,7 +289,7 @@ export default function Login() {
         ) : (
           <form onSubmit={onRegister} className="login-form">
             <label>
-              First name
+              First name *
               <input
                 type="text"
                 value={firstName}
@@ -184,7 +301,7 @@ export default function Login() {
             </label>
 
             <label>
-              Last name (optional)
+              Last name
               <input
                 type="text"
                 value={lastName}
@@ -195,7 +312,7 @@ export default function Login() {
             </label>
 
             <label>
-              Email
+              Email *
               <input
                 type="email"
                 value={email}
@@ -207,18 +324,257 @@ export default function Login() {
             </label>
 
             <label>
-              Phone (optional)
+              Phone
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Optional: (555) 555-5555"
+                placeholder="(555) 555-5555"
                 disabled={loading}
               />
             </label>
 
+            {/* Address Separator */}
+            <div style={{margin: "24px 0 16px 0", borderTop: "1px solid #ddd", paddingTop: "16px"}}>
+              <div style={{display: "grid", gap: "12px"}}>
+                <div>
+                  <strong style={{fontSize: "0.9em", color: "white"}}>Address</strong>
+                  <div style={{display: "grid", gap: "8px", marginTop: "8px"}}>
+                    <input
+                      type="text"
+                      placeholder="Street Address"
+                      value={address.street}
+                      onChange={(e) => updateAddress('main', 'street', e.target.value)}
+                      disabled={loading}
+                      style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
+                    />
+                    <div style={{display: "grid", gridTemplateColumns: "1fr 1fr 100px", gap: "8px"}}>
+                      <input
+                        type="text"
+                        placeholder="City"
+                        value={address.city}
+                        onChange={(e) => updateAddress('main', 'city', e.target.value)}
+                        disabled={loading}
+                        style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
+                      />
+                      <input
+                        type="text"
+                        placeholder="State"
+                        value={address.state}
+                        onChange={(e) => updateAddress('main', 'state', e.target.value)}
+                        disabled={loading}
+                        style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
+                      />
+                      <input
+                        type="text"
+                        placeholder="ZIP"
+                        value={address.zipCode}
+                        onChange={(e) => updateAddress('main', 'zipCode', e.target.value)}
+                        disabled={loading}
+                        style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Checkbox for separate billing address */}
+                <div style={{margin: "8px 0"}}>
+                  <label style={{display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer", fontSize: "14px", userSelect: "none"}}>
+                    <input
+                      type="checkbox"
+                      checked={useSeparateBillingAddress}
+                      onChange={(e) => {
+                        setUseSeparateBillingAddress(e.target.checked);
+                        if (!e.target.checked) {
+                          // If unchecking, copy main address to billing address
+                          setBillingAddress({...address});
+                        }
+                      }}
+                      disabled={loading}
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        marginTop: "2px",
+                        accentColor: "#dc3545",
+                        cursor: "pointer"
+                      }}
+                    />
+                    <span style={{cursor: "pointer"}}>Use separate billing address</span>
+                  </label>
+                </div>
+                  
+                  {useSeparateBillingAddress && (
+                    <div>
+                      <strong style={{fontSize: "0.9em", color: "white"}}>Billing Address</strong>
+                      <div style={{display: "grid", gap: "8px", marginTop: "8px"}}>
+                        <input
+                          type="text"
+                          placeholder="Street Address"
+                          value={billingAddress.street}
+                          onChange={(e) => updateAddress('billing', 'street', e.target.value)}
+                          disabled={loading}
+                          style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
+                        />
+                        <div style={{display: "grid", gridTemplateColumns: "1fr 1fr 100px", gap: "8px"}}>
+                          <input
+                            type="text"
+                            placeholder="City"
+                            value={billingAddress.city}
+                            onChange={(e) => updateAddress('billing', 'city', e.target.value)}
+                            disabled={loading}
+                            style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
+                          />
+                          <input
+                            type="text"
+                            placeholder="State"
+                            value={billingAddress.state}
+                            onChange={(e) => updateAddress('billing', 'state', e.target.value)}
+                            disabled={loading}
+                            style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
+                          />
+                          <input
+                            type="text"
+                            placeholder="ZIP"
+                            value={billingAddress.zipCode}
+                            onChange={(e) => updateAddress('billing', 'zipCode', e.target.value)}
+                            disabled={loading}
+                            style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+            </div>
+
+            {/* Payment Card Separator */}
+            <div style={{margin: "24px 0 16px 0", borderTop: "1px solid #ddd", paddingTop: "16px"}}>
+              <div style={{marginBottom: "12px"}}>
+                <strong style={{fontSize: "0.9em", color: "white"}}>Payment Card</strong>
+              </div>
+              <div style={{display: "grid", gap: "16px"}}>
+                {paymentCards.map((card, index) => (
+                  <div key={index} style={{borderRadius: "6px"}}>
+                    <div style={{display: "grid", gap: "12px"}}>
+                      {/* Name */}
+                      <div style={{display: "grid", gridTemplateColumns: "70px 1fr", gap: "0px", alignItems: "center"}}>
+                        <label style={{
+                          fontSize: "0.9em", 
+                          color: "white", 
+                          fontWeight: "500", 
+                          textAlign: "left",
+                          lineHeight: "1",
+                          margin: "0",
+                          padding: "0"
+                        }}>
+                          Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Name on Card"
+                          value={card.nameOnCard}
+                          onChange={(e) => updatePaymentCard(index, 'nameOnCard', e.target.value)}
+                          disabled={loading}
+                          style={{
+                            padding: "8px", 
+                            border: "1px solid #ccc", 
+                            borderRadius: "4px"
+                          }}
+                        />
+                      </div>
+
+                      {/* Card Type and Number - full width */}
+                      <div style={{display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: "12px"}}>
+                        <select
+                          value={card.cardType}
+                          onChange={(e) => updatePaymentCard(index, 'cardType', e.target.value)}
+                          disabled={loading}
+                          style={{
+                            padding: "8px", 
+                            border: "1px solid #ccc", 
+                            borderRadius: "4px"
+                          }}
+                        >
+                          <option value="">Card Type</option>
+                          <option value="visa">Visa</option>
+                          <option value="mastercard">Mastercard</option>
+                          <option value="amex">American Express</option>
+                          <option value="discover">Discover</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Card Number"
+                          value={card.cardNumber}
+                          onChange={(e) => updatePaymentCard(index, 'cardNumber', e.target.value)}
+                          disabled={loading}
+                          style={{
+                            padding: "8px", 
+                            border: "1px solid #ccc", 
+                            borderRadius: "4px"
+                          }}
+                        />
+                      </div>
+                      
+                      {/* Month, Year, CVV - full width */}
+                      <div style={{display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px"}}>
+                        <select
+                          value={card.expirationMonth}
+                          onChange={(e) => updatePaymentCard(index, 'expirationMonth', e.target.value)}
+                          disabled={loading}
+                          style={{
+                            padding: "8px", 
+                            border: "1px solid #ccc", 
+                            borderRadius: "4px"
+                          }}
+                        >
+                          <option value="">Month</option>
+                          {Array.from({length: 12}, (_, i) => (
+                            <option key={i + 1} value={i + 1}>
+                              {(i + 1).toString().padStart(2, '0')}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={card.expirationYear}
+                          onChange={(e) => updatePaymentCard(index, 'expirationYear', e.target.value)}
+                          disabled={loading}
+                          style={{
+                            padding: "8px", 
+                            border: "1px solid #ccc", 
+                            borderRadius: "4px"
+                          }}
+                        >
+                          <option value="">Year</option>
+                          {Array.from({length: 10}, (_, i) => {
+                            const year = new Date().getFullYear() + i;
+                            return <option key={year} value={year}>{year}</option>;
+                          })}
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="CVV"
+                          value={card.cvv}
+                          onChange={(e) => updatePaymentCard(index, 'cvv', e.target.value)}
+                          disabled={loading}
+                          maxLength="4"
+                          style={{
+                            padding: "8px", 
+                            border: "1px solid #ccc", 
+                            borderRadius: "4px"
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Separator after Payment Cards */}
+            <div style={{margin: "24px 0", borderTop: "1px solid #ddd"}}></div>
+
             <label>
-              Password
+              Password *
               <input
                 type="password"
                 value={password}
@@ -230,7 +586,7 @@ export default function Login() {
             </label>
 
             <label>
-              Confirm password
+              Confirm password *
               <input
                 type="password"
                 value={confirm}
@@ -240,6 +596,26 @@ export default function Login() {
                 disabled={loading}
               />
             </label>
+
+            {/* Promotions Subscription */}
+            <div style={{margin: "24px 0 24px 0"}}>
+              <label style={{display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer", fontSize: "14px", userSelect: "none"}}>
+                <input
+                  type="checkbox"
+                  checked={subscribeToPromotions}
+                  onChange={(e) => setSubscribeToPromotions(e.target.checked)}
+                  disabled={loading}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    marginTop: "2px",
+                    accentColor: "#dc3545",
+                    cursor: "pointer"
+                  }}
+                />
+                <span style={{cursor: "pointer"}}>Get exclusive deals and movie updates delivered to your inbox</span>
+              </label>
+            </div>
 
             <div
               style={{
