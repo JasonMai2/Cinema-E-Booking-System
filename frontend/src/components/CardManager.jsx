@@ -97,7 +97,9 @@ export default function CardManager({
   };
 
   const inputClass = (key) =>
-    `${pageStyles.profileInput} ${errors[key] ? " " + pageStyles.inputError : ""}`;
+    `${pageStyles.profileInput} ${
+      errors[key] ? " " + pageStyles.inputError : ""
+    }`;
 
   const handleDelete = async (cardId) => {
     setMessage("");
@@ -275,8 +277,8 @@ export default function CardManager({
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className={`${pageStyles.btnSave} ${
-              addButtonClassName ? addButtonClassName : ""
+            className={`${addButtonClassName ? addButtonClassName + " " : ""}${
+              pageStyles.btnSave
             }`}
           >
             Add Card
@@ -415,7 +417,7 @@ export default function CardManager({
                       type="button"
                       onClick={handleAdd}
                       disabled={saving}
-                      className={styles.btnSave}
+                      className={pageStyles.btnSave}
                     >
                       {saving ? "Adding..." : "Add Card"}
                     </button>

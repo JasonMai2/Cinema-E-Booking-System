@@ -1,9 +1,9 @@
 .clearAddCard {
-  background: transparent !important;
-  color: var(--text-primary) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  cursor: pointer !important;
-  opacity: 1 !important;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  opacity: 1;
 }
 
 .btnSmall {
@@ -66,6 +66,6 @@
 }
 
 .inputError {
-  border-color: #e74c3c !important;
+  border-color: #e74c3c;
   box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.08);
 }

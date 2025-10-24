@@ -70,7 +70,7 @@
 }
 
 .inputError {
-  border-color: #e74c3c !important;
+  border-color: #e74c3c;
   box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.08);
 }
 
