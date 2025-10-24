@@ -457,6 +457,84 @@ export default function EditProfile() {
 
         <hr />
 
+        <h3>Change Password</h3>
+        <form className={styles.profileForm} onSubmit={onChangePassword}>
+          <div>
+            <label className={styles.profileLabel}>Current password</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => {
+                setCurrentPassword(e.target.value);
+                if (errors.currentPassword) {
+                  const newErrors = { ...errors };
+                  delete newErrors.currentPassword;
+                  setErrors(newErrors);
+                }
+              }}
+              placeholder="Enter current password"
+              className={inputClass("currentPassword")}
+            />
+            {errors.currentPassword && (
+              <div className={styles.fieldError}>{errors.currentPassword}</div>
+            )}
+          </div>
+
+          <div>
+            <label className={styles.profileLabel}>New password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.newPassword) {
+                  const newErrors = { ...errors };
+                  delete newErrors.newPassword;
+                  setErrors(newErrors);
+                }
+              }}
+              placeholder="Enter new password"
+              className={inputClass("newPassword")}
+            />
+            {errors.newPassword && (
+              <div className={styles.fieldError}>{errors.newPassword}</div>
+            )}
+          </div>
+
+          <div>
+            <label className={styles.profileLabel}>Confirm new password</label>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => {
+                setConfirm(e.target.value);
+                if (errors.confirmPassword) {
+                  const newErrors = { ...errors };
+                  delete newErrors.confirmPassword;
+                  setErrors(newErrors);
+                }
+              }}
+              placeholder="Confirm new password"
+              className={inputClass("confirmPassword")}
+            />
+            {errors.confirmPassword && (
+              <div className={styles.fieldError}>{errors.confirmPassword}</div>
+            )}
+          </div>
+
+          <div className={styles.profileActions}>
+            <button
+              type="submit"
+              className={styles.btnSave}
+              disabled={loading || !currentPassword || !password || !confirm}
+            >
+              {loading ? "Changing…" : "Change Password"}
+            </button>
+          </div>
+        </form>
+
+        <hr />
+
         <div style={{ marginTop: 12 }}>
           <h3 style={{ margin: "6px 0" }}>Payment methods</h3>
           {pmLoading ? (
@@ -567,82 +645,6 @@ export default function EditProfile() {
             </button>
           </div>
         </div>
-
-        <h3>Change Password</h3>
-        <form className={styles.profileForm} onSubmit={onChangePassword}>
-          <div>
-            <label className={styles.profileLabel}>Current password</label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => {
-                setCurrentPassword(e.target.value);
-                if (errors.currentPassword) {
-                  const newErrors = { ...errors };
-                  delete newErrors.currentPassword;
-                  setErrors(newErrors);
-                }
-              }}
-              placeholder="Enter current password"
-              className={inputClass("currentPassword")}
-            />
-            {errors.currentPassword && (
-              <div className={styles.fieldError}>{errors.currentPassword}</div>
-            )}
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>New password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errors.newPassword) {
-                  const newErrors = { ...errors };
-                  delete newErrors.newPassword;
-                  setErrors(newErrors);
-                }
-              }}
-              placeholder="Enter new password"
-              className={inputClass("newPassword")}
-            />
-            {errors.newPassword && (
-              <div className={styles.fieldError}>{errors.newPassword}</div>
-            )}
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>Confirm new password</label>
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => {
-                setConfirm(e.target.value);
-                if (errors.confirmPassword) {
-                  const newErrors = { ...errors };
-                  delete newErrors.confirmPassword;
-                  setErrors(newErrors);
-                }
-              }}
-              placeholder="Confirm new password"
-              className={inputClass("confirmPassword")}
-            />
-            {errors.confirmPassword && (
-              <div className={styles.fieldError}>{errors.confirmPassword}</div>
-            )}
-          </div>
-
-          <div className={styles.profileActions}>
-            <button
-              type="submit"
-              className={styles.btnSave}
-              disabled={loading || !currentPassword || !password || !confirm}
-            >
-              {loading ? "Changing…" : "Change Password"}
-            </button>
-          </div>
-        </form>
       </section>
     </main>
   );
