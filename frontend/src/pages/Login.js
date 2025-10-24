@@ -39,38 +39,54 @@ export default function Login() {
   // Enhanced registration fields
   const [subscribeToPromotions, setSubscribeToPromotions] = useState(false);
   
-  // Optional address fields
-  const [useSeparateBillingAddress, setUseSeparateBillingAddress] = useState(false);
-  const [address, setAddress] = useState({
-    street: "",
-    city: "",
-    state: "",
-    zipCode: ""
-  });
-  const [billingAddress, setBillingAddress] = useState({
-    street: "",
-    city: "",
-    state: "",
-    zipCode: ""
-  });
-  
-  // Optional payment card
+  // Optional payment card with integrated billing address
   const [paymentCards, setPaymentCards] = useState([{
     cardType: "",
     cardNumber: "",
     nameOnCard: "",
     expirationMonth: "",
     expirationYear: "",
-    cvv: ""
+    cvv: "",
+    billingAddress: {
+      street: "",
+      city: "",
+      state: "",
+      zipCode: ""
+    }
   }]);
 
   // Helper functions for payment cards
   const updatePaymentCard = (index, field, value) => {
+    let processedValue = value;
+    
+    // Apply character restrictions based on field type
+    if (field === 'cardNumber') {
+      // Remove all non-digits and limit to 19 characters (longest card number format)
+      processedValue = value.replace(/\D/g, '').slice(0, 19);
+    } else if (field === 'cvv') {
+      // Remove all non-digits and limit to 4 characters
+      processedValue = value.replace(/\D/g, '').slice(0, 4);
+    }
+    
     const updatedCards = [...paymentCards];
-    updatedCards[index] = {
-      ...updatedCards[index],
-      [field]: value
-    };
+    
+    // Handle nested billing address fields
+    if (field.startsWith('billingAddress.')) {
+      const addressField = field.split('.')[1];
+      updatedCards[index] = {
+        ...updatedCards[index],
+        billingAddress: {
+          ...updatedCards[index].billingAddress,
+          [addressField]: processedValue
+        }
+      };
+    } else {
+      updatedCards[index] = {
+        ...updatedCards[index],
+        [field]: processedValue
+      };
+    }
+    
     setPaymentCards(updatedCards);
   };
 
@@ -86,21 +102,6 @@ export default function Login() {
       );
     }
   }, [firstName, lastName]);
-  
-  const updateAddress = (type, field, value) => {
-    if (type === 'main') {
-      setAddress(prev => {
-        const newAddress = { ...prev, [field]: value };
-        // If not using separate billing address, also update billing address
-        if (!useSeparateBillingAddress) {
-          setBillingAddress(newAddress);
-        }
-        return newAddress;
-      });
-    } else if (type === 'billing') {
-      setBillingAddress(prev => ({ ...prev, [field]: value }));
-    }
-  };
 
   function validateLogin() {
     if (!email) return "Email is required";
@@ -130,8 +131,8 @@ export default function Login() {
       if (!card.cvv) return "Payment card: CVV is required";
       
       // Require billing address if adding a payment card
-      if (!billingAddress.street || !billingAddress.city || !billingAddress.state || !billingAddress.zipCode) {
-        return "Payment card: Billing address is required (please fill in the address section above)";
+      if (!card.billingAddress.street || !card.billingAddress.city || !card.billingAddress.state || !card.billingAddress.zipCode) {
+        return "Payment card: Billing address is required";
       }
     }
     
@@ -191,20 +192,16 @@ export default function Login() {
         subscribe_to_promotions: subscribeToPromotions
       };
       
-      // Add optional address if provided (UI mapping: Address -> shipping_address, Billing Address -> home_address)
-      if (address.street) {
-        payload.shipping_address = address; // UI "Address" field goes to shipping_address in DB
-      }
-      if (billingAddress.street) {
-        payload.home_address = billingAddress; // UI "Billing Address" field goes to home_address in DB
-      }
-      
       // Add payment cards if provided (max 3)
       const validCards = paymentCards.filter(card => 
         card.cardNumber && card.cardType && card.expirationMonth && card.expirationYear
       );
       if (validCards.length > 0) {
         payload.payment_cards = validCards;
+        // If there's a payment card with billing address, use it as home_address
+        if (validCards[0].billingAddress.street) {
+          payload.home_address = validCards[0].billingAddress;
+        }
       }
       
       const res = await api.post('/auth/register', payload);
@@ -216,10 +213,20 @@ export default function Login() {
         setConfirm('');
         setPhone('');
         setSubscribeToPromotions(false);
-        setAddress({street: "", city: "", state: "", zipCode: ""});
-        setBillingAddress({street: "", city: "", state: "", zipCode: ""});
-        setUseSeparateBillingAddress(false);
-        setPaymentCards([{cardType: "", cardNumber: "", nameOnCard: "", expirationMonth: "", expirationYear: "", cvv: ""}]);
+        setPaymentCards([{
+          cardType: "", 
+          cardNumber: "", 
+          nameOnCard: "", 
+          expirationMonth: "", 
+          expirationYear: "", 
+          cvv: "",
+          billingAddress: {
+            street: "",
+            city: "",
+            state: "",
+            zipCode: ""
+          }
+        }]);
         
         // Navigate to email verification page with email pre-filled
         navigate('/verify-email', { 
@@ -387,7 +394,7 @@ export default function Login() {
             </label>
 
             <label>
-              Phone (Optional)
+              Phone 
               <input
                 type="tel"
                 value={phone}
@@ -397,123 +404,10 @@ export default function Login() {
               />
             </label>
 
-            {/* Address Separator */}
-            <div style={{margin: "24px 0 16px 0", borderTop: "1px solid #ddd", paddingTop: "16px"}}>
-              <div style={{display: "grid", gap: "12px"}}>
-                <div>
-                  <strong style={{fontSize: "0.9em", color: "white"}}>Address</strong>
-                  <div style={{display: "grid", gap: "8px", marginTop: "8px"}}>
-                    <input
-                      type="text"
-                      placeholder="Street Address"
-                      value={address.street}
-                      onChange={(e) => updateAddress('main', 'street', e.target.value)}
-                      disabled={loading}
-                      style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
-                    />
-                    <div style={{display: "grid", gridTemplateColumns: "1fr 1fr 100px", gap: "8px"}}>
-                      <input
-                        type="text"
-                        placeholder="City"
-                        value={address.city}
-                        onChange={(e) => updateAddress('main', 'city', e.target.value)}
-                        disabled={loading}
-                        style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
-                      />
-                      <input
-                        type="text"
-                        placeholder="State"
-                        value={address.state}
-                        onChange={(e) => updateAddress('main', 'state', e.target.value)}
-                        disabled={loading}
-                        style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
-                      />
-                      <input
-                        type="text"
-                        placeholder="ZIP"
-                        value={address.zipCode}
-                        onChange={(e) => updateAddress('main', 'zipCode', e.target.value)}
-                        disabled={loading}
-                        style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Checkbox for separate billing address */}
-                <div style={{margin: "8px 0"}}>
-                  <label style={{display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer", fontSize: "14px", userSelect: "none"}}>
-                    <input
-                      type="checkbox"
-                      checked={useSeparateBillingAddress}
-                      onChange={(e) => {
-                        setUseSeparateBillingAddress(e.target.checked);
-                        if (!e.target.checked) {
-                          // If unchecking, copy main address to billing address
-                          setBillingAddress({...address});
-                        }
-                      }}
-                      disabled={loading}
-                      style={{
-                        width: "16px",
-                        height: "16px",
-                        marginTop: "2px",
-                        accentColor: "#dc3545",
-                        cursor: "pointer"
-                      }}
-                    />
-                    <span style={{cursor: "pointer"}}>Use separate billing address</span>
-                  </label>
-                </div>
-                  
-                  {useSeparateBillingAddress && (
-                    <div>
-                      <strong style={{fontSize: "0.9em", color: "white"}}>Billing Address</strong>
-                      <div style={{display: "grid", gap: "8px", marginTop: "8px"}}>
-                        <input
-                          type="text"
-                          placeholder="Street Address"
-                          value={billingAddress.street}
-                          onChange={(e) => updateAddress('billing', 'street', e.target.value)}
-                          disabled={loading}
-                          style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
-                        />
-                        <div style={{display: "grid", gridTemplateColumns: "1fr 1fr 100px", gap: "8px"}}>
-                          <input
-                            type="text"
-                            placeholder="City"
-                            value={billingAddress.city}
-                            onChange={(e) => updateAddress('billing', 'city', e.target.value)}
-                            disabled={loading}
-                            style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
-                          />
-                          <input
-                            type="text"
-                            placeholder="State"
-                            value={billingAddress.state}
-                            onChange={(e) => updateAddress('billing', 'state', e.target.value)}
-                            disabled={loading}
-                            style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
-                          />
-                          <input
-                            type="text"
-                            placeholder="ZIP"
-                            value={billingAddress.zipCode}
-                            onChange={(e) => updateAddress('billing', 'zipCode', e.target.value)}
-                            disabled={loading}
-                            style={{padding: "8px", border: "1px solid #ccc", borderRadius: "4px"}}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-            </div>
-
-            {/* Payment Card Separator */}
+            {/* Payment Card with Billing Address */}
             <div style={{margin: "24px 0 16px 0", borderTop: "1px solid #ddd", paddingTop: "16px"}}>
               <div style={{marginBottom: "12px"}}>
-                <strong style={{fontSize: "0.9em", color: "white"}}>Payment Card</strong>
+                <strong style={{fontSize: "0.9em", color: "white"}}>Payment Information (Optional)</strong>
               </div>
               <div style={{display: "grid", gap: "16px"}}>
                 {paymentCards.map((card, index) => (
@@ -570,6 +464,9 @@ export default function Login() {
                           value={card.cardNumber}
                           onChange={(e) => updatePaymentCard(index, 'cardNumber', e.target.value)}
                           disabled={loading}
+                          maxLength="19"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           style={{
                             padding: "8px", 
                             border: "1px solid #ccc", 
@@ -620,12 +517,79 @@ export default function Login() {
                           onChange={(e) => updatePaymentCard(index, 'cvv', e.target.value)}
                           disabled={loading}
                           maxLength="4"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           style={{
                             padding: "8px", 
                             border: "1px solid #ccc", 
                             borderRadius: "4px"
                           }}
                         />
+                      </div>
+                      
+                      {/* Address Fields */}
+                      <div style={{marginTop: "16px"}}>
+                        <strong style={{fontSize: "0.9em", color: "white", marginBottom: "8px", display: "block"}}>
+                          Address
+                        </strong>
+                        
+                        {/* Street Address */}
+                        <div style={{marginBottom: "8px"}}>
+                          <input
+                            type="text"
+                            placeholder="Street Address"
+                            value={card.billingAddress.street}
+                            onChange={(e) => updatePaymentCard(index, 'billingAddress.street', e.target.value)}
+                            disabled={loading}
+                            style={{
+                              width: "100%",
+                              padding: "8px", 
+                              border: "1px solid #ccc", 
+                              borderRadius: "4px",
+                              boxSizing: "border-box"
+                            }}
+                          />
+                        </div>
+                        
+                        {/* City, State, ZIP */}
+                        <div style={{display: "grid", gridTemplateColumns: "1fr 1fr 100px", gap: "8px"}}>
+                          <input
+                            type="text"
+                            placeholder="City"
+                            value={card.billingAddress.city}
+                            onChange={(e) => updatePaymentCard(index, 'billingAddress.city', e.target.value)}
+                            disabled={loading}
+                            style={{
+                              padding: "8px", 
+                              border: "1px solid #ccc", 
+                              borderRadius: "4px"
+                            }}
+                          />
+                          <input
+                            type="text"
+                            placeholder="State"
+                            value={card.billingAddress.state}
+                            onChange={(e) => updatePaymentCard(index, 'billingAddress.state', e.target.value)}
+                            disabled={loading}
+                            style={{
+                              padding: "8px", 
+                              border: "1px solid #ccc", 
+                              borderRadius: "4px"
+                            }}
+                          />
+                          <input
+                            type="text"
+                            placeholder="ZIP"
+                            value={card.billingAddress.zipCode}
+                            onChange={(e) => updatePaymentCard(index, 'billingAddress.zipCode', e.target.value)}
+                            disabled={loading}
+                            style={{
+                              padding: "8px", 
+                              border: "1px solid #ccc", 
+                              borderRadius: "4px"
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

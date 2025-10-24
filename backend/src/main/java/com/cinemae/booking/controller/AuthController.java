@@ -81,7 +81,6 @@ public class AuthController {
             Map<String, Object> homeAddress = (Map<String, Object>) payload.get("home_address");
             Map<String, Object> shippingAddress = (Map<String, Object>) payload.get("shipping_address");
             
-            // Optional payment cards (max 3)
             List<Map<String, Object>> paymentCards = (List<Map<String, Object>>) payload.getOrDefault("payment_cards", new ArrayList<>());
 
             // require either a name or firstName
