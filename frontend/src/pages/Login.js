@@ -161,7 +161,8 @@ export default function Login() {
           navigate('/verify-email', { 
             state: { 
               email: email,
-              message: res?.data?.message || 'Please verify your email address before logging in'
+              message: res?.data?.message || 'Please verify your email address before logging in',
+              autoResend: true // Auto-send fresh verification code
             } 
           });
         } else {

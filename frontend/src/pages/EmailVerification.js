@@ -22,6 +22,30 @@ const EmailVerification = () => {
     if (location.state?.message) {
       setMessage(location.state.message);
     }
+    
+    // Auto-send verification email if user came from login with unverified account
+    if (location.state?.email && location.state?.autoResend) {
+      const autoResendCode = async () => {
+        try {
+          setMessage('Sending fresh verification code...');
+          const response = await api.post('/auth/resend-verification', {
+            email: location.state.email
+          });
+          
+          if (response.data.ok) {
+            setMessage('Fresh verification code sent! Please check your email.');
+            setCountdown(60);
+          } else {
+            setMessage(response.data.message || 'Verification code sent earlier. Please check your email.');
+          }
+        } catch (err) {
+          // Don't show error for auto-resend, just show default message
+          setMessage('Please check your email for the verification code or click resend below.');
+        }
+      };
+      
+      autoResendCode();
+    }
   }, [location.state]);
 
   // Countdown timer for resend button
