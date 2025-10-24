@@ -26,6 +26,67 @@ export default function CardManager({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "cardHolderName") {
+      const sanitized = value.replace(/[0-9]/g, "");
+      setForm((f) => ({ ...f, [name]: sanitized }));
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+      return;
+    }
+
+    if (name === "fullNumber") {
+      const digits = (value || "").replace(/\D/g, "");
+      const groups = [];
+      for (let i = 0; i < digits.length; i += 4) {
+        groups.push(digits.substring(i, i + 4));
+      }
+      const formatted = groups.join(" ");
+      setForm((f) => ({ ...f, [name]: formatted }));
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+      return;
+    }
+
+    if (name === "securityCode") {
+      const digits = (value || "").replace(/\D/g, "").slice(0, 4);
+      setForm((f) => ({ ...f, [name]: digits }));
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+      return;
+    }
+
+    if (name === "expMonth") {
+      const digits = (value || "").replace(/\D/g, "").slice(0, 2);
+      setForm((f) => ({ ...f, [name]: digits }));
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+      return;
+    }
+
+    if (name === "expYear") {
+      const digits = (value || "").replace(/\D/g, "").slice(0, 4);
+      setForm((f) => ({ ...f, [name]: digits }));
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+      return;
+    }
+
     setForm((f) => ({ ...f, [name]: value }));
     setErrors((prev) => {
       const copy = { ...prev };
@@ -51,7 +112,6 @@ export default function CardManager({
     }
   };
 
-  // Luhn algorithm
   const luhnCheck = (digits) => {
     let sum = 0;
     let alt = false;
@@ -69,41 +129,52 @@ export default function CardManager({
 
   const validateForm = () => {
     const errs = {};
-    if (!form.cardHolderName || form.cardHolderName.trim().length === 0) {
+    const holder = (form.cardHolderName || "").trim();
+    if (!holder || holder.length === 0) {
       errs.cardHolderName = "Card holder name required";
+    }
+    if (/[0-9]/.test(holder)) {
+      errs.cardHolderName = "Card holder name must not contain numbers";
     }
 
     const digits = (form.fullNumber || "").replace(/\D/g, "");
     if (!/^\d{13,19}$/.test(digits)) {
       errs.fullNumber = "Enter a valid card number (13-19 digits)";
     } else if (!luhnCheck(digits)) {
-      errs.fullNumber = "Card number failed Luhn check";
+      errs.fullNumber = "Card number not valid";
     }
 
-    // CVV: 3 or 4 digits
     if (form.securityCode) {
       if (!/^\d{3,4}$/.test(form.securityCode)) {
         errs.securityCode = "Security code must be 3 or 4 digits";
       }
     }
 
-    // month/year
     const m = Number(form.expMonth);
     const y = Number(form.expYear);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
     if (!form.expMonth || isNaN(m) || m < 1 || m > 12) {
       errs.expMonth = "Enter a valid month (1-12)";
     }
-    const currentYear = new Date().getFullYear();
-    if (!form.expYear || isNaN(y) || y < currentYear || y > 2100) {
-      errs.expYear = "Enter a valid year";
+
+    if (!form.expYear || isNaN(y) || y < 1000 || y > 2100) {
+      errs.expYear = `Enter a valid 4-digit year (e.g. ${currentYear})`;
+    } else if (y < currentYear) {
+      errs.expYear = `Year must be ${currentYear} or later`;
     }
 
-    // expiry not in past
     if (!errs.expMonth && !errs.expYear) {
-      const now = new Date();
-      const exp = new Date(y, m - 1, 1);
-      if (exp < new Date(now.getFullYear(), now.getMonth(), 1)) {
-        errs.expMonth = "Card appears expired";
+      if (y === currentYear && m < currentMonth) {
+        errs.expMonth = `Card expired - ${String(m).padStart(
+          2,
+          "0"
+        )}/${y} is before ${String(currentMonth).padStart(
+          2,
+          "0"
+        )}/${currentYear}`;
       }
     }
 
@@ -133,7 +204,7 @@ export default function CardManager({
     try {
       const digits = (form.fullNumber || "").replace(/\D/g, "");
       const last4 = digits.slice(-4);
-      // placeholder client-side tokenization
+      // FIXME: placeholder client-side tokenization
       const processorToken = `tok_${btoa(last4 + Date.now())}`;
 
       const payload = {
@@ -246,6 +317,9 @@ export default function CardManager({
                         setTouched((t) => ({ ...t, cardHolderName: true }))
                       }
                       className={inputClass("cardHolderName")}
+                      inputMode="text"
+                      aria-label="Card holder name"
+                      placeholder="Name on card"
                     />
                     {errors.cardHolderName && (
                       <div className={styles.fieldError}>
@@ -263,6 +337,11 @@ export default function CardManager({
                         setTouched((t) => ({ ...t, fullNumber: true }))
                       }
                       className={inputClass("fullNumber")}
+                      inputMode="numeric"
+                      pattern="[0-9 ]*"
+                      maxLength={23}
+                      placeholder="xxxx xxxx xxxx xxxx"
+                      aria-label="Card number"
                     />
                     {errors.fullNumber && (
                       <div className={styles.fieldError}>
@@ -280,8 +359,18 @@ export default function CardManager({
                         onFocus={() =>
                           setTouched((t) => ({ ...t, expMonth: true }))
                         }
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={2}
                         className={inputClass("expMonth")}
+                        placeholder="MM"
+                        onKeyDown={(e) => {
+                          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                            e.preventDefault();
+                          }
+                        }}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                       {errors.expMonth && (
                         <div className={styles.fieldError}>
@@ -298,8 +387,18 @@ export default function CardManager({
                         onFocus={() =>
                           setTouched((t) => ({ ...t, expYear: true }))
                         }
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={4}
                         className={inputClass("expYear")}
+                        placeholder="YYYY"
+                        onKeyDown={(e) => {
+                          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                            e.preventDefault();
+                          }
+                        }}
+                        onWheel={(e) => e.currentTarget.blur()}
                       />
                       {errors.expYear && (
                         <div className={styles.fieldError}>
