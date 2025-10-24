@@ -308,52 +308,93 @@ export default function Login() {
               </span>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                marginTop: 12,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="muted-text">No account?</span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  className="link-action"
-                  onClick={() => {
-                    setMode("register");
-                    setError(null);
-                    setSuccessMessage(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" ||
-                      e.key === " " ||
-                      e.key === "Spacebar"
-                    ) {
-                      setMode("register");
-                      setError(null);
-                      setSuccessMessage(null);
-                    }
-                  }}
-                >
-                  Create an account
-                </span>
-              </div>
+            {/* Sign In Button */}
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "center", 
+              margin: "0 0 20px 0" 
+            }}>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={loading}
+                onClick={(e) => onLogin(e)}
+                style={{
+                  width: "100%",
+                  maxWidth: "200px"
+                }}
+              >
+                {loading ? "Signing in…" : "Sign in"}
+              </button>
+            </div>
 
-              <div className="login-actions" style={{ margin: 0 }}>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={loading}
-                  onClick={(e) => onLogin(e)}
-                >
-                  {loading ? "Signing in…" : "Sign in"}
-                </button>
-              </div>
+            {/* OR Divider */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              margin: "20px 0",
+              textAlign: "center"
+            }}>
+              <div style={{
+                flex: 1,
+                height: "1px",
+                backgroundColor: "#444"
+              }}></div>
+              <span style={{
+                padding: "0 15px",
+                color: "#cfcfcf",
+                fontSize: "14px",
+                fontWeight: "500"
+              }}>OR</span>
+              <div style={{
+                flex: 1,
+                height: "1px",
+                backgroundColor: "#444"
+              }}></div>
+            </div>
+
+            {/* Create Account Button */}
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "center", 
+              margin: 0 
+            }}>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setMode("register");
+                  setError(null);
+                  setSuccessMessage(null);
+                }}
+                style={{
+                  width: "100%",
+                  maxWidth: "200px",
+                  backgroundColor: "transparent",
+                  border: "2px solid var(--primary-accent)",
+                  color: "var(--primary-accent)",
+                  padding: "10px 16px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  fontSize: "16px",
+                  transition: "all 0.3s ease"
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.target.style.backgroundColor = "var(--primary-accent)";
+                    e.target.style.color = "var(--text-primary)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) {
+                    e.target.style.backgroundColor = "transparent";
+                    e.target.style.color = "var(--primary-accent)";
+                  }
+                }}
+              >
+                Create an account
+              </button>
             </div>
           </form>
         ) : (
