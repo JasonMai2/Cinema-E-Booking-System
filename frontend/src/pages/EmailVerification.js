@@ -11,6 +11,7 @@ const EmailVerification = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [countdown, setCountdown] = useState(0);
+  const [hasAutoResent, setHasAutoResent] = useState(false); // Prevent multiple auto-resends
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -23,8 +24,10 @@ const EmailVerification = () => {
       setMessage(location.state.message);
     }
     
-    // Auto-send verification email if user came from login with unverified account
-    if (location.state?.email && location.state?.autoResend) {
+    // Auto-send verification email ONLY ONCE if user came from login with unverified account
+    if (location.state?.email && location.state?.autoResend && !hasAutoResent) {
+      setHasAutoResent(true); // Prevent multiple auto-resends
+      
       const autoResendCode = async () => {
         try {
           setMessage('Sending fresh verification code...');
@@ -36,7 +39,8 @@ const EmailVerification = () => {
             setMessage('Fresh verification code sent! Please check your email.');
             setCountdown(60);
           } else {
-            setMessage(response.data.message || 'Verification code sent earlier. Please check your email.');
+            // If rate limited or already sent, just show a generic message
+            setMessage('Please check your email for the verification code or click resend if needed.');
           }
         } catch (err) {
           // Don't show error for auto-resend, just show default message
@@ -44,9 +48,10 @@ const EmailVerification = () => {
         }
       };
       
-      autoResendCode();
+      // Add a small delay to avoid immediate resend on page load
+      setTimeout(autoResendCode, 1000);
     }
-  }, [location.state]);
+  }, [location.state, hasAutoResent]);
 
   // Countdown timer for resend button
   useEffect(() => {
