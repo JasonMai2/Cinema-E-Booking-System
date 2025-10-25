@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-import api from "../services/api";
+import api, { registrationApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -161,8 +161,8 @@ export default function Login() {
           navigate('/verify-email', { 
             state: { 
               email: email,
-              message: res?.data?.message || 'Please verify your email address before logging in',
-              autoResend: true // Auto-send fresh verification code
+              message: res?.data?.message || 'Please verify your email address before logging in'
+              // Removed autoResend to prevent too many emails
             } 
           });
         } else {
@@ -177,11 +177,21 @@ export default function Login() {
 
   const onRegister = async (e) => {
     e.preventDefault();
+    console.log('=== REGISTRATION STARTED ===');
+    console.log('Mode:', mode);
+    console.log('Form data:', { firstName, lastName, email, password, confirm, phone });
+    
     const v = validateRegister();
-    if (v) return setError(v);
+    if (v) {
+      console.log('Validation failed:', v);
+      return setError(v);
+    }
+    
+    console.log('Validation passed, starting registration...');
     setError(null);
     setSuccessMessage(null);
     setLoading(true);
+    
     try {
       // Prepare comprehensive registration payload
       const payload = { 
@@ -205,8 +215,14 @@ export default function Login() {
         }
       }
       
-      const res = await api.post('/auth/register', payload);
+      const res = await registrationApi.post('/auth/register', payload);
       setLoading(false);
+      
+      // Debug logging
+      console.log('Registration response:', res);
+      console.log('Response data:', res?.data);
+      console.log('Response ok field:', res?.data?.ok);
+      
       if (res?.data?.ok) {
         // Clear form and show email verification message
         setMode('login');
@@ -237,10 +253,14 @@ export default function Login() {
           } 
         });
       } else {
+        console.log('Registration failed - backend returned ok:false');
         setError(res?.data?.message || 'Registration failed');
       }
     } catch (err) {
       setLoading(false);
+      console.log('Registration error caught:', err);
+      console.log('Error response:', err?.response);
+      console.log('Error response data:', err?.response?.data);
       setError(err?.response?.data?.message || "Registration failed");
     }
   };
@@ -399,7 +419,10 @@ export default function Login() {
             </div>
           </form>
         ) : (
-          <form onSubmit={onRegister} className="login-form">
+          <form onSubmit={(e) => {
+            console.log('FORM SUBMITTED - Registration form');
+            onRegister(e);
+          }} className="login-form">
             <label>
               First name *
               <input
