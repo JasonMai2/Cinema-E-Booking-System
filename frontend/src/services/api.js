@@ -12,7 +12,13 @@ const base = process.env.REACT_APP_API_URL
 
 const api = axios.create({
   baseURL: base,
-  timeout: 8000, // ms - fail fast if backend hangs
+  timeout: 15000, // ms - increased timeout for registration
+});
+
+// Create a separate instance for registration with longer timeout
+export const registrationApi = axios.create({
+  baseURL: base,
+  timeout: 30000, // 30 seconds for registration to handle email sending
 });
 
 export default api;
