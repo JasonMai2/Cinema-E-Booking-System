@@ -347,4 +347,50 @@ public class AuthController {
     public Map<String, Object> updateProfilePost(@RequestBody Map<String, Object> payload) {
         return updateProfile(payload);
     }
+
+    @PutMapping("/users/change-password")
+    public Map<String, Object> changePassword(@RequestParam Long userId, @RequestBody Map<String, Object> payload) {
+        Map<String, Object> resp = new HashMap<>();
+        try {
+            String currentPassword = (String) payload.get("currentPassword");
+            String newPassword = (String) payload.get("newPassword");
+
+            if (currentPassword == null || currentPassword.isBlank()) {
+                resp.put("ok", false);
+                resp.put("message", "Current password is required");
+                return resp;
+            }
+            if (newPassword == null || newPassword.length() < 4) {
+                resp.put("ok", false);
+                resp.put("message", "New password must be at least 4 characters");
+                return resp;
+            }
+
+            String currentHash = jdbc.queryForObject("SELECT password_hash FROM users WHERE id = ?", String.class, userId);
+            if (currentHash == null) {
+                resp.put("ok", false);
+                resp.put("message", "User not found");
+                return resp;
+            }
+
+            if (!passwordEncoder.matches(currentPassword, currentHash)) {
+                resp.put("ok", false);
+                resp.put("message", "Current password is incorrect");
+                return resp;
+            }
+
+            String newHash = passwordEncoder.encode(newPassword);
+            jdbc.update("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?", 
+                newHash, new Timestamp(System.currentTimeMillis()), userId);
+
+            resp.put("ok", true);
+            resp.put("message", "Password updated successfully");
+            return resp;
+        } catch (Exception e) {
+            e.printStackTrace();
+            resp.put("ok", false);
+            resp.put("message", "Error changing password: " + e.getMessage());
+            return resp;
+        }
+    }
 }
