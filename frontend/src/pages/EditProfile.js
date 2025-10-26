@@ -396,6 +396,12 @@ export default function EditProfile() {
         ? " " + styles.inputError
         : ""
     }`;
+
+  const pmInputClass = (key) =>
+    `${styles.profileInput} ${
+      pmFieldErrors[key] ? " " + styles.inputError : ""
+    }`;
+
   const isDirty = () => {
     if (!initialUser) return false;
     return (
@@ -907,36 +913,48 @@ export default function EditProfile() {
                     }
                   }}
                   onBlur={(e) => handlePmBlur("pmName", e.target.value)}
-                  className={styles.profileInput}
+                  className={pmInputClass("name")}
+                  aria-invalid={!!pmFieldErrors.name}
+                  aria-describedby={
+                    pmFieldErrors.name ? "err-pm-name" : undefined
+                  }
                 />
                 {pmFieldErrors.name && (
-                  <div className={styles.fieldError}>{pmFieldErrors.name}</div>
+                  <div id="err-pm-name" className={styles.fieldError}>
+                    {pmFieldErrors.name}
+                  </div>
                 )}
 
                 <div className={styles.twoCol}>
-                  <input
-                    type="text"
-                    placeholder="Billing street"
-                    value={pmBillingAddress.street}
-                    onChange={(e) => {
-                      setPmBillingAddress({
-                        ...pmBillingAddress,
-                        street: e.target.value,
-                      });
-                      if (pmFieldErrors.street) {
-                        const copy = { ...pmFieldErrors };
-                        delete copy.street;
-                        setPmFieldErrors(copy);
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Billing street"
+                      value={pmBillingAddress.street}
+                      onChange={(e) => {
+                        setPmBillingAddress({
+                          ...pmBillingAddress,
+                          street: e.target.value,
+                        });
+                        if (pmFieldErrors.street) {
+                          const copy = { ...pmFieldErrors };
+                          delete copy.street;
+                          setPmFieldErrors(copy);
+                        }
+                      }}
+                      onBlur={(e) => handlePmBlur("pmStreet", e.target.value)}
+                      className={pmInputClass("street")}
+                      aria-invalid={!!pmFieldErrors.street}
+                      aria-describedby={
+                        pmFieldErrors.street ? "err-pm-street" : undefined
                       }
-                    }}
-                    onBlur={(e) => handlePmBlur("pmStreet", e.target.value)}
-                    className={styles.profileInput}
-                  />
-                  {pmFieldErrors.street && (
-                    <div className={styles.fieldError}>
-                      {pmFieldErrors.street}
-                    </div>
-                  )}
+                    />
+                    {pmFieldErrors.street && (
+                      <div id="err-pm-street" className={styles.fieldError}>
+                        {pmFieldErrors.street}
+                      </div>
+                    )}
+                  </div>
 
                   <input
                     type="text"
@@ -965,30 +983,40 @@ export default function EditProfile() {
                     }
                     className={styles.profileInput}
                   />
-                  <input
-                    type="text"
-                    placeholder="Postal code"
-                    value={pmBillingAddress.postalCode}
-                    onChange={(e) => {
-                      setPmBillingAddress({
-                        ...pmBillingAddress,
-                        postalCode: e.target.value,
-                      });
-                      if (pmFieldErrors.postalCode) {
-                        const copy = { ...pmFieldErrors };
-                        delete copy.postalCode;
-                        setPmFieldErrors(copy);
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Postal code"
+                      value={pmBillingAddress.postalCode}
+                      onChange={(e) => {
+                        setPmBillingAddress({
+                          ...pmBillingAddress,
+                          postalCode: e.target.value,
+                        });
+                        if (pmFieldErrors.postalCode) {
+                          const copy = { ...pmFieldErrors };
+                          delete copy.postalCode;
+                          setPmFieldErrors(copy);
+                        }
+                      }}
+                      onBlur={(e) =>
+                        handlePmBlur("pmPostalCode", e.target.value)
                       }
-                    }}
-                    onBlur={(e) => handlePmBlur("pmPostalCode", e.target.value)}
-                    className={styles.profileInput}
-                  />
-                </div>
-                {pmFieldErrors.postalCode && (
-                  <div className={styles.fieldError}>
-                    {pmFieldErrors.postalCode}
+                      className={pmInputClass("postalCode")}
+                      aria-invalid={!!pmFieldErrors.postalCode}
+                      aria-describedby={
+                        pmFieldErrors.postalCode
+                          ? "err-pm-postalCode"
+                          : undefined
+                      }
+                    />
+                    {pmFieldErrors.postalCode && (
+                      <div id="err-pm-postalCode" className={styles.fieldError}>
+                        {pmFieldErrors.postalCode}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
 
                 <select
                   value={pmBrand}
@@ -1001,8 +1029,12 @@ export default function EditProfile() {
                     }
                   }}
                   onBlur={(e) => handlePmBlur("pmBrand", e.target.value)}
-                  className={styles.profileInput}
+                  className={pmInputClass("brand")}
                   aria-label="Card brand"
+                  aria-invalid={!!pmFieldErrors.brand}
+                  aria-describedby={
+                    pmFieldErrors.brand ? "err-pm-brand" : undefined
+                  }
                 >
                   <option value="">Select a brand</option>
                   <option value="Visa">Visa</option>
@@ -1016,7 +1048,9 @@ export default function EditProfile() {
                   <option value="Other">Other</option>
                 </select>
                 {pmFieldErrors.brand && (
-                  <div className={styles.fieldError}>{pmFieldErrors.brand}</div>
+                  <div id="err-pm-brand" className={styles.fieldError}>
+                    {pmFieldErrors.brand}
+                  </div>
                 )}
 
                 <input
@@ -1040,10 +1074,14 @@ export default function EditProfile() {
                   onBlur={() =>
                     handlePmBlur("pmNumber", pmNumber, { pmNumberDigits })
                   }
-                  className={styles.profileInput}
+                  className={pmInputClass("number")}
+                  aria-invalid={!!pmFieldErrors.number}
+                  aria-describedby={
+                    pmFieldErrors.number ? "err-pm-number" : undefined
+                  }
                 />
                 {pmFieldErrors.number && (
-                  <div className={styles.fieldError}>
+                  <div id="err-pm-number" className={styles.fieldError}>
                     {pmFieldErrors.number}
                   </div>
                 )}
@@ -1064,10 +1102,16 @@ export default function EditProfile() {
                   onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
                   maxLength={4}
                   inputMode="numeric"
-                  className={styles.profileInput}
+                  className={pmInputClass("cvv")}
+                  aria-invalid={!!pmFieldErrors.cvv}
+                  aria-describedby={
+                    pmFieldErrors.cvv ? "err-pm-cvv" : undefined
+                  }
                 />
                 {pmFieldErrors.cvv && (
-                  <div className={styles.fieldError}>{pmFieldErrors.cvv}</div>
+                  <div id="err-pm-cvv" className={styles.fieldError}>
+                    {pmFieldErrors.cvv}
+                  </div>
                 )}
 
                 <div className={styles.paymentFormActions}>
