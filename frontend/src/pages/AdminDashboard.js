@@ -1,5 +1,7 @@
-import React, { useEffect } from "react";
-import { Film, Users, Percent } from "lucide-react"; // ✅ Added icons
+import React, { useEffect, useState } from "react";
+import { Film, Users, Percent } from "lucide-react";
+
+const API_BASE = "http://localhost:8080/api"; // ✅ backend base URL
 
 const styles = {
   body: {
@@ -127,6 +129,8 @@ const styles = {
 };
 
 export default function AdminDashboard() {
+  const [users, setUsers] = useState([]);
+
   useEffect(() => {
     const showScreen = (screen) => {
       const main = document.getElementById("mainScreen");
@@ -137,11 +141,43 @@ export default function AdminDashboard() {
       [main, movies, users, promos].forEach((s) => (s.style.display = "none"));
       if (screen === "main") main.style.display = "block";
       if (screen === "movies") movies.style.display = "block";
-      if (screen === "users") users.style.display = "block";
+      if (screen === "users") {
+        loadUsers(); // ✅ Fetch users dynamically
+        users.style.display = "block";
+      }
       if (screen === "promotions") promos.style.display = "block";
     };
     window.showScreen = showScreen;
   }, []);
+
+  // ✅ Load users from backend
+  const loadUsers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/users`);
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) {
+      console.error("Error loading users:", err);
+    }
+  };
+
+  // ✅ Delete user by ID
+  const deleteUser = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
+      const result = await res.json();
+      alert(result.status || result.error);
+      loadUsers(); // refresh list
+    } catch (err) {
+      console.error("Error deleting user:", err);
+    }
+  };
+
+  // ✅ Edit user placeholder (can later open a modal)
+  const editUser = (user) => {
+    alert(`Editing user: ${user.first_name} ${user.last_name}`);
+  };
 
   return (
     <div style={styles.body}>
@@ -153,75 +189,33 @@ export default function AdminDashboard() {
         {/* MAIN DASHBOARD */}
         <div id="mainScreen">
           <div style={styles.adminCards}>
-            <div
-              style={styles.adminCard}
-              onClick={() => window.showScreen("movies")}
-            >
+            <div style={styles.adminCard} onClick={() => window.showScreen("movies")}>
               <div style={styles.adminCardIcon}>
-                <Film style={styles.iconStyle} /> {/* 🎬 Movie Icon */}
+                <Film style={styles.iconStyle} />
               </div>
               <h2 style={styles.adminCardTitle}>
                 Manage<br />Movies
               </h2>
             </div>
 
-            <div
-              style={styles.adminCard}
-              onClick={() => window.showScreen("users")}
-            >
+            <div style={styles.adminCard} onClick={() => window.showScreen("users")}>
               <div style={styles.adminCardIcon}>
-                <Users style={styles.iconStyle} /> {/* 👤 Users Icon */}
+                <Users style={styles.iconStyle} />
               </div>
               <h2 style={styles.adminCardTitle}>
                 Manage<br />Users
               </h2>
             </div>
 
-            <div
-              style={styles.adminCard}
-              onClick={() => window.showScreen("promotions")}
-            >
+            <div style={styles.adminCard} onClick={() => window.showScreen("promotions")}>
               <div style={styles.adminCardIcon}>
-                <Percent style={styles.iconStyle} /> {/* 💰 Promotions Icon */}
+                <Percent style={styles.iconStyle} />
               </div>
               <h2 style={styles.adminCardTitle}>
                 Manage<br />Promotions
               </h2>
             </div>
           </div>
-        </div>
-
-        {/* MOVIES SCREEN */}
-        <div id="moviesScreen" style={{ display: "none" }}>
-          <button style={styles.backButton} onClick={() => window.showScreen("main")}>
-            ← Back to Dashboard
-          </button>
-
-          <div style={styles.managementHeader}>
-            <h2 style={{ fontSize: "28px" }}>Manage Movies</h2>
-            <button style={styles.addButton}>+ Add New Movie</button>
-          </div>
-
-          {["Movie 1", "Movie 2", "Movie 3"].map(
-            (title, i) => (
-              <div key={i} style={styles.itemCardDetailed}>
-                <div>
-                  <h3 style={styles.itemInfoTitle}>{title}</h3>
-                  <p style={styles.itemInfoSubtitle}>
-                    {i === 0
-                      ? "Movie 1 Description Placeholder"
-                      : i === 1
-                      ? "Movie 2 Description Placeholder"
-                      : "Movie 3 Description Placeholder"}
-                  </p>
-                </div>
-                <div style={styles.itemActions}>
-                  <button style={styles.btnEdit}>Edit</button>
-                  <button style={styles.btnDelete}>Delete</button>
-                </div>
-              </div>
-            )
-          )}
         </div>
 
         {/* USERS SCREEN */}
@@ -235,62 +229,42 @@ export default function AdminDashboard() {
             <button style={styles.addButton}>+ Add New User</button>
           </div>
 
-          {[
-            { name: "User 1", email: "user1@email.com", joined: "Jan 2025" },
-            { name: "User 2", email: "user2@email.com", joined: "Dec 2024" },
-            { name: "User 3", email: "user3@email.com", joined: "Oct 2024" },
-          ].map((u, i) => (
-            <div key={i} style={styles.itemCardDetailed}>
-              <div>
-                <h3 style={styles.itemInfoTitle}>{u.name}</h3>
-                <p style={styles.itemInfoSubtitle}>
-                  {u.email} • Joined: {u.joined}
-                </p>
+          {users.length === 0 ? (
+            <p>No users found.</p>
+          ) : (
+            users.map((u) => (
+              <div key={u.id} style={styles.itemCardDetailed}>
+                <div>
+                  <h3 style={styles.itemInfoTitle}>
+                    {u.first_name} {u.last_name} {u.is_suspended ? "(Suspended)" : ""}
+                  </h3>
+                  <p style={styles.itemInfoSubtitle}>
+                    {u.email} • Role: {u.role || "N/A"} • Created:{" "}
+                    {new Date(u.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div style={styles.itemActions}>
+                  <button style={styles.btnEdit} onClick={() => editUser(u)}>Edit</button>
+                  <button style={styles.btnDelete} onClick={() => deleteUser(u.id)}>Delete</button>
+                </div>
               </div>
-              <div style={styles.itemActions}>
-                <button style={styles.btnEdit}>Edit</button>
-                <button style={styles.btnDelete}>Delete</button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
-        {/* PROMOTIONS SCREEN */}
+        {/* Placeholder for Movies & Promotions Screens */}
+        <div id="moviesScreen" style={{ display: "none" }}>
+          <button style={styles.backButton} onClick={() => window.showScreen("main")}>
+            ← Back to Dashboard
+          </button>
+          <h2 style={{ fontSize: "28px" }}>Manage Movies (Coming Soon)</h2>
+        </div>
+
         <div id="promotionsScreen" style={{ display: "none" }}>
           <button style={styles.backButton} onClick={() => window.showScreen("main")}>
             ← Back to Dashboard
           </button>
-
-          <div style={styles.managementHeader}>
-            <h2 style={{ fontSize: "28px" }}>Manage Promotions</h2>
-            <button style={styles.addButton}>+ Add New Promotion</button>
-          </div>
-
-          {[
-            {
-              title: "Discount 1",
-              desc: "Discount 1 Description Placeholder",
-            },
-            {
-              title: "Discount 2",
-              desc: "Discount 2 Description Placeholder",
-            },
-            {
-              title: "Discount 3",
-              desc: "Discount 3 Description Placeholder",
-            },
-          ].map((p, i) => (
-            <div key={i} style={styles.itemCardDetailed}>
-              <div>
-                <h3 style={styles.itemInfoTitle}>{p.title}</h3>
-                <p style={styles.itemInfoSubtitle}>{p.desc}</p>
-              </div>
-              <div style={styles.itemActions}>
-                <button style={styles.btnEdit}>Edit</button>
-                <button style={styles.btnDelete}>Delete</button>
-              </div>
-            </div>
-          ))}
+          <h2 style={{ fontSize: "28px" }}>Manage Promotions (Coming Soon)</h2>
         </div>
       </div>
     </div>

@@ -148,6 +148,9 @@ public class AuthController {
                 userId = Long.valueOf(userIdObj.toString());
             }
 
+            // Assign default role (role_id = 2 for 'REGISTERED')
+            jdbc.update("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)", userId, 2);
+
             // Handle promotion subscription
             if (subscribeToPromotions != null && subscribeToPromotions) {
                 jdbc.update("INSERT INTO promotion_subscriptions (user_id, subscribed) VALUES (?, ?)", userId, true);
