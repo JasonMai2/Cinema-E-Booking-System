@@ -5,6 +5,8 @@ import { AuthProvider } from './context/AuthContext';
 import { BookingProvider } from './context/BookingContext';
 import Checkout from './pages/Checkout';
 import EditProfile from './pages/EditProfile';
+import EmailVerification from './pages/EmailVerification';
+import ForgotPassword from './pages/ForgotPassword';
 import Header from './components/Header';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -14,6 +16,7 @@ import OrderConfirmation from './pages/OrderConfirmation';
 import OrderSummary from './pages/OrderSummary';
 import React from 'react';
 import RegistrationConfirmation from './pages/RegistrationConfirmation';
+import ResetPassword from './pages/ResetPassword';
 import { SearchProvider } from './context/SearchContext';
 import SearchResults from './pages/SearchResults';
 import SeatSelection from './pages/SeatSelection';
@@ -29,6 +32,9 @@ function App() {
           <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/verify-email" element={<EmailVerification />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/movie-details" element={<MovieDetails />} />
           <Route path="/movies/:movieId" element={<MovieDetails />} />
           <Route path="/shows" element={<ShowTimes />} />

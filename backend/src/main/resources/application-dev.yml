@@ -22,3 +22,27 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
+
+  # Email configuration - Gmail SMTP (Hardcoded for project)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ebookingteam33@gmail.com
+    password: ifpk avvn ugbl tose
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+        transport:
+          protocol: smtp
+
+# Application-specific configuration
+app:
+  email:
+    from: Cinema E-Booking System <ebookingteam33@gmail.com>
+    verification:
+      subject: "Verify Your Email - Cinema E-Booking System"
+    password-reset:
+      subject: "Reset Your Password - Cinema E-Booking System"

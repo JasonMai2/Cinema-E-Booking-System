@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useId, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 
 import api from "../services/api";
 import styles from "../components/EditProfile.module.css";
@@ -6,7 +7,8 @@ import { useAuth } from "../context/AuthContext";
 import PromotionsToggle from "../components/PromotionsToggle";
 
 export default function EditProfile() {
-  const { user, login } = useAuth();
+  const { user, login, logout } = useAuth();
+  const navigate = useNavigate();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -23,6 +25,7 @@ export default function EditProfile() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [pmBrand, setPmBrand] = useState("");
   const [pmNumber, setPmNumber] = useState("");
@@ -420,7 +423,6 @@ export default function EditProfile() {
   const luhnCheck = (num) => {
     if (!num) return false;
     const digits = String(num).replace(/\D/g, "");
-    // basic length check: most cards are 13-19 digits
     if (digits.length < 12 || digits.length > 19) return false;
     let sum = 0;
     let shouldDouble = false;
@@ -436,15 +438,11 @@ export default function EditProfile() {
     return sum % 10 === 0;
   };
 
-  // NOTE: brand auto-detection removed; user should choose brand from the dropdown.
-
   // Format card number for display based on brand (Amex vs others)
   const formatCardNumber = (rawDigits, brand) => {
     if (!rawDigits) return "";
     const digits = rawDigits.replace(/\D/g, "");
-    // limit to max 19 digits
     const limited = digits.slice(0, 19);
-    // American Express: 4-6-5
     if (brand === "American Express" || /^3[47]/.test(limited)) {
       const parts = [];
       if (limited.length > 0)
@@ -454,7 +452,6 @@ export default function EditProfile() {
       if (limited.length > 10) parts.push(limited.slice(10, 15));
       return parts.join(" ").trim();
     }
-    // default grouping by 4
     return limited.replace(/(.{4})/g, "$1 ").trim();
   };
 
@@ -464,7 +461,6 @@ export default function EditProfile() {
     setPmNumber(formatted);
   }, [pmBrand, pmNumberDigits]);
 
-  // determine whether the payment form is valid enough to submit
   const validatePmFields = () => {
     const e = {};
     if (!user) e.user = "You must be signed in.";
@@ -489,6 +485,37 @@ export default function EditProfile() {
   };
 
   const isPmValid = Object.keys(validatePmFields()).length === 0;
+
+  const onDeleteAccount = async () => {
+    if (!showDeleteConfirm) {
+      setShowDeleteConfirm(true);
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await api.delete(`/auth/profile/${user?.id}`);
+      setLoading(false);
+      if (res?.data?.ok) {
+        logout();
+        navigate("/");
+      } else {
+        setMessage({
+          type: "error",
+          text: res?.data?.message || "Delete failed",
+        });
+        setShowDeleteConfirm(false);
+      }
+    } catch (err) {
+      setLoading(false);
+      setMessage({
+        type: "error",
+        text: err?.response?.data?.message || "Delete failed",
+      });
+      setShowDeleteConfirm(false);
+    }
+  };
 
   return (
     <main className={styles.profilePage}>
@@ -792,6 +819,83 @@ export default function EditProfile() {
             >
               {loading ? "Changing…" : "Change Password"}
             </button>
+            {showDeleteConfirm && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={loading}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#fff",
+                  color: "#666",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "0.9em",
+                  marginLeft: "8px",
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+
+          {/* Delete Account Section */}
+          <hr style={{ margin: "24px 0" }} />
+          <div style={{ marginBottom: "16px" }}>
+            <p
+              style={{
+                margin: "0 0 8px 0",
+                color: "#dc3545",
+                fontWeight: "500",
+              }}
+            >
+              Danger Zone
+            </p>
+            <p
+              style={{ margin: "0 0 12px 0", fontSize: "0.9em", color: "#666" }}
+            >
+              Once you delete your account, there is no going back. Please be
+              certain.
+            </p>
+            <button
+              type="button"
+              onClick={onDeleteAccount}
+              disabled={loading || !user}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: showDeleteConfirm ? "#dc3545" : "#fff",
+                color: showDeleteConfirm ? "#fff" : "#dc3545",
+                border: "1px solid #dc3545",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "0.9em",
+                fontWeight: "500",
+              }}
+            >
+              {showDeleteConfirm
+                ? "Click again to confirm deletion"
+                : "Delete Account"}
+            </button>
+            {showDeleteConfirm && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={loading}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#fff",
+                  color: "#666",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "0.9em",
+                  marginLeft: "8px",
+                }}
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </form>
 
