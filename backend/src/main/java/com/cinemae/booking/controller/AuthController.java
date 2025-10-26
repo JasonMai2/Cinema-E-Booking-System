@@ -32,7 +32,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public Map<String, Object> register(@RequestBody(required = false) Map<String, Object> payload,
-                                        HttpServletRequest request) {
+            HttpServletRequest request) {
         Map<String, Object> resp = new HashMap<>();
         try {
             // Defensive parsing: if Spring couldn't bind the JSON (payload == null),
@@ -80,14 +80,15 @@ public class AuthController {
                 }
             }
 
-            if (storeFirst == null || storeFirst.isBlank() || email == null || email.isBlank() || password == null || password.isBlank()) {
+            if (storeFirst == null || storeFirst.isBlank() || email == null || email.isBlank() || password == null
+                    || password.isBlank()) {
                 resp.put("ok", false);
                 resp.put("message", "first name, email and password are required");
                 return resp;
             }
 
             // Check existing email
-            Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE email = ?", new Object[]{email}, Integer.class);
+            Integer exists = jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE email = ?", Integer.class, email);
             if (exists != null && exists > 0) {
                 resp.put("ok", false);
                 resp.put("message", "Email already registered");
@@ -98,8 +99,10 @@ public class AuthController {
             String hashed = passwordEncoder.encode(password);
             byte[] hash = hashed.getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
-        jdbc.update("INSERT INTO users (email, password_hash, first_name, last_name, phone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
-            email, hash, storeFirst, lastName, phone, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()));
+            jdbc.update(
+                    "INSERT INTO users (email, password_hash, first_name, last_name, phone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
+                    email, hash, storeFirst, lastName, phone, new Timestamp(System.currentTimeMillis()),
+                    new Timestamp(System.currentTimeMillis()));
 
             resp.put("ok", true);
             resp.put("message", "Registered");
@@ -126,17 +129,35 @@ public class AuthController {
 
         // Fetch stored hash
         try {
-            Map<String, Object> row = jdbc.queryForMap("SELECT id, password_hash, first_name, last_name, email FROM users WHERE email = ?", email);
+            Map<String, Object> row = jdbc.queryForMap(
+                    "SELECT id, password_hash, first_name, last_name, email FROM users WHERE email = ?", email);
             byte[] stored = (byte[]) row.get("password_hash");
             String storedHash = new String(stored, java.nio.charset.StandardCharsets.UTF_8);
             if (passwordEncoder.matches(password, storedHash)) {
-        resp.put("ok", true);
-        Map<String, Object> user = new HashMap<>();
-        user.put("id", row.get("id"));
-        user.put("email", row.get("email"));
-        user.put("first_name", row.get("first_name"));
-        user.put("last_name", row.get("last_name"));
-        resp.put("user", user);
+                resp.put("ok", true);
+                Map<String, Object> user = new HashMap<>();
+                user.put("id", row.get("id"));
+                user.put("email", row.get("email"));
+                user.put("first_name", row.get("first_name"));
+                user.put("last_name", row.get("last_name"));
+
+                try {
+                    List<Map<String, Object>> subs = jdbc.queryForList(
+                            "SELECT subscribed FROM promotion_subscriptions WHERE user_id = ? LIMIT 1", row.get("id"));
+                    boolean subscribed = false;
+                    if (!subs.isEmpty()) {
+                        Object s = subs.get(0).get("subscribed");
+                        if (s instanceof Boolean)
+                            subscribed = (Boolean) s;
+                        else if (s instanceof Number)
+                            subscribed = ((Number) s).intValue() != 0;
+                    }
+                    user.put("promotions", subscribed);
+                } catch (Exception ex) {
+                    user.put("promotions", false);
+                }
+
+                resp.put("user", user);
                 return resp;
             } else {
                 resp.put("ok", false);
@@ -170,17 +191,20 @@ public class AuthController {
 
             // first_name may be provided as 'name' or 'first_name'
             if (payload.containsKey("name") || payload.containsKey("first_name")) {
-                String first = payload.containsKey("first_name") ? (String) payload.get("first_name") : (String) payload.get("name");
+                String first = payload.containsKey("first_name") ? (String) payload.get("first_name")
+                        : (String) payload.get("name");
                 setClause.append("first_name = ?");
                 params.add(first);
             }
             if (payload.containsKey("last_name")) {
-                if (setClause.length() > 0) setClause.append(", ");
+                if (setClause.length() > 0)
+                    setClause.append(", ");
                 setClause.append("last_name = ?");
                 params.add((String) payload.get("last_name"));
             }
             if (payload.containsKey("phone")) {
-                if (setClause.length() > 0) setClause.append(", ");
+                if (setClause.length() > 0)
+                    setClause.append(", ");
                 setClause.append("phone = ?");
                 params.add((String) payload.get("phone"));
             }
@@ -189,7 +213,8 @@ public class AuthController {
             if (payload.containsKey("password") && payload.get("password") != null) {
                 String pw = (String) payload.get("password");
                 if (pw != null && !pw.isBlank()) {
-                    if (setClause.length() > 0) setClause.append(", ");
+                    if (setClause.length() > 0)
+                        setClause.append(", ");
                     String hashed = passwordEncoder.encode(pw);
                     byte[] hash = hashed.getBytes(java.nio.charset.StandardCharsets.UTF_8);
                     setClause.append("password_hash = ?");
@@ -224,11 +249,15 @@ public class AuthController {
             // return updated user (use queryForList to avoid exceptions if missing)
             Map<String, Object> row = null;
             if (idObj != null) {
-                List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, email, first_name, last_name, phone FROM users WHERE id = ?", idObj);
-                if (!rows.isEmpty()) row = rows.get(0);
+                List<Map<String, Object>> rows = jdbc
+                        .queryForList("SELECT id, email, first_name, last_name, phone FROM users WHERE id = ?", idObj);
+                if (!rows.isEmpty())
+                    row = rows.get(0);
             } else {
-                List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, email, first_name, last_name, phone FROM users WHERE email = ?", email);
-                if (!rows.isEmpty()) row = rows.get(0);
+                List<Map<String, Object>> rows = jdbc.queryForList(
+                        "SELECT id, email, first_name, last_name, phone FROM users WHERE email = ?", email);
+                if (!rows.isEmpty())
+                    row = rows.get(0);
             }
 
             if (row == null) {
@@ -243,6 +272,64 @@ public class AuthController {
             user.put("first_name", row.get("first_name"));
             user.put("last_name", row.get("last_name"));
             user.put("phone", row.get("phone"));
+
+            try {
+                Object userIdObj = row.get("id");
+                Long userId = null;
+                if (userIdObj instanceof java.math.BigInteger) {
+                    userId = ((java.math.BigInteger) userIdObj).longValue();
+                } else if (userIdObj instanceof Long) {
+                    userId = (Long) userIdObj;
+                } else if (userIdObj instanceof Integer) {
+                    userId = ((Integer) userIdObj).longValue();
+                } else if (userIdObj != null) {
+                    userId = Long.valueOf(userIdObj.toString());
+                }
+
+                if (payload.containsKey("promotions") && userId != null) {
+                    Boolean desired = null;
+                    Object raw = payload.get("promotions");
+                    if (raw instanceof Boolean)
+                        desired = (Boolean) raw;
+                    else if (raw instanceof Number)
+                        desired = ((Number) raw).intValue() != 0;
+                    else if (raw instanceof String)
+                        desired = Boolean.parseBoolean((String) raw);
+
+                    if (desired != null) {
+                        if (desired) {
+                            Integer existing = jdbc.queryForObject(
+                                    "SELECT COUNT(*) FROM promotion_subscriptions WHERE user_id = ?",
+                                    Integer.class, userId);
+                            if (existing == null || existing == 0) {
+                                jdbc.update("INSERT INTO promotion_subscriptions (user_id, subscribed) VALUES (?, ?)",
+                                        userId, true);
+                            } else {
+                                jdbc.update("UPDATE promotion_subscriptions SET subscribed = ? WHERE user_id = ?", true,
+                                        userId);
+                            }
+                        } else {
+                            jdbc.update("DELETE FROM promotion_subscriptions WHERE user_id = ?", userId);
+                        }
+                    }
+                }
+
+                boolean subscribed = false;
+                if (row.get("id") != null) {
+                    List<Map<String, Object>> subs = jdbc.queryForList(
+                            "SELECT subscribed FROM promotion_subscriptions WHERE user_id = ? LIMIT 1", row.get("id"));
+                    if (!subs.isEmpty()) {
+                        Object s = subs.get(0).get("subscribed");
+                        if (s instanceof Boolean)
+                            subscribed = (Boolean) s;
+                        else if (s instanceof Number)
+                            subscribed = ((Number) s).intValue() != 0;
+                    }
+                }
+                user.put("promotions", subscribed);
+            } catch (Exception ex) {
+                user.put("promotions", false);
+            }
 
             resp.put("ok", true);
             resp.put("user", user);

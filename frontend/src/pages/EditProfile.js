@@ -264,6 +264,19 @@ export default function EditProfile() {
         ? " " + styles.inputError
         : ""
     }`;
+  const isDirty = () => {
+    if (!initialUser) return false;
+    return (
+      initialUser.first_name !== (firstName || "") ||
+      initialUser.last_name !== (lastName || "") ||
+      initialUser.phone !== (phone || "") ||
+      initialUser.billing_street !== (billingAddress.street || "") ||
+      initialUser.billing_city !== (billingAddress.city || "") ||
+      initialUser.billing_state !== (billingAddress.state || "") ||
+      initialUser.billing_postal_code !== (billingAddress.postalCode || "") ||
+      initialUser.promotions !== promotions
+    );
+  };
 
   return (
     <main className={styles.profilePage}>
@@ -273,51 +286,68 @@ export default function EditProfile() {
         <form className={styles.profileForm} onSubmit={onSave}>
           {message && (
             <div
-              className={message.type === "error" ? "error" : "success"}
-              style={{ marginBottom: 12 }}
+              className={`${styles.formMessage} ${
+                message.type === "error"
+                  ? styles.errorBadge
+                  : styles.successBadge
+              }`}
+              role="status"
+              aria-live="polite"
             >
               {message.text}
             </div>
           )}
 
-          <div>
-            <label className={styles.profileLabel}>First name</label>
-            <input
-              type="text"
-              value={firstName}
-              onChange={(e) => {
-                setFirstName(e.target.value);
-                if (errors.firstName) {
-                  const newErrors = { ...errors };
-                  delete newErrors.firstName;
-                  setErrors(newErrors);
+          <div className={styles.twoCol}>
+            <div>
+              <label className={styles.profileLabel}>First name</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => {
+                  setFirstName(e.target.value);
+                  if (errors.firstName) {
+                    const newErrors = { ...errors };
+                    delete newErrors.firstName;
+                    setErrors(newErrors);
+                  }
+                }}
+                className={inputClass("firstName")}
+                aria-invalid={!!errors.firstName}
+                aria-describedby={
+                  errors.firstName ? "err-firstName" : undefined
                 }
-              }}
-              className={inputClass("firstName")}
-            />
-            {errors.firstName && (
-              <div className={styles.fieldError}>{errors.firstName}</div>
-            )}
-          </div>
+              />
+              {errors.firstName && (
+                <div id="err-firstName" className={styles.fieldError}>
+                  {errors.firstName}
+                </div>
+              )}
+            </div>
 
-          <div>
-            <label className={styles.profileLabel}>Last name</label>
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => {
-                setLastName(e.target.value);
-                if (errors.lastName) {
-                  const newErrors = { ...errors };
-                  delete newErrors.lastName;
-                  setErrors(newErrors);
-                }
-              }}
-              className={inputClass("lastName")}
-            />
-            {errors.lastName && (
-              <div className={styles.fieldError}>{errors.lastName}</div>
-            )}
+            <div>
+              <label className={styles.profileLabel}>Last name</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  if (errors.lastName) {
+                    const newErrors = { ...errors };
+                    delete newErrors.lastName;
+                    setErrors(newErrors);
+                  }
+                }}
+                className={inputClass("lastName")}
+                aria-invalid={!!errors.lastName}
+                aria-describedby={errors.lastName ? "err-lastName" : undefined}
+              />
+              {errors.lastName && (
+                <div id="err-lastName" className={styles.fieldError}>
+                  {errors.lastName}
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
@@ -328,7 +358,18 @@ export default function EditProfile() {
               onChange={(e) => setEmail(e.target.value)}
               className={styles.profileInput}
               disabled
+              aria-disabled
             />
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                marginTop: 6,
+              }}
+            >
+              Your email is your account identifier and can't be changed
+              here.
+            </div>
           </div>
 
           <div>
@@ -346,6 +387,7 @@ export default function EditProfile() {
               }}
               placeholder="e.g. +1 (555) 555-5555"
               className={inputClass("phone")}
+              aria-invalid={!!errors.phone}
             />
             {errors.phone && (
               <div className={styles.fieldError}>{errors.phone}</div>
@@ -423,35 +465,37 @@ export default function EditProfile() {
             <button
               type="submit"
               className={styles.btnSave}
-              disabled={
-                loading ||
-                !user ||
-                (initialUser &&
-                  initialUser.first_name === firstName &&
-                  (initialUser.last_name || "") === (lastName || "") &&
-                  (initialUser.email || "") === (email || "") &&
-                  (initialUser.phone || "") === (phone || "") &&
-                  (initialUser.billing_street || "") ===
-                    (billingAddress.street || "") &&
-                  (initialUser.billing_city || "") ===
-                    (billingAddress.city || "") &&
-                  (initialUser.billing_state || "") ===
-                    (billingAddress.state || "") &&
-                  (initialUser.billing_postal_code || "") ===
-                    (billingAddress.postalCode || "") &&
-                  initialUser.promotions === promotions)
-              }
+              disabled={loading || !user || !isDirty()}
+              aria-disabled={loading || !user || !isDirty()}
             >
-              {loading ? "Saving…" : "Save Profile"}
+              {loading ? (
+                <>
+                  <span className={styles.spinner} aria-hidden /> Saving…
+                </>
+              ) : (
+                "Save Profile"
+              )}
             </button>
-            <button
-              type="button"
-              className={styles.btnCancel}
-              onClick={onCancel}
-              disabled={loading || !user}
-            >
-              Cancel
-            </button>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {isDirty() && (
+                <div
+                  className={styles.dirtyIndicator}
+                  title="You have unsaved changes"
+                >
+                  <span className={styles.dirtyDot} aria-hidden /> Unsaved
+                </div>
+              )}
+              <button
+                type="button"
+                className={styles.btnCancel}
+                onClick={onCancel}
+                disabled={loading || !user}
+                aria-disabled={loading || !user}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </form>
 
@@ -547,38 +591,55 @@ export default function EditProfile() {
               mode).
             </div>
           ) : (
-            <ul>
+            <div className={styles.paymentList}>
               {paymentMethods.map((m) => (
-                <li key={m.id} style={{ marginBottom: 8 }}>
-                  {m.brand || "Card"} ****{m.last4 || "----"} exp{" "}
-                  {m.exp_month || "--"}/{m.exp_year || "--"}
-                  <button
-                    style={{ marginLeft: 8 }}
-                    onClick={async (ev) => {
-                      ev.preventDefault();
-                      try {
-                        const res = await api.delete(
-                          `/payment-methods/${m.id}`
+                <div key={m.id} className={styles.paymentCard}>
+                  <div className={styles.paymentInfo}>
+                    <strong>{m.brand || "Card"}</strong>
+                    <div style={{ color: "var(--text-secondary)" }}>
+                      ****{m.last4 || "----"} • exp {m.exp_month || "--"}/
+                      {m.exp_year || "--"}
+                    </div>
+                  </div>
+                  <div>
+                    <button
+                      className={styles.removeBtn}
+                      onClick={async (ev) => {
+                        ev.preventDefault();
+                        const ok = window.confirm(
+                          "Remove this payment method?"
                         );
-                        if (res?.data?.ok)
-                          setPaymentMethods(
-                            paymentMethods.filter((pm) => pm.id !== m.id)
+                        if (!ok) return;
+                        try {
+                          const res = await api.delete(
+                            `/payment-methods/${m.id}`
                           );
-                      } catch (e) {
-                        // show ephemeral error
-                        setMessage({
-                          type: "error",
-                          text: "Unable to remove payment method",
-                        });
-                        setTimeout(() => setMessage(null), 3000);
-                      }
-                    }}
-                  >
-                    Remove
-                  </button>
-                </li>
+                          if (res?.data?.ok)
+                            setPaymentMethods(
+                              paymentMethods.filter((pm) => pm.id !== m.id)
+                            );
+                          else {
+                            setMessage({
+                              type: "error",
+                              text: res?.data?.message || "Unable to remove",
+                            });
+                            setTimeout(() => setMessage(null), 2500);
+                          }
+                        } catch (e) {
+                          setMessage({
+                            type: "error",
+                            text: "Unable to remove payment method",
+                          });
+                          setTimeout(() => setMessage(null), 3000);
+                        }
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
 
           <div style={{ marginTop: 8 }}>
@@ -628,10 +689,9 @@ export default function EditProfile() {
                     setPmToken("");
                     setPmBrand("");
                     setPmLast4("");
-                  } else {
                     setMessage({
-                      type: "error",
-                      text: res?.data?.message || "Save failed",
+                      type: "success",
+                      text: "Payment method saved",
                     });
                     setTimeout(() => setMessage(null), 2500);
                   }

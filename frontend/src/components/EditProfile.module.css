@@ -47,6 +47,12 @@
   box-sizing: border-box;
 }
 
+.profileInput[disabled],
+.profileInput[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
 .profileActions {
   display: flex;
   gap: 10px;
@@ -95,4 +101,99 @@
   padding: 8px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.05);
+}
+
+.successBadge {
+  background: rgba(40, 167, 69, 0.12);
+  border: 1px solid rgba(40, 167, 69, 0.2);
+  color: #28a745;
+}
+
+.errorBadge {
+  background: rgba(231, 76, 60, 0.08);
+  border: 1px solid rgba(231, 76, 60, 0.16);
+  color: #e74c3c;
+}
+
+/* two column helpers for wider screens */
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* spinner for buttons */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--text-primary);
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* payment list */
+.paymentList {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.paymentCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.paymentInfo {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.removeBtn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #ff7b7b;
+  cursor: pointer;
+}
+
+.removeBtn:hover {
+  background: rgba(231, 76, 60, 0.06);
+}
+
+.dirtyIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.dirtyDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f0ad4e;
 }
