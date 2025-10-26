@@ -96,6 +96,129 @@ export default function EditProfile() {
     }
   }, [user]);
 
+  const validateField = (fieldName, value) => {
+    switch (fieldName) {
+      case "firstName":
+        if (!value || value.trim().length === 0) {
+          return "First name is required.";
+        }
+        break;
+      case "lastName":
+        if (!value || value.trim().length === 0) {
+          return "Last name is required.";
+        }
+        break;
+      case "phone":
+        if (value && !/^\+?[0-9\s()-]{7,15}$/.test(value)) {
+          return "Enter a valid phone number.";
+        }
+        break;
+      case "postalCode":
+        if (value && !/^[A-Za-z0-9 \-]{3,10}$/.test(value)) {
+          return "Enter a valid postal code.";
+        }
+        break;
+      case "currentPassword":
+        if (!value || value.length === 0) {
+          return "Current password is required.";
+        }
+        break;
+      case "newPassword":
+        if (!value || value.length < 4) {
+          return "New password must be at least 4 characters.";
+        }
+        break;
+      case "confirmPassword":
+        if (value !== password) {
+          return "Passwords do not match.";
+        }
+        break;
+      default:
+        return null;
+    }
+    return null;
+  };
+
+  const handleBlur = (fieldName, value) => {
+    const error = validateField(fieldName, value);
+    setErrors((prev) => {
+      if (error) {
+        return { ...prev, [fieldName]: error };
+      } else {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      }
+    });
+  };
+
+  const validatePmField = (fieldName, value, additionalContext = {}) => {
+    switch (fieldName) {
+      case "pmName":
+        if (!value || value.trim().length === 0) {
+          return "Cardholder name is required.";
+        }
+        break;
+      case "pmBrand":
+        if (!value || value.trim().length === 0) {
+          return "Select a card brand.";
+        }
+        break;
+      case "pmNumber":
+        if (!additionalContext.pmNumberDigits) {
+          return "Card number is required.";
+        }
+        if (!luhnCheck(additionalContext.pmNumberDigits)) {
+          return "Enter a valid card number.";
+        }
+        break;
+      case "pmCvv":
+        if (!value) {
+          return "CVV is required.";
+        }
+        if (!/^\d{3,4}$/.test(value)) {
+          return "Enter a valid CVV (3-4 digits).";
+        }
+        break;
+      case "pmStreet":
+        if (!value || value.trim().length === 0) {
+          return "Billing street is required.";
+        }
+        break;
+      case "pmPostalCode":
+        if (!value || value.trim().length === 0) {
+          return "Postal code is required.";
+        }
+        break;
+      default:
+        return null;
+    }
+    return null;
+  };
+
+  const handlePmBlur = (fieldName, value, additionalContext = {}) => {
+    const error = validatePmField(fieldName, value, additionalContext);
+    setPmFieldErrors((prev) => {
+      if (error) {
+        return { ...prev, [fieldName.replace("pm", "").toLowerCase()]: error };
+      } else {
+        const newErrors = { ...prev };
+        const key = fieldName.replace("pm", "").toLowerCase();
+        delete newErrors[key];
+        if (fieldName === "pmStreet") {
+          delete newErrors.street;
+        }
+        if (fieldName === "pmPostalCode") {
+          delete newErrors.postalCode;
+        }
+        if (fieldName === "pmNumber") {
+          delete newErrors.number;
+        }
+        return newErrors;
+      }
+    });
+  };
+
   const validateProfile = () => {
     const errs = {};
     if (!firstName || firstName.trim().length === 0) {
@@ -395,6 +518,7 @@ export default function EditProfile() {
                     setErrors(newErrors);
                   }
                 }}
+                onBlur={(e) => handleBlur("firstName", e.target.value)}
                 className={inputClass("firstName")}
                 aria-invalid={!!errors.firstName}
                 aria-describedby={
@@ -421,6 +545,7 @@ export default function EditProfile() {
                     setErrors(newErrors);
                   }
                 }}
+                onBlur={(e) => handleBlur("lastName", e.target.value)}
                 className={inputClass("lastName")}
                 aria-invalid={!!errors.lastName}
                 aria-describedby={errors.lastName ? "err-lastName" : undefined}
@@ -467,6 +592,7 @@ export default function EditProfile() {
                   setErrors(newErrors);
                 }
               }}
+              onBlur={(e) => handleBlur("phone", e.target.value)}
               placeholder="e.g. +1 (555) 555-5555"
               className={inputClass("phone")}
               aria-invalid={!!errors.phone}
@@ -529,6 +655,7 @@ export default function EditProfile() {
                   setErrors(newErrors);
                 }
               }}
+              onBlur={(e) => handleBlur("postalCode", e.target.value)}
               className={inputClass("postalCode")}
             />
             {errors.postalCode && (
@@ -598,6 +725,7 @@ export default function EditProfile() {
                   setErrors(newErrors);
                 }
               }}
+              onBlur={(e) => handleBlur("currentPassword", e.target.value)}
               placeholder="Enter current password"
               className={inputClass("currentPassword")}
             />
@@ -619,6 +747,7 @@ export default function EditProfile() {
                   setErrors(newErrors);
                 }
               }}
+              onBlur={(e) => handleBlur("newPassword", e.target.value)}
               placeholder="Enter new password"
               className={inputClass("newPassword")}
             />
@@ -640,6 +769,7 @@ export default function EditProfile() {
                   setErrors(newErrors);
                 }
               }}
+              onBlur={(e) => handleBlur("confirmPassword", e.target.value)}
               placeholder="Confirm new password"
               className={inputClass("confirmPassword")}
             />
@@ -776,6 +906,7 @@ export default function EditProfile() {
                       setPmFieldErrors(copy);
                     }
                   }}
+                  onBlur={(e) => handlePmBlur("pmName", e.target.value)}
                   className={styles.profileInput}
                 />
                 {pmFieldErrors.name && (
@@ -798,6 +929,7 @@ export default function EditProfile() {
                         setPmFieldErrors(copy);
                       }
                     }}
+                    onBlur={(e) => handlePmBlur("pmStreet", e.target.value)}
                     className={styles.profileInput}
                   />
                   {pmFieldErrors.street && (
@@ -848,6 +980,7 @@ export default function EditProfile() {
                         setPmFieldErrors(copy);
                       }
                     }}
+                    onBlur={(e) => handlePmBlur("pmPostalCode", e.target.value)}
                     className={styles.profileInput}
                   />
                 </div>
@@ -867,6 +1000,7 @@ export default function EditProfile() {
                       setPmFieldErrors(copy);
                     }
                   }}
+                  onBlur={(e) => handlePmBlur("pmBrand", e.target.value)}
                   className={styles.profileInput}
                   aria-label="Card brand"
                 >
@@ -903,6 +1037,9 @@ export default function EditProfile() {
                       setPmFieldErrors(copy);
                     }
                   }}
+                  onBlur={() =>
+                    handlePmBlur("pmNumber", pmNumber, { pmNumberDigits })
+                  }
                   className={styles.profileInput}
                 />
                 {pmFieldErrors.number && (
@@ -924,6 +1061,7 @@ export default function EditProfile() {
                       setPmFieldErrors(copy);
                     }
                   }}
+                  onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
                   maxLength={4}
                   inputMode="numeric"
                   className={styles.profileInput}
