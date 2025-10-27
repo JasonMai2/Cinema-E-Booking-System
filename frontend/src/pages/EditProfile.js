@@ -819,84 +819,6 @@ export default function EditProfile() {
             >
               {loading ? "Changing…" : "Change Password"}
             </button>
-            {showDeleteConfirm && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={loading}
-                style={{
-                  padding: "8px 16px",
-                  backgroundColor: "#fff",
-                  color: "#666",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "0.9em",
-                  marginLeft: "8px",
-                }}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-
-          {/* Delete Account Section */}
-          <div style={{ margin: "24px 0", borderTop: "1px solid #ddd" }}></div>
-
-          <div style={{ marginBottom: "16px" }}>
-            <p
-              style={{
-                margin: "0 0 8px 0",
-                color: "#dc3545",
-                fontWeight: "500",
-              }}
-            >
-              Danger Zone
-            </p>
-            <p
-              style={{ margin: "0 0 12px 0", fontSize: "0.9em", color: "#666" }}
-            >
-              Once you delete your account, there is no going back. Please be
-              certain.
-            </p>
-            <button
-              type="button"
-              onClick={onDeleteAccount}
-              disabled={loading || !user}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: showDeleteConfirm ? "#dc3545" : "#fff",
-                color: showDeleteConfirm ? "#fff" : "#dc3545",
-                border: "1px solid #dc3545",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.9em",
-                fontWeight: "500",
-              }}
-            >
-              {showDeleteConfirm
-                ? "Click again to confirm deletion"
-                : "Delete Account"}
-            </button>
-            {showDeleteConfirm && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={loading}
-                style={{
-                  padding: "8px 16px",
-                  backgroundColor: "#fff",
-                  color: "#666",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "0.9em",
-                  marginLeft: "8px",
-                }}
-              >
-                Cancel
-              </button>
-            )}
           </div>
         </form>
 
@@ -975,7 +897,7 @@ export default function EditProfile() {
                   onClick={() => setShowPaymentForm(true)}
                   role="button"
                   tabIndex={0}
-                  onKeyPress={(e) => {
+                  onKeyUp={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       setShowPaymentForm(true);
                     }
@@ -1253,7 +1175,9 @@ export default function EditProfile() {
                         const payload = {
                           user_id: user.id,
                           provider: "dev",
-                          provider_token: `tok_${Date.now()}_${pmNumberDigits.slice(-4)}`, // Mock token for dev mode
+                          provider_token: `tok_${Date.now()}_${pmNumberDigits.slice(
+                            -4
+                          )}`, // Mock token for dev mode
                           brand: pmBrand,
                           last4: masked(pmNumberDigits),
                           billing_address: billingAddressStr,
@@ -1265,11 +1189,13 @@ export default function EditProfile() {
                             payload
                           );
                           if (res?.data?.ok) {
-                            const refreshRes = await api.get(`/payment-methods?userId=${user.id}`);
+                            const refreshRes = await api.get(
+                              `/payment-methods?userId=${user.id}`
+                            );
                             if (refreshRes?.data?.ok) {
                               setPaymentMethods(refreshRes.data.methods || []);
                             }
-                            
+
                             // Reset form
                             setPmBrand("");
                             setPmNumber("");
@@ -1337,6 +1263,63 @@ export default function EditProfile() {
             >
               You have reached the maximum of 3 payment methods.
             </div>
+          )}
+        </div>
+
+        <div style={{ margin: "24px 0", borderTop: "1px solid #ddd" }}></div>
+
+        {/* Delete Account Section */}
+        <div style={{ marginBottom: "16px" }}>
+          <p
+            style={{
+              margin: "0 0 8px 0",
+              color: "#dc3545",
+              fontWeight: "500",
+            }}
+          >
+            Danger Zone
+          </p>
+          <p style={{ margin: "0 0 12px 0", fontSize: "0.9em", color: "#666" }}>
+            Once you delete your account, there is no going back. Please be
+            certain.
+          </p>
+          <button
+            type="button"
+            onClick={onDeleteAccount}
+            disabled={loading || !user}
+            style={{
+              padding: "8px 16px",
+              backgroundColor: showDeleteConfirm ? "#dc3545" : "#fff",
+              color: showDeleteConfirm ? "#fff" : "#dc3545",
+              border: "1px solid #dc3545",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "0.9em",
+              fontWeight: "500",
+            }}
+          >
+            {showDeleteConfirm
+              ? "Click again to confirm deletion"
+              : "Delete Account"}
+          </button>
+          {showDeleteConfirm && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={loading}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#fff",
+                color: "#666",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "0.9em",
+                marginLeft: "8px",
+              }}
+            >
+              Cancel
+            </button>
           )}
         </div>
       </section>
