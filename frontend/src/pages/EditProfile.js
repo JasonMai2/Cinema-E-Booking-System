@@ -741,7 +741,7 @@ export default function EditProfile() {
           </div>
         </form>
 
-        <hr />
+        <div style={{ margin: "24px 0", borderTop: "1px solid #ddd" }}></div>
 
         <h3>Change Password</h3>
         <form className={styles.profileForm} onSubmit={onChangePassword}>
@@ -841,7 +841,8 @@ export default function EditProfile() {
           </div>
 
           {/* Delete Account Section */}
-          <hr style={{ margin: "24px 0" }} />
+          <div style={{ margin: "24px 0", borderTop: "1px solid #ddd" }}></div>
+
           <div style={{ marginBottom: "16px" }}>
             <p
               style={{
@@ -899,7 +900,7 @@ export default function EditProfile() {
           </div>
         </form>
 
-        <hr />
+        <div style={{ margin: "24px 0", borderTop: "1px solid #ddd" }}></div>
 
         <div style={{ marginTop: 12 }}>
           <h3 style={{ margin: "6px 0 12px 0" }}>Payment Methods</h3>
@@ -1145,11 +1146,6 @@ export default function EditProfile() {
                   <option value="Mastercard">Mastercard</option>
                   <option value="American Express">American Express</option>
                   <option value="Discover">Discover</option>
-                  <option value="JCB">JCB</option>
-                  <option value="Diners Club">Diners Club</option>
-                  <option value="UnionPay">UnionPay</option>
-                  <option value="Maestro">Maestro</option>
-                  <option value="Other">Other</option>
                 </select>
                 {pmFieldErrors.brand && (
                   <div id="err-pm-brand" className={styles.fieldError}>
