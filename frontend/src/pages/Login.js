@@ -13,9 +13,18 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { login: authLogin } = useAuth();
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   // Handle messages from navigation state (like from email verification)
   useEffect(() => {
@@ -150,6 +159,12 @@ export default function Login() {
       const res = await api.post('/auth/login', { email, password });
       setLoading(false);
       if (res?.data?.ok) {
+        if (rememberMe) {
+          localStorage.setItem('rememberedEmail', email);
+        } else {
+          localStorage.removeItem('rememberedEmail');
+        }
+        
         // set auth user (backend returns { ok: true, user: { ... } })
         if (res.data.user) {
           authLogin(res.data.user);
@@ -309,6 +324,36 @@ export default function Login() {
                 disabled={loading}
               />
             </label>
+
+            {/* Remember Me Checkbox */}
+            <div style={{ margin: "12px 0" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "8px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  userSelect: "none",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={loading}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    marginTop: "2px",
+                    accentColor: "#dc3545",
+                    cursor: "pointer",
+                  }}
+                />
+                <span style={{ cursor: "pointer" }}>Remember Me</span>
+              </label>
+            </div>
 
             <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: "12px" }}>
               <span
