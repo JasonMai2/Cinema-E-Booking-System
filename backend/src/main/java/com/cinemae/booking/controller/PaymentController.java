@@ -94,17 +94,85 @@ public class PaymentController {
                 return resp;
             }
 
-            // Only allow updating billing_address for security
             String billing = (String) payload.getOrDefault("billing_address", null);
+            String brand = (String) payload.getOrDefault("brand", null);
+            String providerToken = (String) payload.getOrDefault("provider_token", null);
+            String last4 = (String) payload.getOrDefault("last4", null);
+            Number expMonth = (Number) payload.getOrDefault("exp_month", null);
+            Number expYear = (Number) payload.getOrDefault("exp_year", null);
 
-            if (billing == null) {
-                resp.put("ok", false);
-                resp.put("message", "billing_address is required");
-                return resp;
+            StringBuilder updateQuery = new StringBuilder("UPDATE payment_methods SET ");
+            boolean first = true;
+
+            if (billing != null) {
+                updateQuery.append("billing_address = ?");
+                first = false;
+            }
+            if (brand != null) {
+                if (!first) {
+                    updateQuery.append(", ");
+                }
+                updateQuery.append("brand = ?");
+                first = false;
+            }
+            if (providerToken != null) {
+                if (!first) {
+                    updateQuery.append(", ");
+                }
+                updateQuery.append("provider_token = ?");
+                first = false;
+            }
+            if (last4 != null) {
+                if (!first) {
+                    updateQuery.append(", ");
+                }
+                updateQuery.append("last4 = ?");
+                first = false;
+            }
+            if (expMonth != null) {
+                if (!first) {
+                    updateQuery.append(", ");
+                }
+                updateQuery.append("exp_month = ?");
+                first = false;
+            }
+            if (expYear != null) {
+                if (!first) {
+                    updateQuery.append(", ");
+                }
+                updateQuery.append("exp_year = ?");
+                first = false;
             }
 
-            jdbc.update("UPDATE payment_methods SET billing_address = ?, updated_at = ? WHERE id = ?",
-                    billing, new Timestamp(System.currentTimeMillis()), id);
+            if (!first) {
+                updateQuery.append(", ");
+            }
+            updateQuery.append("updated_at = ? WHERE id = ?");
+
+            java.util.ArrayList<Object> params = new java.util.ArrayList<>();
+            if (billing != null) {
+                params.add(billing);
+            }
+            if (brand != null) {
+                params.add(brand);
+            }
+            if (providerToken != null) {
+                params.add(providerToken);
+            }
+            if (last4 != null) {
+                params.add(last4);
+            }
+            if (expMonth != null) {
+                params.add(expMonth.intValue());
+            }
+            if (expYear != null) {
+                params.add(expYear.intValue());
+            }
+            params.add(new Timestamp(System.currentTimeMillis()));
+            params.add(id);
+
+            String finalQuery = updateQuery.toString();
+            jdbc.update(finalQuery, params.toArray());
 
             Map<String, Object> method = jdbc.queryForMap("SELECT id, provider, provider_token, brand, last4, exp_month, exp_year, is_default, billing_address, created_at, updated_at FROM payment_methods WHERE id = ?", id);
 

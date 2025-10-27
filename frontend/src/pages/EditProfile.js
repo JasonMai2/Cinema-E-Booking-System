@@ -585,21 +585,19 @@ export default function EditProfile() {
       }
     }
 
-    let last4Digits = "••••";
+    // Get the full card number from provider_token
+    let cardNumber = "";
     if (paymentMethod.provider_token) {
-      const cardNum = String(paymentMethod.provider_token);
-      last4Digits = cardNum.slice(-4);
+      cardNumber = String(paymentMethod.provider_token);
     }
 
     setEditingPaymentId(paymentMethod.id);
     setPmName(nameOnCard || paymentMethod.cardholder_name || "");
     setPmBrand(paymentMethod.brand || "");
-    setPmNumber(`•••• •••• •••• ${last4Digits}`);
-    setPmNumberDigits(last4Digits);
+    setPmNumberDigits(cardNumber);
+    // The formatted number will be set by the useEffect hook
     setPmBillingAddress(billing);
-    setPmCvv(
-      paymentMethod.last4 ? "•".repeat(String(paymentMethod.last4).length) : ""
-    );
+    setPmCvv(paymentMethod.last4 ? String(paymentMethod.last4) : "");
     setPmExpMonth(
       paymentMethod.exp_month ? String(paymentMethod.exp_month) : ""
     );
@@ -628,20 +626,7 @@ export default function EditProfile() {
   };
 
   const handleSaveEditPayment = async (paymentId) => {
-    // Only validate billing address for edit mode
-    const errors = {};
-    if (
-      !pmBillingAddress.street ||
-      pmBillingAddress.street.trim().length === 0
-    ) {
-      errors.street = "Billing street is required.";
-    }
-    if (
-      !pmBillingAddress.postalCode ||
-      pmBillingAddress.postalCode.trim().length === 0
-    ) {
-      errors.postalCode = "Postal code is required.";
-    }
+    const errors = validatePmFields();
 
     if (Object.keys(errors).length > 0) {
       setPmFieldErrors(errors);
@@ -659,6 +644,11 @@ export default function EditProfile() {
       });
       const payload = {
         billing_address: billingAddressStr,
+        brand: pmBrand,
+        provider_token: pmNumberDigits,
+        exp_month: parseInt(pmExpMonth, 10),
+        exp_year: parseInt(pmExpYear, 10),
+        last4: pmCvv,
       };
 
       const res = await api.put(`/payment-methods/${paymentId}`, payload);
@@ -672,14 +662,14 @@ export default function EditProfile() {
 
         setMessage({
           type: "success",
-          text: "Billing address updated successfully",
+          text: "Payment method updated successfully",
         });
         setTimeout(() => setMessage(null), 2500);
         handleCancelPaymentForm();
       } else {
         setMessage({
           type: "error",
-          text: res?.data?.message || "Failed to update billing address",
+          text: res?.data?.message || "Failed to update payment method",
         });
         setTimeout(() => setMessage(null), 2500);
       }
@@ -687,7 +677,7 @@ export default function EditProfile() {
       const serverMsg =
         err?.response?.data?.message ||
         err?.message ||
-        "Failed to update billing address";
+        "Failed to update payment method";
       setMessage({ type: "error", text: serverMsg });
       setTimeout(() => setMessage(null), 3000);
     } finally {
@@ -1130,7 +1120,7 @@ export default function EditProfile() {
                 <div className={styles.paymentFormHeader}>
                   <h4 className={styles.paymentFormTitle}>
                     {paymentFormMode === "edit"
-                      ? "Edit Billing Address"
+                      ? "Edit Payment Method"
                       : "Add Payment Method"}
                   </h4>
                   <button
@@ -1142,7 +1132,7 @@ export default function EditProfile() {
                 </div>
 
                 <div className={styles.profileForm}>
-                  {/* Cardholder name - read-only in edit mode */}
+                  {/* Cardholder name - editable in both modes */}
                   <div>
                     <label className={styles.profileLabel}>
                       Cardholder Name
@@ -1152,7 +1142,6 @@ export default function EditProfile() {
                       placeholder="Cardholder name"
                       value={pmName}
                       onChange={(e) => {
-                        if (paymentFormMode === "edit") return;
                         setPmName(e.target.value);
                         if (pmFieldErrors.name) {
                           const copy = { ...pmFieldErrors };
@@ -1160,12 +1149,8 @@ export default function EditProfile() {
                           setPmFieldErrors(copy);
                         }
                       }}
-                      onBlur={(e) =>
-                        paymentFormMode === "add" &&
-                        handlePmBlur("pmName", e.target.value)
-                      }
+                      onBlur={(e) => handlePmBlur("pmName", e.target.value)}
                       className={pmInputClass("name")}
-                      disabled={paymentFormMode === "edit"}
                       aria-invalid={!!pmFieldErrors.name}
                       aria-describedby={
                         pmFieldErrors.name ? "err-pm-name" : undefined
@@ -1287,13 +1272,12 @@ export default function EditProfile() {
                     </div>
                   </div>
 
-                  {/* Card Brand - read-only in edit mode */}
+                  {/* Card Brand - editable in both modes */}
                   <div>
                     <label className={styles.profileLabel}>Card Brand</label>
                     <select
                       value={pmBrand}
                       onChange={(e) => {
-                        if (paymentFormMode === "edit") return;
                         setPmBrand(e.target.value);
                         if (pmFieldErrors.brand) {
                           const copy = { ...pmFieldErrors };
@@ -1301,12 +1285,8 @@ export default function EditProfile() {
                           setPmFieldErrors(copy);
                         }
                       }}
-                      onBlur={(e) =>
-                        paymentFormMode === "add" &&
-                        handlePmBlur("pmBrand", e.target.value)
-                      }
+                      onBlur={(e) => handlePmBlur("pmBrand", e.target.value)}
                       className={pmInputClass("brand")}
-                      disabled={paymentFormMode === "edit"}
                       aria-label="Card brand"
                       aria-invalid={!!pmFieldErrors.brand}
                       aria-describedby={
@@ -1326,7 +1306,7 @@ export default function EditProfile() {
                     )}
                   </div>
 
-                  {/* Card Number - shown in both modes but read-only in edit */}
+                  {/* Card Number - editable in both modes */}
                   <div>
                     <label className={styles.profileLabel}>Card Number</label>
                     <input
@@ -1336,7 +1316,6 @@ export default function EditProfile() {
                       placeholder="Card number"
                       value={pmNumber}
                       onChange={(e) => {
-                        if (paymentFormMode === "edit") return;
                         const raw = e.target.value;
                         const digits = raw.replace(/\D/g, "");
                         setPmNumberDigits(digits);
@@ -1349,11 +1328,9 @@ export default function EditProfile() {
                         }
                       }}
                       onBlur={() =>
-                        paymentFormMode === "add" &&
                         handlePmBlur("pmNumber", pmNumber, { pmNumberDigits })
                       }
                       className={pmInputClass("number")}
-                      disabled={paymentFormMode === "edit"}
                       aria-invalid={!!pmFieldErrors.number}
                       aria-describedby={
                         pmFieldErrors.number ? "err-pm-number" : undefined
@@ -1366,7 +1343,7 @@ export default function EditProfile() {
                     )}
                   </div>
 
-                  {/* Expiration Date - shown in both modes but read-only in edit */}
+                  {/* Expiration Date - editable in both modes */}
                   <div className={styles.twoCol}>
                     <div>
                       <label className={styles.profileLabel}>
@@ -1377,7 +1354,6 @@ export default function EditProfile() {
                         placeholder="MM (1-12)"
                         value={pmExpMonth}
                         onChange={(e) => {
-                          if (paymentFormMode === "edit") return;
                           const digits = e.target.value.replace(/\D/g, "");
                           setPmExpMonth(digits.slice(0, 2));
                           if (pmFieldErrors.expmonth) {
@@ -1387,13 +1363,11 @@ export default function EditProfile() {
                           }
                         }}
                         onBlur={(e) =>
-                          paymentFormMode === "add" &&
                           handlePmBlur("pmExpMonth", e.target.value)
                         }
                         maxLength={2}
                         inputMode="numeric"
                         className={pmInputClass("expmonth")}
-                        disabled={paymentFormMode === "edit"}
                         aria-invalid={!!pmFieldErrors.expmonth}
                         aria-describedby={
                           pmFieldErrors.expmonth ? "err-pm-expmonth" : undefined
@@ -1415,7 +1389,6 @@ export default function EditProfile() {
                         placeholder="YYYY"
                         value={pmExpYear}
                         onChange={(e) => {
-                          if (paymentFormMode === "edit") return;
                           const digits = e.target.value.replace(/\D/g, "");
                           setPmExpYear(digits.slice(0, 4));
                           if (pmFieldErrors.expyear) {
@@ -1425,13 +1398,11 @@ export default function EditProfile() {
                           }
                         }}
                         onBlur={(e) =>
-                          paymentFormMode === "add" &&
                           handlePmBlur("pmExpYear", e.target.value)
                         }
                         maxLength={4}
                         inputMode="numeric"
                         className={pmInputClass("expyear")}
-                        disabled={paymentFormMode === "edit"}
                         aria-invalid={!!pmFieldErrors.expyear}
                         aria-describedby={
                           pmFieldErrors.expyear ? "err-pm-expyear" : undefined
@@ -1445,21 +1416,14 @@ export default function EditProfile() {
                     </div>
                   </div>
 
-                  {/* CVV - shown in both modes but masked and read-only in edit */}
+                  {/* CVV - editable in both modes */}
                   <div>
                     <label className={styles.profileLabel}>CVV</label>
                     <input
                       type="text"
-                      placeholder={
-                        paymentFormMode === "edit"
-                          ? "CVV (hidden for security)"
-                          : "CVV"
-                      }
+                      placeholder="CVV"
                       value={pmCvv}
                       onChange={(e) => {
-                        if (paymentFormMode === "edit") {
-                          return;
-                        }
                         const digits = e.target.value.replace(/\D/g, "");
                         setPmCvv(digits.slice(0, 4));
                         if (pmFieldErrors.cvv) {
@@ -1468,14 +1432,10 @@ export default function EditProfile() {
                           setPmFieldErrors(copy);
                         }
                       }}
-                      onBlur={(e) =>
-                        paymentFormMode === "add" &&
-                        handlePmBlur("pmCvv", e.target.value)
-                      }
+                      onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
                       maxLength={4}
                       inputMode="numeric"
                       className={pmInputClass("cvv")}
-                      disabled={paymentFormMode === "edit"}
                       aria-invalid={!!pmFieldErrors.cvv}
                       aria-describedby={
                         pmFieldErrors.cvv ? "err-pm-cvv" : undefined
@@ -1603,12 +1563,10 @@ export default function EditProfile() {
                         }
                       }}
                       className={styles.btnAddCard}
-                      disabled={
-                        paymentFormMode === "add" ? !isPmValid : pmLoading
-                      }
+                      disabled={!isPmValid || pmLoading}
                       title={
                         paymentFormMode === "edit"
-                          ? "Update billing address"
+                          ? "Update payment method"
                           : "Save payment method"
                       }
                     >
@@ -1618,7 +1576,7 @@ export default function EditProfile() {
                           Saving…
                         </>
                       ) : paymentFormMode === "edit" ? (
-                        "Update Billing Address"
+                        "Update Payment Method"
                       ) : (
                         "Add Card"
                       )}
