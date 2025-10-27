@@ -483,6 +483,50 @@ public class AuthController {
                     user.put("promotions", false);
                 }
 
+                try {
+                    Object userIdObj = row.get("id");
+                    Long userId = null;
+                    if (userIdObj instanceof java.math.BigInteger) {
+                        userId = ((java.math.BigInteger) userIdObj).longValue();
+                    } else if (userIdObj instanceof Long) {
+                        userId = (Long) userIdObj;
+                    } else if (userIdObj instanceof Integer) {
+                        userId = ((Integer) userIdObj).longValue();
+                    } else if (userIdObj != null) {
+                        userId = Long.valueOf(userIdObj.toString());
+                    }
+
+                    if (userId != null) {
+                        List<Map<String, Object>> homeAddresses = jdbc.queryForList(
+                                "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'HOME' LIMIT 1",
+                                userId);
+                        if (!homeAddresses.isEmpty()) {
+                            Map<String, Object> homeAddr = homeAddresses.get(0);
+                            Map<String, Object> homeAddrObj = new HashMap<>();
+                            homeAddrObj.put("street", homeAddr.get("street"));
+                            homeAddrObj.put("city", homeAddr.get("city"));
+                            homeAddrObj.put("state", homeAddr.get("state"));
+                            homeAddrObj.put("postalCode", homeAddr.get("postal_code"));
+                            user.put("home_address", homeAddrObj);
+                        }
+
+                        List<Map<String, Object>> shippingAddresses = jdbc.queryForList(
+                                "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'SHIPPING' LIMIT 1",
+                                userId);
+                        if (!shippingAddresses.isEmpty()) {
+                            Map<String, Object> shipAddr = shippingAddresses.get(0);
+                            Map<String, Object> shipAddrObj = new HashMap<>();
+                            shipAddrObj.put("street", shipAddr.get("street"));
+                            shipAddrObj.put("city", shipAddr.get("city"));
+                            shipAddrObj.put("state", shipAddr.get("state"));
+                            shipAddrObj.put("postalCode", shipAddr.get("postal_code"));
+                            user.put("shipping_address", shipAddrObj);
+                        }
+                    }
+                } catch (Exception ex) {
+                    // Addresses are optional, continue without them
+                }
+
                 resp.put("user", user);
                 return resp;
             } else {
@@ -599,19 +643,19 @@ public class AuthController {
             user.put("last_name", row.get("last_name"));
             user.put("phone", row.get("phone"));
 
-            try {
-                Object userIdObj = row.get("id");
-                Long userId = null;
-                if (userIdObj instanceof java.math.BigInteger) {
-                    userId = ((java.math.BigInteger) userIdObj).longValue();
-                } else if (userIdObj instanceof Long) {
-                    userId = (Long) userIdObj;
-                } else if (userIdObj instanceof Integer) {
-                    userId = ((Integer) userIdObj).longValue();
-                } else if (userIdObj != null) {
-                    userId = Long.valueOf(userIdObj.toString());
-                }
+            Object userIdObj = row.get("id");
+            Long userId = null;
+            if (userIdObj instanceof java.math.BigInteger) {
+                userId = ((java.math.BigInteger) userIdObj).longValue();
+            } else if (userIdObj instanceof Long) {
+                userId = (Long) userIdObj;
+            } else if (userIdObj instanceof Integer) {
+                userId = ((Integer) userIdObj).longValue();
+            } else if (userIdObj != null) {
+                userId = Long.valueOf(userIdObj.toString());
+            }
 
+            try {
                 if (payload.containsKey("promotions") && userId != null) {
                     Boolean desired = null;
                     Object raw = payload.get("promotions");
@@ -655,6 +699,81 @@ public class AuthController {
                 user.put("promotions", subscribed);
             } catch (Exception ex) {
                 user.put("promotions", false);
+            }
+
+            if (userId != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> homeAddress = (Map<String, Object>) payload.get("home_address");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> shippingAddress = (Map<String, Object>) payload.get("shipping_address");
+
+                if (homeAddress != null) {
+                    String street = (String) homeAddress.get("street");
+                    String city = (String) homeAddress.get("city");
+                    String state = (String) homeAddress.get("state");
+                    String postalCode = (String) homeAddress.get("postalCode");
+
+                    Integer homeCount = jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM addresses WHERE user_id = ? AND type = 'HOME'",
+                            Integer.class, userId);
+                    
+                    if (homeCount != null && homeCount > 0) {
+                        jdbc.update(
+                                "UPDATE addresses SET street = ?, city = ?, state = ?, postal_code = ? WHERE user_id = ? AND type = 'HOME'",
+                                street, city, state, postalCode, userId);
+                    } else {
+                        jdbc.update(
+                                "INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'HOME', ?, ?, ?, ?)",
+                                userId, street, city, state, postalCode);
+                    }
+                }
+
+                if (shippingAddress != null) {
+                    String street = (String) shippingAddress.get("street");
+                    String city = (String) shippingAddress.get("city");
+                    String state = (String) shippingAddress.get("state");
+                    String postalCode = (String) shippingAddress.get("postalCode");
+
+                    Integer shippingCount = jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM addresses WHERE user_id = ? AND type = 'SHIPPING'",
+                            Integer.class, userId);
+                    
+                    if (shippingCount != null && shippingCount > 0) {
+                        jdbc.update(
+                                "UPDATE addresses SET street = ?, city = ?, state = ?, postal_code = ? WHERE user_id = ? AND type = 'SHIPPING'",
+                                street, city, state, postalCode, userId);
+                    } else {
+                        jdbc.update(
+                                "INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'SHIPPING', ?, ?, ?, ?)",
+                                userId, street, city, state, postalCode);
+                    }
+                }
+
+                List<Map<String, Object>> homeAddresses = jdbc.queryForList(
+                        "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'HOME' LIMIT 1",
+                        userId);
+                if (!homeAddresses.isEmpty()) {
+                    Map<String, Object> homeAddr = homeAddresses.get(0);
+                    Map<String, Object> homeAddrObj = new HashMap<>();
+                    homeAddrObj.put("street", homeAddr.get("street"));
+                    homeAddrObj.put("city", homeAddr.get("city"));
+                    homeAddrObj.put("state", homeAddr.get("state"));
+                    homeAddrObj.put("postalCode", homeAddr.get("postal_code"));
+                    user.put("home_address", homeAddrObj);
+                }
+
+                List<Map<String, Object>> shippingAddresses = jdbc.queryForList(
+                        "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'SHIPPING' LIMIT 1",
+                        userId);
+                if (!shippingAddresses.isEmpty()) {
+                    Map<String, Object> shipAddr = shippingAddresses.get(0);
+                    Map<String, Object> shipAddrObj = new HashMap<>();
+                    shipAddrObj.put("street", shipAddr.get("street"));
+                    shipAddrObj.put("city", shipAddr.get("city"));
+                    shipAddrObj.put("state", shipAddr.get("state"));
+                    shipAddrObj.put("postalCode", shipAddr.get("postal_code"));
+                    user.put("shipping_address", shipAddrObj);
+                }
             }
 
             try {

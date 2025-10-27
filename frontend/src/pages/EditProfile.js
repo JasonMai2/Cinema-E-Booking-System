@@ -19,6 +19,12 @@ export default function EditProfile() {
     state: "",
     postalCode: "",
   });
+  const [shippingAddress, setShippingAddress] = useState({
+    street: "",
+    city: "",
+    state: "",
+    postalCode: "",
+  });
   const [promotions, setPromotions] = useState(true);
   const [password, setPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -63,10 +69,16 @@ export default function EditProfile() {
       setEmail(user.email || "");
       setPhone(user.phone || "");
       setHomeAddress({
-        street: user.billing_street || "",
-        city: user.billing_city || "",
-        state: user.billing_state || "",
-        postalCode: user.billing_postal_code || "",
+        street: user.home_address?.street || "",
+        city: user.home_address?.city || "",
+        state: user.home_address?.state || "",
+        postalCode: user.home_address?.postalCode || "",
+      });
+      setShippingAddress({
+        street: user.shipping_address?.street || "",
+        city: user.shipping_address?.city || "",
+        state: user.shipping_address?.state || "",
+        postalCode: user.shipping_address?.postalCode || "",
       });
       setPromotions(user.promotions !== undefined ? user.promotions : true);
       // remember original values to compute "dirty"
@@ -75,10 +87,18 @@ export default function EditProfile() {
         last_name: user.last_name || "",
         email: user.email || "",
         phone: user.phone || "",
-        billing_street: user.billing_street || "",
-        billing_city: user.billing_city || "",
-        billing_state: user.billing_state || "",
-        billing_postal_code: user.billing_postal_code || "",
+        home_address: {
+          street: user.home_address?.street || "",
+          city: user.home_address?.city || "",
+          state: user.home_address?.state || "",
+          postalCode: user.home_address?.postalCode || "",
+        },
+        shipping_address: {
+          street: user.shipping_address?.street || "",
+          city: user.shipping_address?.city || "",
+          state: user.shipping_address?.state || "",
+          postalCode: user.shipping_address?.postalCode || "",
+        },
         promotions: user.promotions !== undefined ? user.promotions : true,
       });
       // load payment methods for this user (dev: pass user id)
@@ -310,10 +330,18 @@ export default function EditProfile() {
         last_name: lastName,
         email,
         phone,
-        billing_street: homeAddress.street,
-        billing_city: homeAddress.city,
-        billing_state: homeAddress.state,
-        billing_postal_code: homeAddress.postalCode,
+        home_address: {
+          street: homeAddress.street,
+          city: homeAddress.city,
+          state: homeAddress.state,
+          postalCode: homeAddress.postalCode,
+        },
+        shipping_address: {
+          street: shippingAddress.street,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          postalCode: shippingAddress.postalCode,
+        },
         promotions,
       };
 
@@ -328,10 +356,18 @@ export default function EditProfile() {
           last_name: res.data.user.last_name || "",
           email: res.data.user.email || "",
           phone: res.data.user.phone || "",
-          billing_street: res.data.user.billing_street || "",
-          billing_city: res.data.user.billing_city || "",
-          billing_state: res.data.user.billing_state || "",
-          billing_postal_code: res.data.user.billing_postal_code || "",
+          home_address: {
+            street: res.data.user.home_address?.street || "",
+            city: res.data.user.home_address?.city || "",
+            state: res.data.user.home_address?.state || "",
+            postalCode: res.data.user.home_address?.postalCode || "",
+          },
+          shipping_address: {
+            street: res.data.user.shipping_address?.street || "",
+            city: res.data.user.shipping_address?.city || "",
+            state: res.data.user.shipping_address?.state || "",
+            postalCode: res.data.user.shipping_address?.postalCode || "",
+          },
           promotions:
             res.data.user.promotions !== undefined
               ? res.data.user.promotions
@@ -408,10 +444,16 @@ export default function EditProfile() {
       setEmail(user.email || "");
       setPhone(user.phone || "");
       setHomeAddress({
-        street: user.billing_street || "",
-        city: user.billing_city || "",
-        state: user.billing_state || "",
-        postalCode: user.billing_postal_code || "",
+        street: user.home_address?.street || "",
+        city: user.home_address?.city || "",
+        state: user.home_address?.state || "",
+        postalCode: user.home_address?.postalCode || "",
+      });
+      setShippingAddress({
+        street: user.shipping_address?.street || "",
+        city: user.shipping_address?.city || "",
+        state: user.shipping_address?.state || "",
+        postalCode: user.shipping_address?.postalCode || "",
       });
       setPromotions(user.promotions !== undefined ? user.promotions : true);
       setPassword("");
@@ -443,10 +485,14 @@ export default function EditProfile() {
       initialUser.first_name !== (firstName || "") ||
       initialUser.last_name !== (lastName || "") ||
       initialUser.phone !== (phone || "") ||
-      initialUser.billing_street !== (homeAddress.street || "") ||
-      initialUser.billing_city !== (homeAddress.city || "") ||
-      initialUser.billing_state !== (homeAddress.state || "") ||
-      initialUser.billing_postal_code !== (homeAddress.postalCode || "") ||
+      initialUser.home_address?.street !== (homeAddress.street || "") ||
+      initialUser.home_address?.city !== (homeAddress.city || "") ||
+      initialUser.home_address?.state !== (homeAddress.state || "") ||
+      initialUser.home_address?.postalCode !== (homeAddress.postalCode || "") ||
+      initialUser.shipping_address?.street !== (shippingAddress.street || "") ||
+      initialUser.shipping_address?.city !== (shippingAddress.city || "") ||
+      initialUser.shipping_address?.state !== (shippingAddress.state || "") ||
+      initialUser.shipping_address?.postalCode !== (shippingAddress.postalCode || "") ||
       initialUser.promotions !== promotions
     );
   };
@@ -796,7 +842,7 @@ export default function EditProfile() {
             )}
           </div>
 
-          <h3>Home / Shipping Address</h3>
+          <h3>Home Address</h3>
           <div>
             <label className={styles.profileLabel}>Street</label>
             <input
@@ -855,6 +901,58 @@ export default function EditProfile() {
             {errors.postalCode && (
               <div className={styles.fieldError}>{errors.postalCode}</div>
             )}
+          </div>
+
+          <h3>Shipping Address</h3>
+          <div>
+            <label className={styles.profileLabel}>Street</label>
+            <input
+              type="text"
+              value={shippingAddress.street}
+              onChange={(e) =>
+                setShippingAddress({ ...shippingAddress, street: e.target.value })
+              }
+              className={styles.profileInput}
+            />
+          </div>
+
+          <div>
+            <label className={styles.profileLabel}>City</label>
+            <input
+              type="text"
+              value={shippingAddress.city}
+              onChange={(e) =>
+                setShippingAddress({ ...shippingAddress, city: e.target.value })
+              }
+              className={styles.profileInput}
+            />
+          </div>
+
+          <div>
+            <label className={styles.profileLabel}>State</label>
+            <input
+              type="text"
+              value={shippingAddress.state}
+              onChange={(e) =>
+                setShippingAddress({ ...shippingAddress, state: e.target.value })
+              }
+              className={styles.profileInput}
+            />
+          </div>
+
+          <div>
+            <label className={styles.profileLabel}>Postal Code</label>
+            <input
+              type="text"
+              value={shippingAddress.postalCode}
+              onChange={(e) => {
+                setShippingAddress({
+                  ...shippingAddress,
+                  postalCode: e.target.value,
+                });
+              }}
+              className={styles.profileInput}
+            />
           </div>
 
           <PromotionsToggle
