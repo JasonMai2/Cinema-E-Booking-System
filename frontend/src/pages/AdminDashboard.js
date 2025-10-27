@@ -76,17 +76,21 @@ export default function AdminDashboard() {
   };
 
   const deleteUser = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    console.log("deleteUser called with id:", id);
+    console.log("Confirmed deletion");
     try {
       const res = await fetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
-      const result = await res.json();
-      alert(result.message || result.status || JSON.stringify(result));
+      console.log("Response:", res);
+      if (!res.ok) throw new Error("Failed to delete user");
+      alert("User deleted successfully");
       loadUsers();
     } catch (err) {
       console.error("Error deleting user:", err);
-      alert("Failed to delete user: " + err.message);
+      alert(err.message);
     }
   };
+
+
 
   const openEditUser = (user) => {
     setSelectedUser(user);
@@ -244,17 +248,23 @@ export default function AdminDashboard() {
   };
 
   const deletePromotion = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this promotion?")) return;
+    console.log("deletePromotion called with id:", id);
+    console.log("Confirmed deletion");
+
     try {
       const res = await fetch(`${API_BASE}/promotions/${id}`, { method: "DELETE" });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to delete promotion");
+      console.log("Response:", res);
+
+      if (!res.ok) throw new Error("Failed to delete promotion");
+
+      alert("Promotion deleted successfully");
       await loadPromotions();
     } catch (err) {
-      console.error(err);
+      console.error("Error deleting promotion:", err);
       alert("Failed to delete promotion: " + err.message);
     }
   };
+
 
   // --- Render ---
   return (
@@ -388,7 +398,7 @@ function UserModal({ formData, handleInputChange, handleSubmit, loading, close }
           <div className="formRow">
             <div className="formGroup">
               <label className="label">First Name</label>
-              <input className="input" type="text" name="first_name" value={formData.first_name} onChange={handleInputChange} />
+              <input className="input" type="text" name="first_name" value={formData.first_name} onChange={handleInputChange} placeholder="First Name"/>
             </div>
             <div className="formGroup">
               <label className="label">Last Name</label>
@@ -401,7 +411,7 @@ function UserModal({ formData, handleInputChange, handleSubmit, loading, close }
           </div>
           <div className="formGroup">
             <label className="label">New Password</label>
-            <input className="input" type="password" name="password" value={formData.password} onChange={handleInputChange} placeholder="New password" />
+            <input className="input" type="password" name="password" value={formData.password} onChange={handleInputChange} style={{ marginBottom: "10px" }} placeholder="New password" />
             <input className="input" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} placeholder="Confirm new password" />
           </div>
           <div className="formGroup">
