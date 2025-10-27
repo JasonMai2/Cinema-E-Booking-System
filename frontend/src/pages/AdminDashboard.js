@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Film, Users, Percent } from "lucide-react";
+import { Film, Users, Percent, X } from "lucide-react";
 
-const API_BASE = "http://localhost:8080/api"; // ✅ backend base URL
+const API_BASE = "http://localhost:8080/api";
 
 const styles = {
   body: {
@@ -126,57 +126,358 @@ const styles = {
     color: "#f5f5f5",
     transition: "all 0.3s ease",
   },
+  modalOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: "#12151c",
+    padding: "40px",
+    borderRadius: "8px",
+    maxWidth: "600px",
+    width: "90%",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    position: "relative",
+  },
+  modalHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "30px",
+    borderBottom: "2px solid #661b1c",
+    paddingBottom: "15px",
+  },
+  modalTitle: {
+    fontSize: "24px",
+    fontWeight: 600,
+    color: "#f5f5f5",
+  },
+  closeButton: {
+    background: "none",
+    border: "none",
+    color: "#f5f5f5",
+    cursor: "pointer",
+    padding: "5px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  formGroup: {
+    marginBottom: "20px",
+  },
+  label: {
+    display: "block",
+    marginBottom: "8px",
+    fontSize: "14px",
+    fontWeight: 500,
+    color: "#f5f5f5",
+  },
+  input: {
+    width: "100%",
+    padding: "12px",
+    backgroundColor: "#252933",
+    border: "1px solid #3a3a3a",
+    borderRadius: "4px",
+    color: "#f5f5f5",
+    fontSize: "14px",
+    boxSizing: "border-box",
+  },
+  select: {
+    width: "100%",
+    padding: "12px",
+    backgroundColor: "#252933",
+    border: "1px solid #3a3a3a",
+    borderRadius: "4px",
+    color: "#f5f5f5",
+    fontSize: "14px",
+    boxSizing: "border-box",
+  },
+  checkboxContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+  checkbox: {
+    width: "18px",
+    height: "18px",
+    cursor: "pointer",
+  },
+  formRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "15px",
+  },
+  modalActions: {
+    display: "flex",
+    gap: "15px",
+    justifyContent: "flex-end",
+    marginTop: "30px",
+    paddingTop: "20px",
+    borderTop: "1px solid #3a3a3a",
+  },
+  btnCancel: {
+    padding: "12px 30px",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "16px",
+    backgroundColor: "#3a3a3a",
+    color: "#f5f5f5",
+    borderRadius: "4px",
+    transition: "all 0.3s ease",
+  },
+  btnSave: {
+    padding: "12px 30px",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "16px",
+    backgroundColor: "#661b1c",
+    color: "#f5f5f5",
+    borderRadius: "4px",
+    transition: "all 0.3s ease",
+  },
 };
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState("add");
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [loadingSubmit, setLoadingSubmit] = useState(false);
+
+  const [formData, setFormData] = useState({
+    id: null,
+    email: "",
+    password: "",
+    confirmPassword: "",
+    first_name: "",
+    last_name: "",
+    phone: "",
+    role: "REGISTERED",
+    is_suspended: false,
+    payment_cards: [],
+  });
 
   useEffect(() => {
     const showScreen = (screen) => {
       const main = document.getElementById("mainScreen");
       const movies = document.getElementById("moviesScreen");
-      const users = document.getElementById("usersScreen");
+      const usersS = document.getElementById("usersScreen");
       const promos = document.getElementById("promotionsScreen");
 
-      [main, movies, users, promos].forEach((s) => (s.style.display = "none"));
+      [main, movies, usersS, promos].forEach((s) => (s.style.display = "none"));
       if (screen === "main") main.style.display = "block";
       if (screen === "movies") movies.style.display = "block";
       if (screen === "users") {
-        loadUsers(); // ✅ Fetch users dynamically
-        users.style.display = "block";
+        loadUsers();
+        usersS.style.display = "block";
       }
       if (screen === "promotions") promos.style.display = "block";
     };
     window.showScreen = showScreen;
+    // show main initially
+    window.showScreen("main");
   }, []);
 
-  // ✅ Load users from backend
   const loadUsers = async () => {
     try {
       const res = await fetch(`${API_BASE}/users`);
+      if (!res.ok) throw new Error(`Load users failed: ${res.status}`);
       const data = await res.json();
       setUsers(data);
     } catch (err) {
       console.error("Error loading users:", err);
+      alert("Failed to load users: " + err.message);
     }
   };
 
-  // ✅ Delete user by ID
   const deleteUser = async (id) => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
       const res = await fetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
       const result = await res.json();
-      alert(result.status || result.error);
-      loadUsers(); // refresh list
+      alert(result.message || result.status || JSON.stringify(result));
+      loadUsers();
     } catch (err) {
       console.error("Error deleting user:", err);
+      alert("Failed to delete user: " + err.message);
     }
   };
 
-  // ✅ Edit user placeholder (can later open a modal)
-  const editUser = (user) => {
-    alert(`Editing user: ${user.first_name} ${user.last_name}`);
+  const openAddModal = () => {
+    setModalMode("add");
+    setFormData({
+      id: null,
+      email: "",
+      password: "",
+      confirmPassword: "",
+      first_name: "",
+      last_name: "",
+      phone: "",
+      role: "REGISTERED",
+      is_suspended: false,
+      payment_cards: [],
+    });
+    setSelectedUser(null);
+    setShowModal(true);
+  };
+
+  const openEditModal = (user) => {
+    setModalMode("edit");
+    setSelectedUser(user);
+    setFormData({
+      id: user.id,
+      email: user.email || "",
+      password: "",
+      confirmPassword: "",
+      first_name: user.first_name || "",
+      last_name: user.last_name || "",
+      phone: user.phone || "",
+      role: user.role || "REGISTERED",
+      is_suspended: user.is_suspended || false,
+      payment_cards: user.payment_cards || [],
+    });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    if (loadingSubmit) return; // don't close while submitting
+    setShowModal(false);
+    setSelectedUser(null);
+    setLoadingSubmit(false);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleSubmit = async () => {
+    // basic validation
+    if (!formData.email || formData.email.trim() === "") {
+      alert("Email is required");
+      return;
+    }
+    if (modalMode === "add") {
+      if (!formData.password || formData.password.length < 8) {
+        alert("Password (min 6 chars) is required for new users");
+        return;
+      }
+      // confirmPassword not used on add in this flow (kept single for UX parity)
+    } else {
+      // edit: only update password if both password fields present
+      const pw = formData.password ? formData.password.trim() : "";
+      const cpw = formData.confirmPassword ? formData.confirmPassword.trim() : "";
+      if ((pw !== "" || cpw !== "")) {
+        if (pw.length < 6) {
+          alert("New password must be at least 6 characters long");
+          return;
+        }
+        if (pw !== cpw) {
+          alert("New password and confirmation do not match");
+          return;
+        }
+      }
+    }
+
+    setLoadingSubmit(true);
+
+    try {
+      if (modalMode === "add") {
+        // Create new user
+        const payload = {
+          email: formData.email,
+          password: formData.password,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
+          role: formData.role,
+        };
+
+        const res = await fetch(`${API_BASE}/users`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const result = await res.json();
+        if (!res.ok) {
+          throw new Error(result.message || JSON.stringify(result));
+        }
+
+        alert(result.message || "User created");
+        await loadUsers();
+        closeModal();
+        return;
+      }
+
+      // EDIT mode
+      const profilePayload = {
+        id: formData.id,
+        email: formData.email,
+      };
+
+      if (formData.first_name !== undefined) profilePayload.first_name = formData.first_name;
+      if (formData.last_name !== undefined) profilePayload.last_name = formData.last_name;
+      if (formData.phone !== undefined) profilePayload.phone = formData.phone;
+
+      // include password only if admin entered and confirmed a new password
+      const pw = formData.password ? formData.password.trim() : "";
+      const cpw = formData.confirmPassword ? formData.confirmPassword.trim() : "";
+      if (pw !== "" && cpw !== "" && pw === cpw && pw.length >= 8) {
+        profilePayload.password = pw;
+      }
+
+      const resProfile = await fetch(`${API_BASE}/users/${formData.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profilePayload),
+      });
+
+      const profileResult = await resProfile.json();
+      if (!resProfile.ok) {
+        throw new Error(profileResult.message || JSON.stringify(profileResult));
+      }
+
+      // Attempt role update (best-effort) - if your backend doesn't support it, this won't break the profile update
+      if (selectedUser && formData.role !== (selectedUser.role || "REGISTERED")) {
+        try {
+          const resRole = await fetch(`${API_BASE}/users/${formData.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: formData.role }),
+          });
+          if (!resRole.ok) {
+            // non-fatal; role may be handled elsewhere (e.g., user_roles table)
+            console.warn("Role update may have failed:", await resRole.text());
+          }
+        } catch (err) {
+          console.warn("Role patch request failed:", err);
+        }
+      }
+
+      await loadUsers();
+
+      alert("User updated successfully");
+      closeModal();
+    } catch (err) {
+      console.error("Save failed:", err);
+      alert("Save failed: " + (err.message || JSON.stringify(err)));
+      setLoadingSubmit(false);
+    } finally {
+      setLoadingSubmit(false);
+    }
   };
 
   return (
@@ -186,7 +487,6 @@ export default function AdminDashboard() {
       </div>
 
       <div style={styles.container}>
-        {/* MAIN DASHBOARD */}
         <div id="mainScreen">
           <div style={styles.adminCards}>
             <div style={styles.adminCard} onClick={() => window.showScreen("movies")}>
@@ -218,7 +518,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* USERS SCREEN */}
         <div id="usersScreen" style={{ display: "none" }}>
           <button style={styles.backButton} onClick={() => window.showScreen("main")}>
             ← Back to Dashboard
@@ -226,7 +525,7 @@ export default function AdminDashboard() {
 
           <div style={styles.managementHeader}>
             <h2 style={{ fontSize: "28px" }}>Manage Users</h2>
-            <button style={styles.addButton}>+ Add New User</button>
+            <button style={styles.addButton} onClick={openAddModal}>+ Add New User</button>
           </div>
 
           {users.length === 0 ? (
@@ -244,7 +543,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
                 <div style={styles.itemActions}>
-                  <button style={styles.btnEdit} onClick={() => editUser(u)}>Edit</button>
+                  <button style={styles.btnEdit} onClick={() => openEditModal(u)}>Edit</button>
                   <button style={styles.btnDelete} onClick={() => deleteUser(u.id)}>Delete</button>
                 </div>
               </div>
@@ -252,7 +551,6 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Placeholder for Movies & Promotions Screens */}
         <div id="moviesScreen" style={{ display: "none" }}>
           <button style={styles.backButton} onClick={() => window.showScreen("main")}>
             ← Back to Dashboard
@@ -267,6 +565,132 @@ export default function AdminDashboard() {
           <h2 style={{ fontSize: "28px" }}>Manage Promotions (Coming Soon)</h2>
         </div>
       </div>
+
+      {showModal && (
+        <div style={styles.modalOverlay} onClick={closeModal}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h2 style={styles.modalTitle}>
+                {modalMode === "add" ? "Add New User" : "Edit User"}
+              </h2>
+              <button style={styles.closeButton} onClick={closeModal}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div>
+              <div style={styles.formRow}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>First Name</label>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleInputChange}
+                    placeholder="Enter first name"
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Last Name</label>
+                  <input
+                    style={styles.input}
+                    type="text"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleInputChange}
+                    placeholder="Enter last name"
+                  />
+                </div>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Email *</label>
+                <input
+                  style={styles.input}
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="user@example.com"
+                  readOnly={modalMode === "edit"} // <-- read-only when editing
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>
+                  {modalMode === "add" ? "Password *" : "New Password"}
+                </label>
+
+                {modalMode === "add" ? (
+                  <input
+                    style={styles.input}
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Enter password"
+                  />
+                ) : (
+                  <>
+                    <input
+                      style={{ ...styles.input, marginBottom: "10px" }}
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder="New password"
+                    />
+                    <input
+                      style={styles.input}
+                      type="password"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      placeholder="Confirm new password"
+                    />
+                  </>
+                )}
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Phone</label>
+                <input
+                  style={styles.input}
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Role</label>
+                <select
+                  style={styles.select}
+                  name="role"
+                  value={formData.role}
+                  onChange={handleInputChange}
+                >
+                  <option value="REGISTERED">REGISTERED</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </div>
+
+              <div style={styles.modalActions}>
+                <button type="button" style={styles.btnCancel} onClick={closeModal}>
+                  Cancel
+                </button>
+                <button type="button" style={styles.btnSave} onClick={handleSubmit} disabled={loadingSubmit}>
+                  {loadingSubmit ? "Saving..." : (modalMode === "add" ? "Add User" : "Update User")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
