@@ -68,8 +68,12 @@ public class PaymentController {
             jdbc.update("INSERT INTO payment_methods (user_id, provider, provider_token, brand, last4, exp_month, exp_year, billing_address, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
                     uid.longValue(), provider, token, brand, last4, expMonth == null ? null : expMonth.intValue(), expYear == null ? null : expYear.intValue(), billing, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()));
 
+            Long insertedId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+            Map<String, Object> method = jdbc.queryForMap("SELECT id, provider, provider_token, brand, last4, exp_month, exp_year, is_default, billing_address, created_at FROM payment_methods WHERE id = ?", insertedId);
+
             resp.put("ok", true);
             resp.put("message", "saved");
+            resp.put("method", method);
             return resp;
         } catch (Exception e) {
             e.printStackTrace();

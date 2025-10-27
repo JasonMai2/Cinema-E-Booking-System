@@ -1243,15 +1243,20 @@ export default function EditProfile() {
                         };
                         setPaymentMethods((prev) => [...prev, optimistic]);
 
+                        const billingAddressStr = JSON.stringify({
+                          street: pmBillingAddress.street,
+                          city: pmBillingAddress.city,
+                          state: pmBillingAddress.state,
+                          postalCode: pmBillingAddress.postalCode,
+                        });
+
                         const payload = {
                           user_id: user.id,
+                          provider: "dev",
+                          provider_token: `tok_${Date.now()}_${pmNumberDigits.slice(-4)}`, // Mock token for dev mode
                           brand: pmBrand,
                           last4: masked(pmNumberDigits),
-                          cardholder_name: pmName,
-                          billing_street: pmBillingAddress.street,
-                          billing_city: pmBillingAddress.city,
-                          billing_state: pmBillingAddress.state,
-                          billing_postal_code: pmBillingAddress.postalCode,
+                          billing_address: billingAddressStr,
                         };
 
                         try {
@@ -1259,12 +1264,12 @@ export default function EditProfile() {
                             "/payment-methods",
                             payload
                           );
-                          if (res?.data?.ok && res.data.method) {
-                            setPaymentMethods((prev) =>
-                              prev.map((m) =>
-                                m.id === tempId ? res.data.method : m
-                              )
-                            );
+                          if (res?.data?.ok) {
+                            const refreshRes = await api.get(`/payment-methods?userId=${user.id}`);
+                            if (refreshRes?.data?.ok) {
+                              setPaymentMethods(refreshRes.data.methods || []);
+                            }
+                            
                             // Reset form
                             setPmBrand("");
                             setPmNumber("");
