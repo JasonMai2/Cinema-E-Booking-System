@@ -129,8 +129,8 @@ export default function EditProfile() {
         }
         break;
       case "newPassword":
-        if (!value || value.length < 4) {
-          return "New password must be at least 4 characters.";
+        if (!value || value.length < 8) {
+          return "New password must be at least 8 characters.";
         }
         break;
       case "confirmPassword":
@@ -249,8 +249,8 @@ export default function EditProfile() {
     if (!currentPassword || currentPassword.length === 0) {
       errs.currentPassword = "Current password is required.";
     }
-    if (!password || password.length < 4) {
-      errs.newPassword = "New password must be at least 4 characters.";
+    if (!password || password.length < 8) {
+      errs.newPassword = "New password must be at least 8 characters.";
     }
     if (password !== confirm) {
       errs.confirmPassword = "Passwords do not match.";
@@ -343,7 +343,7 @@ export default function EditProfile() {
 
     setLoading(true);
     try {
-      const res = await api.put(`/users/change-password?userId=${user?.id}`, {
+      const res = await api.put(`/auth/users/change-password?userId=${user?.id}`, {
         currentPassword,
         newPassword: password,
       });
@@ -542,7 +542,7 @@ export default function EditProfile() {
     setEditingPaymentId(paymentMethod.id);
     setPmName(paymentMethod.cardholder_name || "");
     setPmBrand(paymentMethod.brand || "");
-    setPmNumber(`•••• ${paymentMethod.last4 || "----"}`); // Display masked number
+    setPmNumber(`•••• •••• •••• ${paymentMethod.last4 || "----"}`); // Display masked number
     setPmNumberDigits(paymentMethod.last4 || ""); // Keep only last 4 for reference
     setPmBillingAddress(billing);
     setPmCvv(""); // Don't populate CVV for security
@@ -950,7 +950,7 @@ export default function EditProfile() {
                   <div className={styles.paymentInfo}>
                     <div className={styles.cardBrand}>{m.brand || "Card"}</div>
                     <div className={styles.cardDetails}>
-                      <span>•••• {m.last4 || "----"}</span>
+                      <span>•••• •••• •••• {m.last4 || "----"}</span>
                     </div>
                     {m.cardholder_name && (
                       <div className={styles.cardName}>{m.cardholder_name}</div>
