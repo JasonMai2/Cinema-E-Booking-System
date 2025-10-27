@@ -13,7 +13,7 @@ export default function EditProfile() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [billingAddress, setBillingAddress] = useState({
+  const [homeAddress, setHomeAddress] = useState({
     street: "",
     city: "",
     state: "",
@@ -60,7 +60,7 @@ export default function EditProfile() {
       setLastName(user.last_name || "");
       setEmail(user.email || "");
       setPhone(user.phone || "");
-      setBillingAddress({
+      setHomeAddress({
         street: user.billing_street || "",
         city: user.billing_city || "",
         state: user.billing_state || "",
@@ -236,8 +236,8 @@ export default function EditProfile() {
       errs.phone = "Enter a valid phone number.";
     }
     if (
-      billingAddress.postalCode &&
-      !/^[A-Za-z0-9 \-]{3,10}$/.test(billingAddress.postalCode)
+      homeAddress.postalCode &&
+      !/^[A-Za-z0-9 \-]{3,10}$/.test(homeAddress.postalCode)
     ) {
       errs.postalCode = "Enter a valid postal code.";
     }
@@ -283,10 +283,10 @@ export default function EditProfile() {
         last_name: lastName,
         email,
         phone,
-        billing_street: billingAddress.street,
-        billing_city: billingAddress.city,
-        billing_state: billingAddress.state,
-        billing_postal_code: billingAddress.postalCode,
+        billing_street: homeAddress.street,
+        billing_city: homeAddress.city,
+        billing_state: homeAddress.state,
+        billing_postal_code: homeAddress.postalCode,
         promotions,
       };
 
@@ -377,7 +377,7 @@ export default function EditProfile() {
       setLastName(user.last_name || "");
       setEmail(user.email || "");
       setPhone(user.phone || "");
-      setBillingAddress({
+      setHomeAddress({
         street: user.billing_street || "",
         city: user.billing_city || "",
         state: user.billing_state || "",
@@ -413,10 +413,10 @@ export default function EditProfile() {
       initialUser.first_name !== (firstName || "") ||
       initialUser.last_name !== (lastName || "") ||
       initialUser.phone !== (phone || "") ||
-      initialUser.billing_street !== (billingAddress.street || "") ||
-      initialUser.billing_city !== (billingAddress.city || "") ||
-      initialUser.billing_state !== (billingAddress.state || "") ||
-      initialUser.billing_postal_code !== (billingAddress.postalCode || "") ||
+      initialUser.billing_street !== (homeAddress.street || "") ||
+      initialUser.billing_city !== (homeAddress.city || "") ||
+      initialUser.billing_state !== (homeAddress.state || "") ||
+      initialUser.billing_postal_code !== (homeAddress.postalCode || "") ||
       initialUser.promotions !== promotions
     );
   };
@@ -747,14 +747,14 @@ export default function EditProfile() {
             )}
           </div>
 
-          <h3>Billing Address</h3>
+          <h3>Home / Shipping Address</h3>
           <div>
             <label className={styles.profileLabel}>Street</label>
             <input
               type="text"
-              value={billingAddress.street}
+              value={homeAddress.street}
               onChange={(e) =>
-                setBillingAddress({ ...billingAddress, street: e.target.value })
+                setHomeAddress({ ...homeAddress, street: e.target.value })
               }
               className={styles.profileInput}
             />
@@ -764,9 +764,9 @@ export default function EditProfile() {
             <label className={styles.profileLabel}>City</label>
             <input
               type="text"
-              value={billingAddress.city}
+              value={homeAddress.city}
               onChange={(e) =>
-                setBillingAddress({ ...billingAddress, city: e.target.value })
+                setHomeAddress({ ...homeAddress, city: e.target.value })
               }
               className={styles.profileInput}
             />
@@ -776,9 +776,9 @@ export default function EditProfile() {
             <label className={styles.profileLabel}>State</label>
             <input
               type="text"
-              value={billingAddress.state}
+              value={homeAddress.state}
               onChange={(e) =>
-                setBillingAddress({ ...billingAddress, state: e.target.value })
+                setHomeAddress({ ...homeAddress, state: e.target.value })
               }
               className={styles.profileInput}
             />
@@ -788,10 +788,10 @@ export default function EditProfile() {
             <label className={styles.profileLabel}>Postal Code</label>
             <input
               type="text"
-              value={billingAddress.postalCode}
+              value={homeAddress.postalCode}
               onChange={(e) => {
-                setBillingAddress({
-                  ...billingAddress,
+                setHomeAddress({
+                  ...homeAddress,
                   postalCode: e.target.value,
                 });
                 if (errors.postalCode) {
