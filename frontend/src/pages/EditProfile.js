@@ -13,12 +13,6 @@ export default function EditProfile() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [homeAddress, setHomeAddress] = useState({
-    street: "",
-    city: "",
-    state: "",
-    postalCode: "",
-  });
   const [shippingAddress, setShippingAddress] = useState({
     street: "",
     city: "",
@@ -68,12 +62,6 @@ export default function EditProfile() {
       setLastName(user.last_name || "");
       setEmail(user.email || "");
       setPhone(user.phone || "");
-      setHomeAddress({
-        street: user.home_address?.street || "",
-        city: user.home_address?.city || "",
-        state: user.home_address?.state || "",
-        postalCode: user.home_address?.postalCode || "",
-      });
       setShippingAddress({
         street: user.shipping_address?.street || "",
         city: user.shipping_address?.city || "",
@@ -87,12 +75,6 @@ export default function EditProfile() {
         last_name: user.last_name || "",
         email: user.email || "",
         phone: user.phone || "",
-        home_address: {
-          street: user.home_address?.street || "",
-          city: user.home_address?.city || "",
-          state: user.home_address?.state || "",
-          postalCode: user.home_address?.postalCode || "",
-        },
         shipping_address: {
           street: user.shipping_address?.street || "",
           city: user.shipping_address?.city || "",
@@ -282,12 +264,6 @@ export default function EditProfile() {
     if (phone && !/^\+?[0-9\s()-]{7,15}$/.test(phone)) {
       errs.phone = "Enter a valid phone number.";
     }
-    if (
-      homeAddress.postalCode &&
-      !/^[A-Za-z0-9 \-]{3,10}$/.test(homeAddress.postalCode)
-    ) {
-      errs.postalCode = "Enter a valid postal code.";
-    }
     return errs;
   };
 
@@ -330,12 +306,6 @@ export default function EditProfile() {
         last_name: lastName,
         email,
         phone,
-        home_address: {
-          street: homeAddress.street,
-          city: homeAddress.city,
-          state: homeAddress.state,
-          postalCode: homeAddress.postalCode,
-        },
         shipping_address: {
           street: shippingAddress.street,
           city: shippingAddress.city,
@@ -356,12 +326,6 @@ export default function EditProfile() {
           last_name: res.data.user.last_name || "",
           email: res.data.user.email || "",
           phone: res.data.user.phone || "",
-          home_address: {
-            street: res.data.user.home_address?.street || "",
-            city: res.data.user.home_address?.city || "",
-            state: res.data.user.home_address?.state || "",
-            postalCode: res.data.user.home_address?.postalCode || "",
-          },
           shipping_address: {
             street: res.data.user.shipping_address?.street || "",
             city: res.data.user.shipping_address?.city || "",
@@ -443,12 +407,6 @@ export default function EditProfile() {
       setLastName(user.last_name || "");
       setEmail(user.email || "");
       setPhone(user.phone || "");
-      setHomeAddress({
-        street: user.home_address?.street || "",
-        city: user.home_address?.city || "",
-        state: user.home_address?.state || "",
-        postalCode: user.home_address?.postalCode || "",
-      });
       setShippingAddress({
         street: user.shipping_address?.street || "",
         city: user.shipping_address?.city || "",
@@ -485,10 +443,6 @@ export default function EditProfile() {
       initialUser.first_name !== (firstName || "") ||
       initialUser.last_name !== (lastName || "") ||
       initialUser.phone !== (phone || "") ||
-      initialUser.home_address?.street !== (homeAddress.street || "") ||
-      initialUser.home_address?.city !== (homeAddress.city || "") ||
-      initialUser.home_address?.state !== (homeAddress.state || "") ||
-      initialUser.home_address?.postalCode !== (homeAddress.postalCode || "") ||
       initialUser.shipping_address?.street !== (shippingAddress.street || "") ||
       initialUser.shipping_address?.city !== (shippingAddress.city || "") ||
       initialUser.shipping_address?.state !== (shippingAddress.state || "") ||
@@ -840,67 +794,6 @@ export default function EditProfile() {
             />
             {errors.phone && (
               <div className={styles.fieldError}>{errors.phone}</div>
-            )}
-          </div>
-
-          <h3>Home Address</h3>
-          <div>
-            <label className={styles.profileLabel}>Street</label>
-            <input
-              type="text"
-              value={homeAddress.street}
-              onChange={(e) =>
-                setHomeAddress({ ...homeAddress, street: e.target.value })
-              }
-              className={styles.profileInput}
-            />
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>City</label>
-            <input
-              type="text"
-              value={homeAddress.city}
-              onChange={(e) =>
-                setHomeAddress({ ...homeAddress, city: e.target.value })
-              }
-              className={styles.profileInput}
-            />
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>State</label>
-            <input
-              type="text"
-              value={homeAddress.state}
-              onChange={(e) =>
-                setHomeAddress({ ...homeAddress, state: e.target.value })
-              }
-              className={styles.profileInput}
-            />
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>Postal Code</label>
-            <input
-              type="text"
-              value={homeAddress.postalCode}
-              onChange={(e) => {
-                setHomeAddress({
-                  ...homeAddress,
-                  postalCode: e.target.value,
-                });
-                if (errors.postalCode) {
-                  const newErrors = { ...errors };
-                  delete newErrors.postalCode;
-                  setErrors(newErrors);
-                }
-              }}
-              onBlur={(e) => handleBlur("postalCode", e.target.value)}
-              className={inputClass("postalCode")}
-            />
-            {errors.postalCode && (
-              <div className={styles.fieldError}>{errors.postalCode}</div>
             )}
           </div>
 

@@ -88,8 +88,6 @@ public class AuthController {
 
             // Optional address information
             @SuppressWarnings("unchecked")
-            Map<String, Object> homeAddress = (Map<String, Object>) actualPayload.get("home_address");
-            @SuppressWarnings("unchecked")
             Map<String, Object> shippingAddress = (Map<String, Object>) actualPayload.get("shipping_address");
 
             @SuppressWarnings("unchecked")
@@ -156,15 +154,6 @@ public class AuthController {
             // Handle promotion subscription
             if (subscribeToPromotions != null && subscribeToPromotions) {
                 jdbc.update("INSERT INTO promotion_subscriptions (user_id, subscribed) VALUES (?, ?)", userId, true);
-            }
-
-            // Handle home address if provided
-            if (homeAddress != null && homeAddress.get("street") != null
-                    && !((String) homeAddress.get("street")).isBlank()) {
-                jdbc.update(
-                        "INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'HOME', ?, ?, ?, ?)",
-                        userId, homeAddress.get("street"), homeAddress.get("city"), homeAddress.get("state"),
-                        homeAddress.get("zipCode"));
             }
 
             // Handle shipping address if provided (max 1)
@@ -497,19 +486,6 @@ public class AuthController {
                     }
 
                     if (userId != null) {
-                        List<Map<String, Object>> homeAddresses = jdbc.queryForList(
-                                "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'HOME' LIMIT 1",
-                                userId);
-                        if (!homeAddresses.isEmpty()) {
-                            Map<String, Object> homeAddr = homeAddresses.get(0);
-                            Map<String, Object> homeAddrObj = new HashMap<>();
-                            homeAddrObj.put("street", homeAddr.get("street"));
-                            homeAddrObj.put("city", homeAddr.get("city"));
-                            homeAddrObj.put("state", homeAddr.get("state"));
-                            homeAddrObj.put("postalCode", homeAddr.get("postal_code"));
-                            user.put("home_address", homeAddrObj);
-                        }
-
                         List<Map<String, Object>> shippingAddresses = jdbc.queryForList(
                                 "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'SHIPPING' LIMIT 1",
                                 userId);
@@ -703,30 +679,7 @@ public class AuthController {
 
             if (userId != null) {
                 @SuppressWarnings("unchecked")
-                Map<String, Object> homeAddress = (Map<String, Object>) payload.get("home_address");
-                @SuppressWarnings("unchecked")
                 Map<String, Object> shippingAddress = (Map<String, Object>) payload.get("shipping_address");
-
-                if (homeAddress != null) {
-                    String street = (String) homeAddress.get("street");
-                    String city = (String) homeAddress.get("city");
-                    String state = (String) homeAddress.get("state");
-                    String postalCode = (String) homeAddress.get("postalCode");
-
-                    Integer homeCount = jdbc.queryForObject(
-                            "SELECT COUNT(*) FROM addresses WHERE user_id = ? AND type = 'HOME'",
-                            Integer.class, userId);
-                    
-                    if (homeCount != null && homeCount > 0) {
-                        jdbc.update(
-                                "UPDATE addresses SET street = ?, city = ?, state = ?, postal_code = ? WHERE user_id = ? AND type = 'HOME'",
-                                street, city, state, postalCode, userId);
-                    } else {
-                        jdbc.update(
-                                "INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'HOME', ?, ?, ?, ?)",
-                                userId, street, city, state, postalCode);
-                    }
-                }
 
                 if (shippingAddress != null) {
                     String street = (String) shippingAddress.get("street");
@@ -747,19 +700,6 @@ public class AuthController {
                                 "INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'SHIPPING', ?, ?, ?, ?)",
                                 userId, street, city, state, postalCode);
                     }
-                }
-
-                List<Map<String, Object>> homeAddresses = jdbc.queryForList(
-                        "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'HOME' LIMIT 1",
-                        userId);
-                if (!homeAddresses.isEmpty()) {
-                    Map<String, Object> homeAddr = homeAddresses.get(0);
-                    Map<String, Object> homeAddrObj = new HashMap<>();
-                    homeAddrObj.put("street", homeAddr.get("street"));
-                    homeAddrObj.put("city", homeAddr.get("city"));
-                    homeAddrObj.put("state", homeAddr.get("state"));
-                    homeAddrObj.put("postalCode", homeAddr.get("postal_code"));
-                    user.put("home_address", homeAddrObj);
                 }
 
                 List<Map<String, Object>> shippingAddresses = jdbc.queryForList(
