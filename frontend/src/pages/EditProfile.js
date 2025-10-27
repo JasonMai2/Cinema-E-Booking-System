@@ -38,6 +38,8 @@ export default function EditProfile() {
     postalCode: "",
   });
   const [pmCvv, setPmCvv] = useState("");
+  const [pmExpMonth, setPmExpMonth] = useState("");
+  const [pmExpYear, setPmExpYear] = useState("");
   const [pmLoading, setPmLoading] = useState(false);
   const [pmError, setPmError] = useState(null);
   const [pmFieldErrors, setPmFieldErrors] = useState({});
@@ -185,6 +187,25 @@ export default function EditProfile() {
           return "Enter a valid CVV (3-4 digits).";
         }
         break;
+      case "pmExpMonth":
+        if (!value) {
+          return "Expiration month is required.";
+        }
+        const month = parseInt(value, 10);
+        if (isNaN(month) || month < 1 || month > 12) {
+          return "Enter a valid month (1-12).";
+        }
+        break;
+      case "pmExpYear":
+        if (!value) {
+          return "Expiration year is required.";
+        }
+        const year = parseInt(value, 10);
+        const currentYear = new Date().getFullYear();
+        if (isNaN(year) || year < currentYear || year > currentYear + 20) {
+          return `Enter a valid year (${currentYear}-${currentYear + 20}).`;
+        }
+        break;
       case "pmStreet":
         if (!value || value.trim().length === 0) {
           return "Billing street is required.";
@@ -218,6 +239,12 @@ export default function EditProfile() {
         }
         if (fieldName === "pmNumber") {
           delete newErrors.number;
+        }
+        if (fieldName === "pmExpMonth") {
+          delete newErrors.expmonth;
+        }
+        if (fieldName === "pmExpYear") {
+          delete newErrors.expyear;
         }
         return newErrors;
       }
@@ -343,10 +370,13 @@ export default function EditProfile() {
 
     setLoading(true);
     try {
-      const res = await api.put(`/auth/users/change-password?userId=${user?.id}`, {
-        currentPassword,
-        newPassword: password,
-      });
+      const res = await api.put(
+        `/auth/users/change-password?userId=${user?.id}`,
+        {
+          currentPassword,
+          newPassword: password,
+        }
+      );
       setLoading(false);
       if (res?.data?.ok) {
         setMessage({ type: "success", text: "Password changed successfully!" });
@@ -476,6 +506,19 @@ export default function EditProfile() {
     if (!pmCvv) e.cvv = "CVV is required.";
     else if (!/^\d{3,4}$/.test(pmCvv))
       e.cvv = "Enter a valid CVV (3-4 digits).";
+    if (!pmExpMonth) e.expmonth = "Expiration month is required.";
+    else {
+      const month = parseInt(pmExpMonth, 10);
+      if (isNaN(month) || month < 1 || month > 12)
+        e.expmonth = "Enter a valid month (1-12).";
+    }
+    if (!pmExpYear) e.expyear = "Expiration year is required.";
+    else {
+      const year = parseInt(pmExpYear, 10);
+      const currentYear = new Date().getFullYear();
+      if (isNaN(year) || year < currentYear || year > currentYear + 20)
+        e.expyear = `Enter a valid year (${currentYear}-${currentYear + 20}).`;
+    }
     if (!pmBillingAddress.street || pmBillingAddress.street.trim().length === 0)
       e.street = "Billing street is required.";
     if (
@@ -546,6 +589,10 @@ export default function EditProfile() {
     setPmNumberDigits(paymentMethod.last4 || ""); // Keep only last 4 for reference
     setPmBillingAddress(billing);
     setPmCvv(""); // Don't populate CVV for security
+    setPmExpMonth(
+      paymentMethod.exp_month ? String(paymentMethod.exp_month) : ""
+    );
+    setPmExpYear(paymentMethod.exp_year ? String(paymentMethod.exp_year) : "");
 
     setPaymentFormMode("edit");
     setShowPaymentForm(true);
@@ -564,6 +611,8 @@ export default function EditProfile() {
     setPmName("");
     setPmBillingAddress({ street: "", city: "", state: "", postalCode: "" });
     setPmCvv("");
+    setPmExpMonth("");
+    setPmExpYear("");
     setPmFieldErrors({});
   };
 
@@ -1280,38 +1329,119 @@ export default function EditProfile() {
                     )}
                   </div>
 
-                  {/* CVV - read-only in edit mode */}
-                  {paymentFormMode === "add" && (
+                  {/* Expiration Date - read-only in edit mode */}
+                  <div className={styles.twoCol}>
                     <div>
-                      <label className={styles.profileLabel}>CVV</label>
+                      <label className={styles.profileLabel}>
+                        Expiration Month
+                      </label>
                       <input
                         type="text"
-                        placeholder="CVV"
-                        value={pmCvv}
+                        placeholder="MM (1-12)"
+                        value={pmExpMonth}
                         onChange={(e) => {
+                          if (paymentFormMode === "edit") return;
                           const digits = e.target.value.replace(/\D/g, "");
-                          setPmCvv(digits.slice(0, 4));
-                          if (pmFieldErrors.cvv) {
+                          setPmExpMonth(digits.slice(0, 2));
+                          if (pmFieldErrors.expmonth) {
                             const copy = { ...pmFieldErrors };
-                            delete copy.cvv;
+                            delete copy.expmonth;
                             setPmFieldErrors(copy);
                           }
                         }}
-                        onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
-                        maxLength={4}
+                        onBlur={(e) =>
+                          paymentFormMode === "add" &&
+                          handlePmBlur("pmExpMonth", e.target.value)
+                        }
+                        maxLength={2}
                         inputMode="numeric"
-                        className={pmInputClass("cvv")}
-                        aria-invalid={!!pmFieldErrors.cvv}
+                        className={pmInputClass("expmonth")}
+                        disabled={paymentFormMode === "edit"}
+                        aria-invalid={!!pmFieldErrors.expmonth}
                         aria-describedby={
-                          pmFieldErrors.cvv ? "err-pm-cvv" : undefined
+                          pmFieldErrors.expmonth ? "err-pm-expmonth" : undefined
                         }
                       />
-                      {pmFieldErrors.cvv && (
-                        <div id="err-pm-cvv" className={styles.fieldError}>
-                          {pmFieldErrors.cvv}
+                      {pmFieldErrors.expmonth && (
+                        <div id="err-pm-expmonth" className={styles.fieldError}>
+                          {pmFieldErrors.expmonth}
                         </div>
                       )}
                     </div>
+
+                    <div>
+                      <label className={styles.profileLabel}>
+                        Expiration Year
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="YYYY"
+                        value={pmExpYear}
+                        onChange={(e) => {
+                          if (paymentFormMode === "edit") return;
+                          const digits = e.target.value.replace(/\D/g, "");
+                          setPmExpYear(digits.slice(0, 4));
+                          if (pmFieldErrors.expyear) {
+                            const copy = { ...pmFieldErrors };
+                            delete copy.expyear;
+                            setPmFieldErrors(copy);
+                          }
+                        }}
+                        onBlur={(e) =>
+                          paymentFormMode === "add" &&
+                          handlePmBlur("pmExpYear", e.target.value)
+                        }
+                        maxLength={4}
+                        inputMode="numeric"
+                        className={pmInputClass("expyear")}
+                        disabled={paymentFormMode === "edit"}
+                        aria-invalid={!!pmFieldErrors.expyear}
+                        aria-describedby={
+                          pmFieldErrors.expyear ? "err-pm-expyear" : undefined
+                        }
+                      />
+                      {pmFieldErrors.expyear && (
+                        <div id="err-pm-expyear" className={styles.fieldError}>
+                          {pmFieldErrors.expyear}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* CVV - read-only in edit mode */}
+                  {paymentFormMode === "add" && (
+                    <>
+                      <div>
+                        <label className={styles.profileLabel}>CVV</label>
+                        <input
+                          type="text"
+                          placeholder="CVV"
+                          value={pmCvv}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, "");
+                            setPmCvv(digits.slice(0, 4));
+                            if (pmFieldErrors.cvv) {
+                              const copy = { ...pmFieldErrors };
+                              delete copy.cvv;
+                              setPmFieldErrors(copy);
+                            }
+                          }}
+                          onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
+                          maxLength={4}
+                          inputMode="numeric"
+                          className={pmInputClass("cvv")}
+                          aria-invalid={!!pmFieldErrors.cvv}
+                          aria-describedby={
+                            pmFieldErrors.cvv ? "err-pm-cvv" : undefined
+                          }
+                        />
+                        {pmFieldErrors.cvv && (
+                          <div id="err-pm-cvv" className={styles.fieldError}>
+                            {pmFieldErrors.cvv}
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
 
                   <div className={styles.paymentFormActions}>
@@ -1344,8 +1474,8 @@ export default function EditProfile() {
                               last4: masked(pmNumberDigits),
                               cardholder_name: pmName,
                               billing: pmBillingAddress,
-                              exp_month: "--",
-                              exp_year: "--",
+                              exp_month: pmExpMonth,
+                              exp_year: pmExpYear,
                             };
                             setPaymentMethods((prev) => [...prev, optimistic]);
 
@@ -1364,6 +1494,8 @@ export default function EditProfile() {
                               )}`, // Mock token for dev mode
                               brand: pmBrand,
                               last4: masked(pmNumberDigits),
+                              exp_month: parseInt(pmExpMonth, 10),
+                              exp_year: parseInt(pmExpYear, 10),
                               billing_address: billingAddressStr,
                             };
 
@@ -1394,6 +1526,8 @@ export default function EditProfile() {
                                   postalCode: "",
                                 });
                                 setPmCvv("");
+                                setPmExpMonth("");
+                                setPmExpYear("");
                                 setPmFieldErrors({});
                                 setShowPaymentForm(false);
                                 setMessage({
