@@ -90,8 +90,6 @@ export default function AdminDashboard() {
     }
   };
 
-
-
   const openEditUser = (user) => {
     setSelectedUser(user);
     setFormData({
@@ -264,7 +262,6 @@ export default function AdminDashboard() {
       alert("Failed to delete promotion: " + err.message);
     }
   };
-
 
   // --- Render ---
   return (
