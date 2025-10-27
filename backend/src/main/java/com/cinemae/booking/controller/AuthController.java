@@ -656,6 +656,17 @@ public class AuthController {
                 user.put("promotions", false);
             }
 
+            try {
+                String userEmail = (String) user.get("email");
+                String userFirstName = (String) user.get("first_name");
+                if (userEmail != null && !userEmail.isBlank()) {
+                    emailService.sendProfileChangeNotification(userEmail, userFirstName);
+                }
+            } catch (Exception emailEx) {
+                System.err.println("Warning: Failed to send profile change notification email: " + emailEx.getMessage());
+                emailEx.printStackTrace();
+            }
+
             resp.put("ok", true);
             resp.put("user", user);
             return resp;
