@@ -5,6 +5,7 @@ import "./AdminDashboard.css";
 const API_BASE = "http://localhost:8080/api";
 
 export default function AdminDashboard() {
+  // Users state
   const [users, setUsers] = useState([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -30,12 +31,14 @@ export default function AdminDashboard() {
   const [promoFormData, setPromoFormData] = useState({
     title: "",
     description: "",
-    discountType: "PERCENT", // PERCENT or FLAT
+    discountType: "PERCENT",
     discount: "",
     startDate: "",
     endDate: "",
   });
+  const [loadingPromo, setLoadingPromo] = useState(false);
 
+  // --- Load screens ---
   useEffect(() => {
     const showScreen = (screen) => {
       const main = document.getElementById("mainScreen");
@@ -50,18 +53,16 @@ export default function AdminDashboard() {
         loadUsers();
         usersS.style.display = "block";
       }
-      if (screen === "promotions") promos.style.display = "block";
+      if (screen === "promotions") {
+        loadPromotions();
+        promos.style.display = "block";
+      }
     };
     window.showScreen = showScreen;
     window.showScreen("main");
-
-    // Dummy promotions data
-    setPromotions([
-      { id: 1, title: "Summer Sale", description: "Get 20% off", discountType: "PERCENT", discount: 20, startDate: "2025-06-01", endDate: "2025-06-30" },
-      { id: 2, title: "Student Promo", description: "Flat $5 off", discountType: "FLAT", discount: 5, startDate: "2025-09-01", endDate: "2025-09-30" },
-    ]);
   }, []);
 
+  // --- Users API ---
   const loadUsers = async () => {
     try {
       const res = await fetch(`${API_BASE}/users`);
@@ -126,9 +127,8 @@ export default function AdminDashboard() {
     }
 
     setLoadingSubmit(true);
-
     try {
-      const profilePayload = {
+      const payload = {
         id: formData.id,
         email: formData.email,
         first_name: formData.first_name,
@@ -137,55 +137,55 @@ export default function AdminDashboard() {
         role: formData.role,
         is_suspended: formData.is_suspended,
       };
-      if (pw) profilePayload.password = pw;
+      if (pw) payload.password = pw;
 
-      const resProfile = await fetch(`${API_BASE}/users/${formData.id}`, {
+      const res = await fetch(`${API_BASE}/users/${formData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profilePayload),
+        body: JSON.stringify(payload),
       });
 
-      const profileResult = await resProfile.json();
-      if (!resProfile.ok) throw new Error(profileResult.message || JSON.stringify(profileResult));
-
-      if (selectedUser && formData.role !== (selectedUser.role || "REGISTERED")) {
-        const resRole = await fetch(`${API_BASE}/users/${formData.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: formData.role }),
-        });
-        if (!resRole.ok) console.warn("Role update may have failed:", await resRole.text());
-      }
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message || "Failed to update user");
 
       await loadUsers();
       alert("User updated successfully");
       setShowUserModal(false);
       setSelectedUser(null);
     } catch (err) {
-      console.error("Save failed:", err);
-      alert("Save failed: " + (err.message || JSON.stringify(err)));
+      console.error(err);
+      alert("Save failed: " + err.message);
     } finally {
       setLoadingSubmit(false);
     }
   };
 
-  // --- Promotions Handlers ---
-  const openEditPromotion = (promo) => {
-    setSelectedPromotion(promo);
-    setPromoFormData({
-      title: promo.title || "",
-      description: promo.description || "",
-      discountType: promo.discountType || "PERCENT",
-      discount: promo.discount || "",
-      startDate: promo.startDate || "",
-      endDate: promo.endDate || "",
-    });
-    setShowPromoModal(true);
+  // --- Promotions API ---
+  const loadPromotions = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/promotions`);
+      if (!res.ok) throw new Error("Failed to load promotions");
+      const data = await res.json();
+      const formatted = data.map((p) => ({
+        id: p.id,
+        title: p.name,
+        description: p.description || "",
+        discountType: p.percent_off != null ? "PERCENT" : "FLAT",
+        discount: p.percent_off != null ? p.percent_off : p.flat_off_cents != null ? p.flat_off_cents / 100 : "",
+        startDate: p.starts_at.split("T")[0],
+        endDate: p.ends_at.split("T")[0],
+      }));
+      setPromotions(formatted);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load promotions: " + err.message);
+    }
   };
 
-  const deletePromotion = (id) => {
-    if (!window.confirm("Are you sure you want to delete this promotion?")) return;
-    setPromotions((prev) => prev.filter((p) => p.id !== id));
+  const openEditPromotion = (promo) => {
+    setSelectedPromotion(promo);
+    setPromoFormData({ ...promo });
+    setShowPromoModal(true);
   };
 
   const handlePromoInputChange = (e) => {
@@ -196,27 +196,67 @@ export default function AdminDashboard() {
     }));
   };
 
-  const handleSavePromotion = () => {
+  const handleSavePromotion = async () => {
     if (!promoFormData.title || promoFormData.discount === "") {
       alert("Title and discount are required");
       return;
     }
 
-    if (selectedPromotion) {
-      setPromotions((prev) =>
-        prev.map((p) =>
-          p.id === selectedPromotion.id ? { ...p, ...promoFormData } : p
-        )
-      );
-    } else {
-      const newPromo = { id: Date.now(), ...promoFormData };
-      setPromotions((prev) => [...prev, newPromo]);
-    }
+    setLoadingPromo(true);
+    try {
+      const payload = {
+        name: promoFormData.title,
+        description: promoFormData.description,
+        percent_off: promoFormData.discountType === "PERCENT" ? Number(promoFormData.discount) : null,
+        flat_off_cents: promoFormData.discountType === "FLAT" ? Math.round(Number(promoFormData.discount) * 100) : null,
+        starts_at: promoFormData.startDate + " 00:00:00",
+        ends_at: promoFormData.endDate + " 23:59:59",
+        active: true,
+      };
 
-    setShowPromoModal(false);
-    setSelectedPromotion(null);
+      if (selectedPromotion) {
+        const res = await fetch(`${API_BASE}/promotions/${selectedPromotion.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to update promotion");
+      } else {
+        const res = await fetch(`${API_BASE}/promotions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Failed to create promotion");
+      }
+
+      await loadPromotions();
+      setShowPromoModal(false);
+      setSelectedPromotion(null);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save promotion: " + err.message);
+    } finally {
+      setLoadingPromo(false);
+    }
   };
 
+  const deletePromotion = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this promotion?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/promotions/${id}`, { method: "DELETE" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to delete promotion");
+      await loadPromotions();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete promotion: " + err.message);
+    }
+  };
+
+  // --- Render ---
   return (
     <div className="body">
       <div className="header">
@@ -244,13 +284,10 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Users Management Screen */}
+        {/* Users Screen */}
         <div id="usersScreen" style={{ display: "none" }}>
           <button className="backButton" onClick={() => window.showScreen("main")}>← Back to Dashboard</button>
-          <div className="managementHeader">
-            <h2 className="headerTitle">Manage Users</h2>
-          </div>
-
+          <h2 className="headerTitle">Manage Users</h2>
           {users.length === 0 ? (
             <p>No users found.</p>
           ) : (
@@ -271,13 +308,13 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Movies Management Screen */}
+        {/* Movies Screen */}
         <div id="moviesScreen" style={{ display: "none" }}>
           <button className="backButton" onClick={() => window.showScreen("main")}>← Back to Dashboard</button>
           <h2 className="headerTitle">Manage Movies (Coming Soon)</h2>
         </div>
 
-        {/* Promotions Management Screen */}
+        {/* Promotions Screen */}
         <div id="promotionsScreen" style={{ display: "none" }}>
           <button className="backButton" onClick={() => window.showScreen("main")}>← Back to Dashboard</button>
           <div className="managementHeader">
@@ -293,7 +330,6 @@ export default function AdminDashboard() {
               + Add Promotion
             </button>
           </div>
-
           {promotions.length === 0 ? (
             <p>No promotions found.</p>
           ) : (
@@ -339,7 +375,7 @@ export default function AdminDashboard() {
   );
 }
 
-// --- User Modal Component ---
+// --- User Modal ---
 function UserModal({ formData, handleInputChange, handleSubmit, loading, close }) {
   return (
     <div className="modalOverlay" onClick={close}>
@@ -348,7 +384,6 @@ function UserModal({ formData, handleInputChange, handleSubmit, loading, close }
           <h2 className="modalTitle">Edit User</h2>
           <button className="closeButton" onClick={close}><X size={24} /></button>
         </div>
-
         <div>
           <div className="formRow">
             <div className="formGroup">
@@ -357,121 +392,84 @@ function UserModal({ formData, handleInputChange, handleSubmit, loading, close }
             </div>
             <div className="formGroup">
               <label className="label">Last Name</label>
-              <input className="input" type="text" name="last_name" value={formData.last_name} onChange={handleInputChange} placeholder="Last Name"/>
+              <input className="input" type="text" name="last_name" value={formData.last_name} onChange={handleInputChange} placeholder="Last Name" />
             </div>
           </div>
-
           <div className="formGroup">
             <label className="label">Email</label>
             <input className="input" type="email" name="email" value={formData.email} readOnly />
           </div>
-
           <div className="formGroup">
             <label className="label">New Password</label>
             <input className="input" type="password" name="password" value={formData.password} onChange={handleInputChange} placeholder="New password" />
             <input className="input" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} placeholder="Confirm new password" />
           </div>
-
           <div className="formGroup">
             <label className="label">Phone Number</label>
-            <input className="input" type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Phone Number"/>
+            <input className="input" type="text" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Phone Number" />
           </div>
-
           <div className="formGroup">
             <label className="label">Role</label>
-            <select className="select" name="role" value={formData.role} onChange={handleInputChange}>
-              <option value="REGISTERED">REGISTERED</option>
-              <option value="ADMIN">ADMIN</option>
+            <select className="input" name="role" value={formData.role} onChange={handleInputChange}>
+              <option value="REGISTERED">Registered</option>
+              <option value="ADMIN">Admin</option>
             </select>
           </div>
-
           <div className="formGroup">
-            <label className="label">Suspension Status</label>
-            <select
-              className="select"
-              name="is_suspended"
-              value={formData.is_suspended ? "SUSPENDED" : "ACTIVE"}
-              onChange={(e) =>
-                handleInputChange({ target: { name: "is_suspended", value: e.target.value === "SUSPENDED", type: "checkbox" } })
-              }
-            >
-              <option value="ACTIVE">Active</option>
-              <option value="SUSPENDED">Suspended</option>
-            </select>
+            <label className="label">
+              <input type="checkbox" name="is_suspended" checked={formData.is_suspended} onChange={handleInputChange} />
+              Suspended
+            </label>
           </div>
-
-          <div className="modalActions">
-            <button className="btnCancel" onClick={close}>Cancel</button>
-            <button className="btnSave" onClick={handleSubmit} disabled={loading}>{loading ? "Saving..." : "Update User"}</button>
-          </div>
+          <button className="btnSave" onClick={handleSubmit} disabled={loading}>{loading ? "Saving..." : "Save"}</button>
         </div>
       </div>
     </div>
   );
 }
 
-// --- Promotion Modal Component ---
+// --- Promotion Modal ---
 function PromotionModal({ promoFormData, handleInputChange, handleSave, close }) {
   return (
     <div className="modalOverlay" onClick={close}>
       <div className="modalContent" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
-          <h2 className="modalTitle">Promotion</h2>
+          <h2 className="modalTitle">{promoFormData.id ? "Edit Promotion" : "Add Promotion"}</h2>
           <button className="closeButton" onClick={close}><X size={24} /></button>
         </div>
-
         <div>
           <div className="formGroup">
             <label className="label">Title</label>
             <input className="input" type="text" name="title" value={promoFormData.title} onChange={handleInputChange} />
           </div>
-
           <div className="formGroup">
             <label className="label">Description</label>
-            <input className="input" type="text" name="description" value={promoFormData.description} onChange={handleInputChange} />
+            <textarea className="input" name="description" value={promoFormData.description} onChange={handleInputChange} />
           </div>
-
-          <div className="formGroup">
-            <label className="label">Discount Type</label>
-            <select className="select" name="discountType" value={promoFormData.discountType} onChange={handleInputChange}>
-              <option value="PERCENT">Percent Off</option>
-              <option value="FLAT">Flat Amount Off</option>
-            </select>
+          <div className="formRow">
+            <div className="formGroup">
+              <label className="label">Discount Type</label>
+              <select className="input" name="discountType" value={promoFormData.discountType} onChange={handleInputChange}>
+                <option value="PERCENT">Percent (%)</option>
+                <option value="FLAT">Flat ($)</option>
+              </select>
+            </div>
+            <div className="formGroup">
+              <label className="label">Discount Value</label>
+              <input className="input" type="number" name="discount" value={promoFormData.discount} onChange={handleInputChange} />
+            </div>
           </div>
-
-          <div className="formGroup">
-            <label className="label">Discount Value</label>
-            <input
-              className="input"
-              type="text"
-              name="discount"
-              value={
-                promoFormData.discount !== ""
-                  ? `${promoFormData.discount}${promoFormData.discountType === "PERCENT" ? " %" : " $"}`
-                  : ""
-              }
-              onChange={(e) => {
-                // Remove the suffix before saving
-                const rawValue = e.target.value.replace(/[%$]/g, "");
-                handleInputChange({ target: { name: "discount", value: rawValue } });
-              }}
-            />
+          <div className="formRow">
+            <div className="formGroup">
+              <label className="label">Start Date</label>
+              <input className="input" type="date" name="startDate" value={promoFormData.startDate} onChange={handleInputChange} />
+            </div>
+            <div className="formGroup">
+              <label className="label">End Date</label>
+              <input className="input" type="date" name="endDate" value={promoFormData.endDate} onChange={handleInputChange} />
+            </div>
           </div>
-
-          <div className="formGroup">
-            <label className="label">Start Date</label>
-            <input className="input" type="date" name="startDate" value={promoFormData.startDate} onChange={handleInputChange} />
-          </div>
-
-          <div className="formGroup">
-            <label className="label">End Date</label>
-            <input className="input" type="date" name="endDate" value={promoFormData.endDate} onChange={handleInputChange} />
-          </div>
-
-          <div className="modalActions">
-            <button className="btnCancel" onClick={close}>Cancel</button>
-            <button className="btnSave" onClick={handleSave}>Save Promotion</button>
-          </div>
+          <button className="btnSave" onClick={handleSave}>Save Promotion</button>
         </div>
       </div>
     </div>
