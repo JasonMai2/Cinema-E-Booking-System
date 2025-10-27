@@ -566,6 +566,7 @@ export default function EditProfile() {
   const handleEditPayment = (paymentMethod) => {
     // Parse billing address from stored JSON string or use empty object
     let billing = { street: "", city: "", state: "", postalCode: "" };
+    let nameOnCard = "";
     if (paymentMethod.billing_address) {
       try {
         const parsed =
@@ -578,18 +579,27 @@ export default function EditProfile() {
           state: parsed.state || "",
           postalCode: parsed.postalCode || "",
         };
+        nameOnCard = parsed.nameOnCard || "";
       } catch (e) {
         console.error("Failed to parse billing address:", e);
       }
     }
 
+    let last4Digits = "••••";
+    if (paymentMethod.provider_token) {
+      const cardNum = String(paymentMethod.provider_token);
+      last4Digits = cardNum.slice(-4);
+    }
+
     setEditingPaymentId(paymentMethod.id);
-    setPmName(paymentMethod.cardholder_name || "");
+    setPmName(nameOnCard || paymentMethod.cardholder_name || "");
     setPmBrand(paymentMethod.brand || "");
-    setPmNumber(`•••• •••• •••• ${paymentMethod.last4 || "----"}`); // Display masked number
-    setPmNumberDigits(paymentMethod.last4 || ""); // Keep only last 4 for reference
+    setPmNumber(`•••• •••• •••• ${last4Digits}`);
+    setPmNumberDigits(last4Digits);
     setPmBillingAddress(billing);
-    setPmCvv(""); // Don't populate CVV for security
+    setPmCvv(
+      paymentMethod.last4 ? "•".repeat(String(paymentMethod.last4).length) : ""
+    );
     setPmExpMonth(
       paymentMethod.exp_month ? String(paymentMethod.exp_month) : ""
     );
@@ -640,7 +650,13 @@ export default function EditProfile() {
 
     setPmLoading(true);
     try {
-      const billingAddressStr = JSON.stringify(pmBillingAddress);
+      const billingAddressStr = JSON.stringify({
+        street: pmBillingAddress.street,
+        city: pmBillingAddress.city,
+        state: pmBillingAddress.state,
+        postalCode: pmBillingAddress.postalCode,
+        nameOnCard: pmName,
+      });
       const payload = {
         billing_address: billingAddressStr,
       };
@@ -997,11 +1013,34 @@ export default function EditProfile() {
                   <div className={styles.paymentInfo}>
                     <div className={styles.cardBrand}>{m.brand || "Card"}</div>
                     <div className={styles.cardDetails}>
-                      <span>•••• •••• •••• {m.last4 || "----"}</span>
+                      {(() => {
+                        let last4 = "••••";
+                        if (m.provider_token) {
+                          const cardNum = String(m.provider_token);
+                          last4 = cardNum.slice(-4);
+                        }
+                        return <span>•••• •••• •••• {last4}</span>;
+                      })()}
                     </div>
-                    {m.cardholder_name && (
-                      <div className={styles.cardName}>{m.cardholder_name}</div>
-                    )}
+                    {(() => {
+                      let displayName = m.cardholder_name;
+                      if (m.billing_address) {
+                        try {
+                          const parsed =
+                            typeof m.billing_address === "string"
+                              ? JSON.parse(m.billing_address)
+                              : m.billing_address;
+                          if (parsed.nameOnCard) {
+                            displayName = parsed.nameOnCard;
+                          }
+                        } catch (e) {
+                          console.error("Failed to parse billing address:", e);
+                        }
+                      }
+                      return displayName ? (
+                        <div className={styles.cardName}>{displayName}</div>
+                      ) : null;
+                    })()}
                   </div>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button
@@ -1287,7 +1326,7 @@ export default function EditProfile() {
                     )}
                   </div>
 
-                  {/* Card Number - read-only in edit mode */}
+                  {/* Card Number - shown in both modes but read-only in edit */}
                   <div>
                     <label className={styles.profileLabel}>Card Number</label>
                     <input
@@ -1327,7 +1366,7 @@ export default function EditProfile() {
                     )}
                   </div>
 
-                  {/* Expiration Date - read-only in edit mode */}
+                  {/* Expiration Date - shown in both modes but read-only in edit */}
                   <div className={styles.twoCol}>
                     <div>
                       <label className={styles.profileLabel}>
@@ -1406,41 +1445,48 @@ export default function EditProfile() {
                     </div>
                   </div>
 
-                  {/* CVV - read-only in edit mode */}
-                  {paymentFormMode === "add" && (
-                    <>
-                      <div>
-                        <label className={styles.profileLabel}>CVV</label>
-                        <input
-                          type="text"
-                          placeholder="CVV"
-                          value={pmCvv}
-                          onChange={(e) => {
-                            const digits = e.target.value.replace(/\D/g, "");
-                            setPmCvv(digits.slice(0, 4));
-                            if (pmFieldErrors.cvv) {
-                              const copy = { ...pmFieldErrors };
-                              delete copy.cvv;
-                              setPmFieldErrors(copy);
-                            }
-                          }}
-                          onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
-                          maxLength={4}
-                          inputMode="numeric"
-                          className={pmInputClass("cvv")}
-                          aria-invalid={!!pmFieldErrors.cvv}
-                          aria-describedby={
-                            pmFieldErrors.cvv ? "err-pm-cvv" : undefined
-                          }
-                        />
-                        {pmFieldErrors.cvv && (
-                          <div id="err-pm-cvv" className={styles.fieldError}>
-                            {pmFieldErrors.cvv}
-                          </div>
-                        )}
+                  {/* CVV - shown in both modes but masked and read-only in edit */}
+                  <div>
+                    <label className={styles.profileLabel}>CVV</label>
+                    <input
+                      type="text"
+                      placeholder={
+                        paymentFormMode === "edit"
+                          ? "CVV (hidden for security)"
+                          : "CVV"
+                      }
+                      value={pmCvv}
+                      onChange={(e) => {
+                        if (paymentFormMode === "edit") {
+                          return;
+                        }
+                        const digits = e.target.value.replace(/\D/g, "");
+                        setPmCvv(digits.slice(0, 4));
+                        if (pmFieldErrors.cvv) {
+                          const copy = { ...pmFieldErrors };
+                          delete copy.cvv;
+                          setPmFieldErrors(copy);
+                        }
+                      }}
+                      onBlur={(e) =>
+                        paymentFormMode === "add" &&
+                        handlePmBlur("pmCvv", e.target.value)
+                      }
+                      maxLength={4}
+                      inputMode="numeric"
+                      className={pmInputClass("cvv")}
+                      disabled={paymentFormMode === "edit"}
+                      aria-invalid={!!pmFieldErrors.cvv}
+                      aria-describedby={
+                        pmFieldErrors.cvv ? "err-pm-cvv" : undefined
+                      }
+                    />
+                    {pmFieldErrors.cvv && (
+                      <div id="err-pm-cvv" className={styles.fieldError}>
+                        {pmFieldErrors.cvv}
                       </div>
-                    </>
-                  )}
+                    )}
+                  </div>
 
                   <div className={styles.paymentFormActions}>
                     <button
@@ -1460,18 +1506,18 @@ export default function EditProfile() {
                             }
 
                             const tempId = `temp-${Date.now()}`;
-                            const masked = (digits) => {
-                              if (!digits) return "----";
-                              return digits.length >= 4
-                                ? digits.slice(-4)
-                                : digits.padStart(4, "-");
-                            };
                             const optimistic = {
                               id: tempId,
                               brand: pmBrand || "Card",
-                              last4: masked(pmNumberDigits),
+                              last4: pmCvv,
                               cardholder_name: pmName,
-                              billing: pmBillingAddress,
+                              billing_address: JSON.stringify({
+                                street: pmBillingAddress.street,
+                                city: pmBillingAddress.city,
+                                state: pmBillingAddress.state,
+                                postalCode: pmBillingAddress.postalCode,
+                                nameOnCard: pmName,
+                              }),
                               exp_month: pmExpMonth,
                               exp_year: pmExpYear,
                             };
@@ -1482,16 +1528,15 @@ export default function EditProfile() {
                               city: pmBillingAddress.city,
                               state: pmBillingAddress.state,
                               postalCode: pmBillingAddress.postalCode,
+                              nameOnCard: pmName,
                             });
 
                             const payload = {
                               user_id: user.id,
                               provider: "dev",
-                              provider_token: `tok_${Date.now()}_${pmNumberDigits.slice(
-                                -4
-                              )}`, // Mock token for dev mode
+                              provider_token: pmNumberDigits,
                               brand: pmBrand,
-                              last4: masked(pmNumberDigits),
+                              last4: pmCvv,
                               exp_month: parseInt(pmExpMonth, 10),
                               exp_year: parseInt(pmExpYear, 10),
                               billing_address: billingAddressStr,
