@@ -103,10 +103,12 @@ public class UserController {
     // Delete user
     @DeleteMapping("/{id}")
     public Map<String, Object> deleteUser(@PathVariable Long id) {
+        jdbc.update("DELETE FROM user_roles WHERE user_id = ?", id);
+        jdbc.update("DELETE FROM payment_methods WHERE user_id = ?", id);
+
         int deleted = jdbc.update("DELETE FROM users WHERE id = ?", id);
-        if (deleted == 0) {
-            return Map.of("error", "User not found");
-        }
+        if (deleted == 0) return Map.of("error", "User not found");
+
         return Map.of("status", "User deleted successfully");
     }
 }

@@ -73,15 +73,6 @@ const styles = {
     marginBottom: "30px",
     transition: "all 0.3s ease",
   },
-  addButton: {
-    backgroundColor: "#661b1c",
-    color: "#f5f5f5",
-    border: "none",
-    padding: "12px 30px",
-    fontSize: "16px",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-  },
   managementHeader: {
     display: "flex",
     justifyContent: "space-between",
@@ -201,16 +192,6 @@ const styles = {
     fontSize: "14px",
     boxSizing: "border-box",
   },
-  checkboxContainer: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-  checkbox: {
-    width: "18px",
-    height: "18px",
-    cursor: "pointer",
-  },
   formRow: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -249,7 +230,6 @@ const styles = {
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState("add");
   const [selectedUser, setSelectedUser] = useState(null);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
 
@@ -283,7 +263,6 @@ export default function AdminDashboard() {
       if (screen === "promotions") promos.style.display = "block";
     };
     window.showScreen = showScreen;
-    // show main initially
     window.showScreen("main");
   }, []);
 
@@ -312,26 +291,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const openAddModal = () => {
-    setModalMode("add");
-    setFormData({
-      id: null,
-      email: "",
-      password: "",
-      confirmPassword: "",
-      first_name: "",
-      last_name: "",
-      phone: "",
-      role: "REGISTERED",
-      is_suspended: false,
-      payment_cards: [],
-    });
-    setSelectedUser(null);
-    setShowModal(true);
-  };
-
   const openEditModal = (user) => {
-    setModalMode("edit");
     setSelectedUser(user);
     setFormData({
       id: user.id,
@@ -349,7 +309,7 @@ export default function AdminDashboard() {
   };
 
   const closeModal = () => {
-    if (loadingSubmit) return; // don't close while submitting
+    if (loadingSubmit) return;
     setShowModal(false);
     setSelectedUser(null);
     setLoadingSubmit(false);
@@ -364,80 +324,30 @@ export default function AdminDashboard() {
   };
 
   const handleSubmit = async () => {
-    // basic validation
     if (!formData.email || formData.email.trim() === "") {
       alert("Email is required");
       return;
     }
-    if (modalMode === "add") {
-      if (!formData.password || formData.password.length < 8) {
-        alert("Password (min 6 chars) is required for new users");
-        return;
-      }
-      // confirmPassword not used on add in this flow (kept single for UX parity)
-    } else {
-      // edit: only update password if both password fields present
-      const pw = formData.password ? formData.password.trim() : "";
-      const cpw = formData.confirmPassword ? formData.confirmPassword.trim() : "";
-      if ((pw !== "" || cpw !== "")) {
-        if (pw.length < 6) {
-          alert("New password must be at least 6 characters long");
-          return;
-        }
-        if (pw !== cpw) {
-          alert("New password and confirmation do not match");
-          return;
-        }
-      }
+
+    // password update check
+    const pw = formData.password?.trim() || "";
+    const cpw = formData.confirmPassword?.trim() || "";
+    if ((pw !== "" || cpw !== "") && (pw !== cpw || pw.length < 8)) {
+      alert("Passwords must match and be at least 8 characters");
+      return;
     }
 
     setLoadingSubmit(true);
 
     try {
-      if (modalMode === "add") {
-        // Create new user
-        const payload = {
-          email: formData.email,
-          password: formData.password,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          phone: formData.phone,
-          role: formData.role,
-        };
-
-        const res = await fetch(`${API_BASE}/users`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        const result = await res.json();
-        if (!res.ok) {
-          throw new Error(result.message || JSON.stringify(result));
-        }
-
-        alert(result.message || "User created");
-        await loadUsers();
-        closeModal();
-        return;
-      }
-
-      // EDIT mode
       const profilePayload = {
         id: formData.id,
         email: formData.email,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
       };
-
-      if (formData.first_name !== undefined) profilePayload.first_name = formData.first_name;
-      if (formData.last_name !== undefined) profilePayload.last_name = formData.last_name;
-      if (formData.phone !== undefined) profilePayload.phone = formData.phone;
-
-      // include password only if admin entered and confirmed a new password
-      const pw = formData.password ? formData.password.trim() : "";
-      const cpw = formData.confirmPassword ? formData.confirmPassword.trim() : "";
-      if (pw !== "" && cpw !== "" && pw === cpw && pw.length >= 8) {
-        profilePayload.password = pw;
-      }
+      if (pw) profilePayload.password = pw;
 
       const resProfile = await fetch(`${API_BASE}/users/${formData.id}`, {
         method: "PUT",
@@ -446,11 +356,8 @@ export default function AdminDashboard() {
       });
 
       const profileResult = await resProfile.json();
-      if (!resProfile.ok) {
-        throw new Error(profileResult.message || JSON.stringify(profileResult));
-      }
+      if (!resProfile.ok) throw new Error(profileResult.message || JSON.stringify(profileResult));
 
-      // Attempt role update (best-effort) - if your backend doesn't support it, this won't break the profile update
       if (selectedUser && formData.role !== (selectedUser.role || "REGISTERED")) {
         try {
           const resRole = await fetch(`${API_BASE}/users/${formData.id}`, {
@@ -458,23 +365,18 @@ export default function AdminDashboard() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ role: formData.role }),
           });
-          if (!resRole.ok) {
-            // non-fatal; role may be handled elsewhere (e.g., user_roles table)
-            console.warn("Role update may have failed:", await resRole.text());
-          }
+          if (!resRole.ok) console.warn("Role update may have failed:", await resRole.text());
         } catch (err) {
           console.warn("Role patch request failed:", err);
         }
       }
 
       await loadUsers();
-
       alert("User updated successfully");
       closeModal();
     } catch (err) {
       console.error("Save failed:", err);
       alert("Save failed: " + (err.message || JSON.stringify(err)));
-      setLoadingSubmit(false);
     } finally {
       setLoadingSubmit(false);
     }
@@ -490,42 +392,28 @@ export default function AdminDashboard() {
         <div id="mainScreen">
           <div style={styles.adminCards}>
             <div style={styles.adminCard} onClick={() => window.showScreen("movies")}>
-              <div style={styles.adminCardIcon}>
-                <Film style={styles.iconStyle} />
-              </div>
-              <h2 style={styles.adminCardTitle}>
-                Manage<br />Movies
-              </h2>
+              <div style={styles.adminCardIcon}><Film style={styles.iconStyle} /></div>
+              <h2 style={styles.adminCardTitle}>Manage<br />Movies</h2>
             </div>
 
             <div style={styles.adminCard} onClick={() => window.showScreen("users")}>
-              <div style={styles.adminCardIcon}>
-                <Users style={styles.iconStyle} />
-              </div>
-              <h2 style={styles.adminCardTitle}>
-                Manage<br />Users
-              </h2>
+              <div style={styles.adminCardIcon}><Users style={styles.iconStyle} /></div>
+              <h2 style={styles.adminCardTitle}>Manage<br />Users</h2>
             </div>
 
             <div style={styles.adminCard} onClick={() => window.showScreen("promotions")}>
-              <div style={styles.adminCardIcon}>
-                <Percent style={styles.iconStyle} />
-              </div>
-              <h2 style={styles.adminCardTitle}>
-                Manage<br />Promotions
-              </h2>
+              <div style={styles.adminCardIcon}><Percent style={styles.iconStyle} /></div>
+              <h2 style={styles.adminCardTitle}>Manage<br />Promotions</h2>
             </div>
           </div>
         </div>
 
         <div id="usersScreen" style={{ display: "none" }}>
-          <button style={styles.backButton} onClick={() => window.showScreen("main")}>
-            ← Back to Dashboard
-          </button>
+          <button style={styles.backButton} onClick={() => window.showScreen("main")}>← Back to Dashboard</button>
 
           <div style={styles.managementHeader}>
             <h2 style={{ fontSize: "28px" }}>Manage Users</h2>
-            <button style={styles.addButton} onClick={openAddModal}>+ Add New User</button>
+            {/* Add User button removed */}
           </div>
 
           {users.length === 0 ? (
@@ -538,8 +426,7 @@ export default function AdminDashboard() {
                     {u.first_name} {u.last_name} {u.is_suspended ? "(Suspended)" : ""}
                   </h3>
                   <p style={styles.itemInfoSubtitle}>
-                    {u.email} • Role: {u.role || "N/A"} • Created:{" "}
-                    {new Date(u.created_at).toLocaleDateString()}
+                    {u.email} • Role: {u.role || "N/A"} • Created: {new Date(u.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 <div style={styles.itemActions}>
@@ -552,16 +439,12 @@ export default function AdminDashboard() {
         </div>
 
         <div id="moviesScreen" style={{ display: "none" }}>
-          <button style={styles.backButton} onClick={() => window.showScreen("main")}>
-            ← Back to Dashboard
-          </button>
+          <button style={styles.backButton} onClick={() => window.showScreen("main")}>← Back to Dashboard</button>
           <h2 style={{ fontSize: "28px" }}>Manage Movies (Coming Soon)</h2>
         </div>
 
         <div id="promotionsScreen" style={{ display: "none" }}>
-          <button style={styles.backButton} onClick={() => window.showScreen("main")}>
-            ← Back to Dashboard
-          </button>
+          <button style={styles.backButton} onClick={() => window.showScreen("main")}>← Back to Dashboard</button>
           <h2 style={{ fontSize: "28px" }}>Manage Promotions (Coming Soon)</h2>
         </div>
       </div>
@@ -570,122 +453,49 @@ export default function AdminDashboard() {
         <div style={styles.modalOverlay} onClick={closeModal}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>
-                {modalMode === "add" ? "Add New User" : "Edit User"}
-              </h2>
-              <button style={styles.closeButton} onClick={closeModal}>
-                <X size={24} />
-              </button>
+              <h2 style={styles.modalTitle}>Edit User</h2>
+              <button style={styles.closeButton} onClick={closeModal}><X size={24} /></button>
             </div>
 
             <div>
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
                   <label style={styles.label}>First Name</label>
-                  <input
-                    style={styles.input}
-                    type="text"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleInputChange}
-                    placeholder="Enter first name"
-                  />
+                  <input style={styles.input} type="text" name="first_name" value={formData.first_name} onChange={handleInputChange} />
                 </div>
-
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Last Name</label>
-                  <input
-                    style={styles.input}
-                    type="text"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleInputChange}
-                    placeholder="Enter last name"
-                  />
+                  <input style={styles.input} type="text" name="last_name" value={formData.last_name} onChange={handleInputChange} placeholder="Last Mame"/>
                 </div>
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Email *</label>
-                <input
-                  style={styles.input}
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="user@example.com"
-                  readOnly={modalMode === "edit"} // <-- read-only when editing
-                />
+                <label style={styles.label}>Email</label>
+                <input style={styles.input} type="email" name="email" value={formData.email} readOnly />
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  {modalMode === "add" ? "Password *" : "New Password"}
-                </label>
-
-                {modalMode === "add" ? (
-                  <input
-                    style={styles.input}
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Enter password"
-                  />
-                ) : (
-                  <>
-                    <input
-                      style={{ ...styles.input, marginBottom: "10px" }}
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      placeholder="New password"
-                    />
-                    <input
-                      style={styles.input}
-                      type="password"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      placeholder="Confirm new password"
-                    />
-                  </>
-                )}
+                <label style={styles.label}>New Password</label>
+                <input style={{ ...styles.input, marginBottom: "10px" }} type="password" name="password" value={formData.password} onChange={handleInputChange} placeholder="New password" />
+                <input style={styles.input} type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} placeholder="Confirm new password" />
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Phone</label>
-                <input
-                  style={styles.input}
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="+1 (555) 123-4567"
-                />
+                <label style={styles.label}>Phone Number</label>
+                <input style={styles.input} type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="Phone Number"/>
               </div>
 
               <div style={styles.formGroup}>
                 <label style={styles.label}>Role</label>
-                <select
-                  style={styles.select}
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                >
+                <select style={styles.select} name="role" value={formData.role} onChange={handleInputChange}>
                   <option value="REGISTERED">REGISTERED</option>
                   <option value="ADMIN">ADMIN</option>
                 </select>
               </div>
 
               <div style={styles.modalActions}>
-                <button type="button" style={styles.btnCancel} onClick={closeModal}>
-                  Cancel
-                </button>
-                <button type="button" style={styles.btnSave} onClick={handleSubmit} disabled={loadingSubmit}>
-                  {loadingSubmit ? "Saving..." : (modalMode === "add" ? "Add User" : "Update User")}
-                </button>
+                <button style={styles.btnCancel} onClick={closeModal}>Cancel</button>
+                <button style={styles.btnSave} onClick={handleSubmit} disabled={loadingSubmit}>{loadingSubmit ? "Saving..." : "Update User"}</button>
               </div>
             </div>
           </div>
