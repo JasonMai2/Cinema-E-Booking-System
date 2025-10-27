@@ -492,7 +492,8 @@ export default function EditProfile() {
       initialUser.shipping_address?.street !== (shippingAddress.street || "") ||
       initialUser.shipping_address?.city !== (shippingAddress.city || "") ||
       initialUser.shipping_address?.state !== (shippingAddress.state || "") ||
-      initialUser.shipping_address?.postalCode !== (shippingAddress.postalCode || "") ||
+      initialUser.shipping_address?.postalCode !==
+        (shippingAddress.postalCode || "") ||
       initialUser.promotions !== promotions
     );
   };
@@ -910,7 +911,10 @@ export default function EditProfile() {
               type="text"
               value={shippingAddress.street}
               onChange={(e) =>
-                setShippingAddress({ ...shippingAddress, street: e.target.value })
+                setShippingAddress({
+                  ...shippingAddress,
+                  street: e.target.value,
+                })
               }
               className={styles.profileInput}
             />
@@ -934,7 +938,10 @@ export default function EditProfile() {
               type="text"
               value={shippingAddress.state}
               onChange={(e) =>
-                setShippingAddress({ ...shippingAddress, state: e.target.value })
+                setShippingAddress({
+                  ...shippingAddress,
+                  state: e.target.value,
+                })
               }
               className={styles.profileInput}
             />
