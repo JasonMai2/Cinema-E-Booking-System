@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Film, Users, Percent, X } from "lucide-react";
+import "./AdminDashboard.css";
 
 const API_BASE = "http://localhost:8080/api";
 
@@ -332,8 +333,8 @@ export default function AdminDashboard() {
     // password update check
     const pw = formData.password?.trim() || "";
     const cpw = formData.confirmPassword?.trim() || "";
-    if ((pw !== "" || cpw !== "") && (pw !== cpw || pw.length < 8)) {
-      alert("Passwords must match and be at least 8 characters");
+    if ((pw !== "" || cpw !== "") && (pw !== cpw || pw.length < 6)) {
+      alert("Passwords must match and be at least 6 characters");
       return;
     }
 
@@ -346,6 +347,7 @@ export default function AdminDashboard() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         phone: formData.phone,
+        role: formData.role
       };
       if (pw) profilePayload.password = pw;
 
@@ -361,7 +363,7 @@ export default function AdminDashboard() {
       if (selectedUser && formData.role !== (selectedUser.role || "REGISTERED")) {
         try {
           const resRole = await fetch(`${API_BASE}/users/${formData.id}`, {
-            method: "PATCH",
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ role: formData.role }),
           });

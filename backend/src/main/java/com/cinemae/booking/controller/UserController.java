@@ -67,12 +67,22 @@ public class UserController {
     // Update existing user
     @PutMapping("/{id}")
     public Map<String, Object> updateUser(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
-        String firstName = (String) payload.get("first_name");
-        String lastName = (String) payload.get("last_name");
-        String email = (String) payload.get("email");
-        String phone = (String) payload.get("phone");
-        Boolean isSuspended = (Boolean) payload.getOrDefault("is_suspended", false);
-        String role = (String) payload.get("role"); // expects "admin" or "registered"
+
+        // Fetch existing user from DB to fill missing fields
+        Map<String, Object> existingUser;
+        try {
+            existingUser = jdbc.queryForMap("SELECT * FROM users WHERE id = ?", id);
+        } catch (EmptyResultDataAccessException e) {
+            return Map.of("error", "User not found");
+        }
+
+        // Merge payload with existing values to avoid nulls
+        String firstName = (String) payload.getOrDefault("first_name", existingUser.get("first_name"));
+        String lastName = (String) payload.getOrDefault("last_name", existingUser.get("last_name"));
+        String email = (String) payload.getOrDefault("email", existingUser.get("email"));
+        String phone = (String) payload.getOrDefault("phone", existingUser.get("phone"));
+        Boolean isSuspended = (Boolean) payload.getOrDefault("is_suspended", existingUser.get("is_suspended"));
+        String role = (String) payload.get("role");
 
         // Update basic user info
         int updated = jdbc.update("""
