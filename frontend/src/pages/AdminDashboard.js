@@ -347,7 +347,8 @@ export default function AdminDashboard() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         phone: formData.phone,
-        role: formData.role
+        role: formData.role,
+        is_suspended: formData.is_suspended,
       };
       if (pw) profilePayload.password = pw;
 
@@ -361,16 +362,12 @@ export default function AdminDashboard() {
       if (!resProfile.ok) throw new Error(profileResult.message || JSON.stringify(profileResult));
 
       if (selectedUser && formData.role !== (selectedUser.role || "REGISTERED")) {
-        try {
-          const resRole = await fetch(`${API_BASE}/users/${formData.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ role: formData.role }),
-          });
-          if (!resRole.ok) console.warn("Role update may have failed:", await resRole.text());
-        } catch (err) {
-          console.warn("Role patch request failed:", err);
-        }
+        const resRole = await fetch(`${API_BASE}/users/${formData.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: formData.role }),
+        });
+        if (!resRole.ok) console.warn("Role update may have failed:", await resRole.text());
       }
 
       await loadUsers();
@@ -425,10 +422,10 @@ export default function AdminDashboard() {
               <div key={u.id} style={styles.itemCardDetailed}>
                 <div>
                   <h3 style={styles.itemInfoTitle}>
-                    {u.first_name} {u.last_name} {u.is_suspended ? "(Suspended)" : ""}
+                    {u.first_name} {u.last_name}
                   </h3>
                   <p style={styles.itemInfoSubtitle}>
-                    {u.email} • Role: {u.role || "N/A"} • Created: {new Date(u.created_at).toLocaleDateString()}
+                    {u.email} • Role: {u.role || "N/A"} • Status: {u.is_suspended ? "Suspended" : "Active"} • Created: {new Date(u.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 <div style={styles.itemActions}>
@@ -492,6 +489,24 @@ export default function AdminDashboard() {
                 <select style={styles.select} name="role" value={formData.role} onChange={handleInputChange}>
                   <option value="REGISTERED">REGISTERED</option>
                   <option value="ADMIN">ADMIN</option>
+                </select>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Suspension Status</label>
+                <select
+                  style={styles.select}
+                  name="is_suspended"
+                  value={formData.is_suspended ? "SUSPENDED" : "ACTIVE"}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      is_suspended: e.target.value === "SUSPENDED",
+                    }))
+                  }
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="SUSPENDED">Suspended</option>
                 </select>
               </div>
 
