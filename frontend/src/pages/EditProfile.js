@@ -45,6 +45,8 @@ export default function EditProfile() {
   const [errors, setErrors] = useState({});
   const [showAllErrors, setShowAllErrors] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentFormMode, setPaymentFormMode] = useState("add"); // "add" or "edit"
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
 
   const promotionsId = useId();
 
@@ -517,6 +519,116 @@ export default function EditProfile() {
     }
   };
 
+  const handleEditPayment = (paymentMethod) => {
+    // Parse billing address from stored JSON string or use empty object
+    let billing = { street: "", city: "", state: "", postalCode: "" };
+    if (paymentMethod.billing_address) {
+      try {
+        const parsed =
+          typeof paymentMethod.billing_address === "string"
+            ? JSON.parse(paymentMethod.billing_address)
+            : paymentMethod.billing_address;
+        billing = {
+          street: parsed.street || "",
+          city: parsed.city || "",
+          state: parsed.state || "",
+          postalCode: parsed.postalCode || "",
+        };
+      } catch (e) {
+        console.error("Failed to parse billing address:", e);
+      }
+    }
+
+    setEditingPaymentId(paymentMethod.id);
+    setPmName(paymentMethod.cardholder_name || "");
+    setPmBrand(paymentMethod.brand || "");
+    setPmNumber(`•••• ${paymentMethod.last4 || "----"}`); // Display masked number
+    setPmNumberDigits(paymentMethod.last4 || ""); // Keep only last 4 for reference
+    setPmBillingAddress(billing);
+    setPmCvv(""); // Don't populate CVV for security
+
+    setPaymentFormMode("edit");
+    setShowPaymentForm(true);
+    setPmFieldErrors({});
+  };
+
+  const handleCancelPaymentForm = () => {
+    setShowPaymentForm(false);
+    setPaymentFormMode("add");
+    setEditingPaymentId(null);
+
+    // Reset form
+    setPmBrand("");
+    setPmNumber("");
+    setPmNumberDigits("");
+    setPmName("");
+    setPmBillingAddress({ street: "", city: "", state: "", postalCode: "" });
+    setPmCvv("");
+    setPmFieldErrors({});
+  };
+
+  const handleSaveEditPayment = async (paymentId) => {
+    // Only validate billing address for edit mode
+    const errors = {};
+    if (
+      !pmBillingAddress.street ||
+      pmBillingAddress.street.trim().length === 0
+    ) {
+      errors.street = "Billing street is required.";
+    }
+    if (
+      !pmBillingAddress.postalCode ||
+      pmBillingAddress.postalCode.trim().length === 0
+    ) {
+      errors.postalCode = "Postal code is required.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setPmFieldErrors(errors);
+      return;
+    }
+
+    setPmLoading(true);
+    try {
+      const billingAddressStr = JSON.stringify(pmBillingAddress);
+      const payload = {
+        billing_address: billingAddressStr,
+      };
+
+      const res = await api.put(`/payment-methods/${paymentId}`, payload);
+
+      if (res?.data?.ok) {
+        // Refresh payment methods
+        const refreshRes = await api.get(`/payment-methods?userId=${user.id}`);
+        if (refreshRes?.data?.ok) {
+          setPaymentMethods(refreshRes.data.methods || []);
+        }
+
+        setMessage({
+          type: "success",
+          text: "Billing address updated successfully",
+        });
+        setTimeout(() => setMessage(null), 2500);
+        handleCancelPaymentForm();
+      } else {
+        setMessage({
+          type: "error",
+          text: res?.data?.message || "Failed to update billing address",
+        });
+        setTimeout(() => setMessage(null), 2500);
+      }
+    } catch (err) {
+      const serverMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to update billing address";
+      setMessage({ type: "error", text: serverMsg });
+      setTimeout(() => setMessage(null), 3000);
+    } finally {
+      setPmLoading(false);
+    }
+  };
+
   return (
     <main className={styles.profilePage}>
       <h2 className={styles.profileTitle}>Edit Profile</h2>
@@ -844,49 +956,64 @@ export default function EditProfile() {
                       <div className={styles.cardName}>{m.cardholder_name}</div>
                     )}
                   </div>
-                  <button
-                    className={styles.removeBtn}
-                    onClick={async (ev) => {
-                      ev.preventDefault();
-                      const ok = window.confirm("Remove this payment method?");
-                      if (!ok) return;
-                      if (String(m.id).startsWith("temp-")) {
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      className={styles.editBtn}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleEditPayment(m);
+                      }}
+                      disabled={pmLoading || showPaymentForm}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className={styles.removeBtn}
+                      onClick={async (ev) => {
+                        ev.preventDefault();
+                        const ok = window.confirm(
+                          "Remove this payment method?"
+                        );
+                        if (!ok) return;
+                        if (String(m.id).startsWith("temp-")) {
+                          setPaymentMethods((prev) =>
+                            prev.filter((pm) => pm.id !== m.id)
+                          );
+                          return;
+                        }
+
+                        // optimistic remove
+                        const previous = paymentMethods;
                         setPaymentMethods((prev) =>
                           prev.filter((pm) => pm.id !== m.id)
                         );
-                        return;
-                      }
-
-                      // optimistic remove
-                      const previous = paymentMethods;
-                      setPaymentMethods((prev) =>
-                        prev.filter((pm) => pm.id !== m.id)
-                      );
-                      try {
-                        const res = await api.delete(
-                          `/payment-methods/${m.id}`
-                        );
-                        if (!res?.data?.ok) {
+                        try {
+                          const res = await api.delete(
+                            `/payment-methods/${m.id}`
+                          );
+                          if (!res?.data?.ok) {
+                            setPaymentMethods(previous);
+                            setMessage({
+                              type: "error",
+                              text: res?.data?.message || "Unable to remove",
+                            });
+                            setTimeout(() => setMessage(null), 2500);
+                          }
+                        } catch (e) {
                           setPaymentMethods(previous);
-                          setMessage({
-                            type: "error",
-                            text: res?.data?.message || "Unable to remove",
-                          });
-                          setTimeout(() => setMessage(null), 2500);
+                          const serverMsg =
+                            e?.response?.data?.message ||
+                            e?.message ||
+                            "Unable to remove payment method";
+                          setMessage({ type: "error", text: serverMsg });
+                          setTimeout(() => setMessage(null), 3000);
                         }
-                      } catch (e) {
-                        setPaymentMethods(previous);
-                        const serverMsg =
-                          e?.response?.data?.message ||
-                          e?.message ||
-                          "Unable to remove payment method";
-                        setMessage({ type: "error", text: serverMsg });
-                        setTimeout(() => setMessage(null), 3000);
-                      }
-                    }}
-                  >
-                    Remove
-                  </button>
+                      }}
+                      disabled={pmLoading || showPaymentForm}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ))}
 
@@ -910,344 +1037,419 @@ export default function EditProfile() {
             </div>
           )}
 
-          {/* Payment method form - shown when skeleton is clicked */}
-          {showPaymentForm && paymentMethods.length < 3 && (
-            <div className={styles.paymentFormContainer}>
-              <div className={styles.paymentFormHeader}>
-                <h4 className={styles.paymentFormTitle}>Add Payment Method</h4>
-                <button
-                  className={styles.closeFormBtn}
-                  onClick={() => {
-                    setShowPaymentForm(false);
-                    setPmFieldErrors({});
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-
-              <div className={styles.profileForm}>
-                <input
-                  type="text"
-                  placeholder="Cardholder name"
-                  value={pmName}
-                  onChange={(e) => {
-                    setPmName(e.target.value);
-                    if (pmFieldErrors.name) {
-                      const copy = { ...pmFieldErrors };
-                      delete copy.name;
-                      setPmFieldErrors(copy);
-                    }
-                  }}
-                  onBlur={(e) => handlePmBlur("pmName", e.target.value)}
-                  className={pmInputClass("name")}
-                  aria-invalid={!!pmFieldErrors.name}
-                  aria-describedby={
-                    pmFieldErrors.name ? "err-pm-name" : undefined
-                  }
-                />
-                {pmFieldErrors.name && (
-                  <div id="err-pm-name" className={styles.fieldError}>
-                    {pmFieldErrors.name}
-                  </div>
-                )}
-
-                <div className={styles.twoCol}>
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Billing street"
-                      value={pmBillingAddress.street}
-                      onChange={(e) => {
-                        setPmBillingAddress({
-                          ...pmBillingAddress,
-                          street: e.target.value,
-                        });
-                        if (pmFieldErrors.street) {
-                          const copy = { ...pmFieldErrors };
-                          delete copy.street;
-                          setPmFieldErrors(copy);
-                        }
-                      }}
-                      onBlur={(e) => handlePmBlur("pmStreet", e.target.value)}
-                      className={pmInputClass("street")}
-                      aria-invalid={!!pmFieldErrors.street}
-                      aria-describedby={
-                        pmFieldErrors.street ? "err-pm-street" : undefined
-                      }
-                    />
-                    {pmFieldErrors.street && (
-                      <div id="err-pm-street" className={styles.fieldError}>
-                        {pmFieldErrors.street}
-                      </div>
-                    )}
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder="City"
-                    value={pmBillingAddress.city}
-                    onChange={(e) =>
-                      setPmBillingAddress({
-                        ...pmBillingAddress,
-                        city: e.target.value,
-                      })
-                    }
-                    className={styles.profileInput}
-                  />
+          {/* Payment method form - shown for both add and edit */}
+          {showPaymentForm &&
+            (paymentMethods.length < 3 || paymentFormMode === "edit") && (
+              <div className={styles.paymentFormContainer}>
+                <div className={styles.paymentFormHeader}>
+                  <h4 className={styles.paymentFormTitle}>
+                    {paymentFormMode === "edit"
+                      ? "Edit Billing Address"
+                      : "Add Payment Method"}
+                  </h4>
+                  <button
+                    className={styles.closeFormBtn}
+                    onClick={handleCancelPaymentForm}
+                  >
+                    Cancel
+                  </button>
                 </div>
 
-                <div className={styles.twoCol}>
-                  <input
-                    type="text"
-                    placeholder="State"
-                    value={pmBillingAddress.state}
-                    onChange={(e) =>
-                      setPmBillingAddress({
-                        ...pmBillingAddress,
-                        state: e.target.value,
-                      })
-                    }
-                    className={styles.profileInput}
-                  />
+                <div className={styles.profileForm}>
+                  {/* Cardholder name - read-only in edit mode */}
                   <div>
+                    <label className={styles.profileLabel}>
+                      Cardholder Name
+                    </label>
                     <input
                       type="text"
-                      placeholder="Postal code"
-                      value={pmBillingAddress.postalCode}
+                      placeholder="Cardholder name"
+                      value={pmName}
                       onChange={(e) => {
-                        setPmBillingAddress({
-                          ...pmBillingAddress,
-                          postalCode: e.target.value,
-                        });
-                        if (pmFieldErrors.postalCode) {
+                        if (paymentFormMode === "edit") return;
+                        setPmName(e.target.value);
+                        if (pmFieldErrors.name) {
                           const copy = { ...pmFieldErrors };
-                          delete copy.postalCode;
+                          delete copy.name;
                           setPmFieldErrors(copy);
                         }
                       }}
                       onBlur={(e) =>
-                        handlePmBlur("pmPostalCode", e.target.value)
+                        paymentFormMode === "add" &&
+                        handlePmBlur("pmName", e.target.value)
                       }
-                      className={pmInputClass("postalCode")}
-                      aria-invalid={!!pmFieldErrors.postalCode}
+                      className={pmInputClass("name")}
+                      disabled={paymentFormMode === "edit"}
+                      aria-invalid={!!pmFieldErrors.name}
                       aria-describedby={
-                        pmFieldErrors.postalCode
-                          ? "err-pm-postalCode"
-                          : undefined
+                        pmFieldErrors.name ? "err-pm-name" : undefined
                       }
                     />
-                    {pmFieldErrors.postalCode && (
-                      <div id="err-pm-postalCode" className={styles.fieldError}>
-                        {pmFieldErrors.postalCode}
+                    {pmFieldErrors.name && (
+                      <div id="err-pm-name" className={styles.fieldError}>
+                        {pmFieldErrors.name}
                       </div>
                     )}
                   </div>
-                </div>
 
-                <select
-                  value={pmBrand}
-                  onChange={(e) => {
-                    setPmBrand(e.target.value);
-                    if (pmFieldErrors.brand) {
-                      const copy = { ...pmFieldErrors };
-                      delete copy.brand;
-                      setPmFieldErrors(copy);
-                    }
-                  }}
-                  onBlur={(e) => handlePmBlur("pmBrand", e.target.value)}
-                  className={pmInputClass("brand")}
-                  aria-label="Card brand"
-                  aria-invalid={!!pmFieldErrors.brand}
-                  aria-describedby={
-                    pmFieldErrors.brand ? "err-pm-brand" : undefined
-                  }
-                >
-                  <option value="">Select a brand</option>
-                  <option value="Visa">Visa</option>
-                  <option value="Mastercard">Mastercard</option>
-                  <option value="American Express">American Express</option>
-                  <option value="Discover">Discover</option>
-                </select>
-                {pmFieldErrors.brand && (
-                  <div id="err-pm-brand" className={styles.fieldError}>
-                    {pmFieldErrors.brand}
-                  </div>
-                )}
+                  {/* Billing Address - always editable */}
+                  <h4 style={{ margin: "12px 0 6px 0", fontSize: "1rem" }}>
+                    Billing Address
+                  </h4>
 
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9 ]*"
-                  placeholder="Card number"
-                  value={pmNumber}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    const digits = raw.replace(/\D/g, "");
-                    setPmNumberDigits(digits);
-                    const formatted = formatCardNumber(digits, pmBrand);
-                    setPmNumber(formatted);
-                    if (pmFieldErrors.number) {
-                      const copy = { ...pmFieldErrors };
-                      delete copy.number;
-                      setPmFieldErrors(copy);
-                    }
-                  }}
-                  onBlur={() =>
-                    handlePmBlur("pmNumber", pmNumber, { pmNumberDigits })
-                  }
-                  className={pmInputClass("number")}
-                  aria-invalid={!!pmFieldErrors.number}
-                  aria-describedby={
-                    pmFieldErrors.number ? "err-pm-number" : undefined
-                  }
-                />
-                {pmFieldErrors.number && (
-                  <div id="err-pm-number" className={styles.fieldError}>
-                    {pmFieldErrors.number}
-                  </div>
-                )}
-
-                <input
-                  type="text"
-                  placeholder="CVV"
-                  value={pmCvv}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    setPmCvv(digits.slice(0, 4));
-                    if (pmFieldErrors.cvv) {
-                      const copy = { ...pmFieldErrors };
-                      delete copy.cvv;
-                      setPmFieldErrors(copy);
-                    }
-                  }}
-                  onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
-                  maxLength={4}
-                  inputMode="numeric"
-                  className={pmInputClass("cvv")}
-                  aria-invalid={!!pmFieldErrors.cvv}
-                  aria-describedby={
-                    pmFieldErrors.cvv ? "err-pm-cvv" : undefined
-                  }
-                />
-                {pmFieldErrors.cvv && (
-                  <div id="err-pm-cvv" className={styles.fieldError}>
-                    {pmFieldErrors.cvv}
-                  </div>
-                )}
-
-                <div className={styles.paymentFormActions}>
-                  <button
-                    onClick={async (ev) => {
-                      ev.preventDefault();
-                      await (async function handleAddPayment() {
-                        const fieldErrors = validatePmFields();
-                        if (Object.keys(fieldErrors).length > 0) {
-                          setPmFieldErrors(fieldErrors);
-                          return;
+                  <div className={styles.twoCol}>
+                    <div>
+                      <label className={styles.profileLabel}>Street</label>
+                      <input
+                        type="text"
+                        placeholder="Billing street"
+                        value={pmBillingAddress.street}
+                        onChange={(e) => {
+                          setPmBillingAddress({
+                            ...pmBillingAddress,
+                            street: e.target.value,
+                          });
+                          if (pmFieldErrors.street) {
+                            const copy = { ...pmFieldErrors };
+                            delete copy.street;
+                            setPmFieldErrors(copy);
+                          }
+                        }}
+                        onBlur={(e) => handlePmBlur("pmStreet", e.target.value)}
+                        className={pmInputClass("street")}
+                        aria-invalid={!!pmFieldErrors.street}
+                        aria-describedby={
+                          pmFieldErrors.street ? "err-pm-street" : undefined
                         }
+                      />
+                      {pmFieldErrors.street && (
+                        <div id="err-pm-street" className={styles.fieldError}>
+                          {pmFieldErrors.street}
+                        </div>
+                      )}
+                    </div>
 
-                        const tempId = `temp-${Date.now()}`;
-                        const masked = (digits) => {
-                          if (!digits) return "----";
-                          return digits.length >= 4
-                            ? digits.slice(-4)
-                            : digits.padStart(4, "-");
-                        };
-                        const optimistic = {
-                          id: tempId,
-                          brand: pmBrand || "Card",
-                          last4: masked(pmNumberDigits),
-                          cardholder_name: pmName,
-                          billing: pmBillingAddress,
-                          exp_month: "--",
-                          exp_year: "--",
-                        };
-                        setPaymentMethods((prev) => [...prev, optimistic]);
+                    <div>
+                      <label className={styles.profileLabel}>City</label>
+                      <input
+                        type="text"
+                        placeholder="City"
+                        value={pmBillingAddress.city}
+                        onChange={(e) =>
+                          setPmBillingAddress({
+                            ...pmBillingAddress,
+                            city: e.target.value,
+                          })
+                        }
+                        className={styles.profileInput}
+                      />
+                    </div>
+                  </div>
 
-                        const billingAddressStr = JSON.stringify({
-                          street: pmBillingAddress.street,
-                          city: pmBillingAddress.city,
-                          state: pmBillingAddress.state,
-                          postalCode: pmBillingAddress.postalCode,
-                        });
+                  <div className={styles.twoCol}>
+                    <div>
+                      <label className={styles.profileLabel}>State</label>
+                      <input
+                        type="text"
+                        placeholder="State"
+                        value={pmBillingAddress.state}
+                        onChange={(e) =>
+                          setPmBillingAddress({
+                            ...pmBillingAddress,
+                            state: e.target.value,
+                          })
+                        }
+                        className={styles.profileInput}
+                      />
+                    </div>
+                    <div>
+                      <label className={styles.profileLabel}>Postal Code</label>
+                      <input
+                        type="text"
+                        placeholder="Postal code"
+                        value={pmBillingAddress.postalCode}
+                        onChange={(e) => {
+                          setPmBillingAddress({
+                            ...pmBillingAddress,
+                            postalCode: e.target.value,
+                          });
+                          if (pmFieldErrors.postalCode) {
+                            const copy = { ...pmFieldErrors };
+                            delete copy.postalCode;
+                            setPmFieldErrors(copy);
+                          }
+                        }}
+                        onBlur={(e) =>
+                          handlePmBlur("pmPostalCode", e.target.value)
+                        }
+                        className={pmInputClass("postalCode")}
+                        aria-invalid={!!pmFieldErrors.postalCode}
+                        aria-describedby={
+                          pmFieldErrors.postalCode
+                            ? "err-pm-postalCode"
+                            : undefined
+                        }
+                      />
+                      {pmFieldErrors.postalCode && (
+                        <div
+                          id="err-pm-postalCode"
+                          className={styles.fieldError}
+                        >
+                          {pmFieldErrors.postalCode}
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                        const payload = {
-                          user_id: user.id,
-                          provider: "dev",
-                          provider_token: `tok_${Date.now()}_${pmNumberDigits.slice(
-                            -4
-                          )}`, // Mock token for dev mode
-                          brand: pmBrand,
-                          last4: masked(pmNumberDigits),
-                          billing_address: billingAddressStr,
-                        };
+                  {/* Card Brand - read-only in edit mode */}
+                  <div>
+                    <label className={styles.profileLabel}>Card Brand</label>
+                    <select
+                      value={pmBrand}
+                      onChange={(e) => {
+                        if (paymentFormMode === "edit") return;
+                        setPmBrand(e.target.value);
+                        if (pmFieldErrors.brand) {
+                          const copy = { ...pmFieldErrors };
+                          delete copy.brand;
+                          setPmFieldErrors(copy);
+                        }
+                      }}
+                      onBlur={(e) =>
+                        paymentFormMode === "add" &&
+                        handlePmBlur("pmBrand", e.target.value)
+                      }
+                      className={pmInputClass("brand")}
+                      disabled={paymentFormMode === "edit"}
+                      aria-label="Card brand"
+                      aria-invalid={!!pmFieldErrors.brand}
+                      aria-describedby={
+                        pmFieldErrors.brand ? "err-pm-brand" : undefined
+                      }
+                    >
+                      <option value="">Select a brand</option>
+                      <option value="Visa">Visa</option>
+                      <option value="Mastercard">Mastercard</option>
+                      <option value="American Express">American Express</option>
+                      <option value="Discover">Discover</option>
+                    </select>
+                    {pmFieldErrors.brand && (
+                      <div id="err-pm-brand" className={styles.fieldError}>
+                        {pmFieldErrors.brand}
+                      </div>
+                    )}
+                  </div>
 
-                        try {
-                          const res = await api.post(
-                            "/payment-methods",
-                            payload
-                          );
-                          if (res?.data?.ok) {
-                            const refreshRes = await api.get(
-                              `/payment-methods?userId=${user.id}`
-                            );
-                            if (refreshRes?.data?.ok) {
-                              setPaymentMethods(refreshRes.data.methods || []);
+                  {/* Card Number - read-only in edit mode */}
+                  <div>
+                    <label className={styles.profileLabel}>Card Number</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9 ]*"
+                      placeholder="Card number"
+                      value={pmNumber}
+                      onChange={(e) => {
+                        if (paymentFormMode === "edit") return;
+                        const raw = e.target.value;
+                        const digits = raw.replace(/\D/g, "");
+                        setPmNumberDigits(digits);
+                        const formatted = formatCardNumber(digits, pmBrand);
+                        setPmNumber(formatted);
+                        if (pmFieldErrors.number) {
+                          const copy = { ...pmFieldErrors };
+                          delete copy.number;
+                          setPmFieldErrors(copy);
+                        }
+                      }}
+                      onBlur={() =>
+                        paymentFormMode === "add" &&
+                        handlePmBlur("pmNumber", pmNumber, { pmNumberDigits })
+                      }
+                      className={pmInputClass("number")}
+                      disabled={paymentFormMode === "edit"}
+                      aria-invalid={!!pmFieldErrors.number}
+                      aria-describedby={
+                        pmFieldErrors.number ? "err-pm-number" : undefined
+                      }
+                    />
+                    {pmFieldErrors.number && (
+                      <div id="err-pm-number" className={styles.fieldError}>
+                        {pmFieldErrors.number}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CVV - read-only in edit mode */}
+                  {paymentFormMode === "add" && (
+                    <div>
+                      <label className={styles.profileLabel}>CVV</label>
+                      <input
+                        type="text"
+                        placeholder="CVV"
+                        value={pmCvv}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "");
+                          setPmCvv(digits.slice(0, 4));
+                          if (pmFieldErrors.cvv) {
+                            const copy = { ...pmFieldErrors };
+                            delete copy.cvv;
+                            setPmFieldErrors(copy);
+                          }
+                        }}
+                        onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
+                        maxLength={4}
+                        inputMode="numeric"
+                        className={pmInputClass("cvv")}
+                        aria-invalid={!!pmFieldErrors.cvv}
+                        aria-describedby={
+                          pmFieldErrors.cvv ? "err-pm-cvv" : undefined
+                        }
+                      />
+                      {pmFieldErrors.cvv && (
+                        <div id="err-pm-cvv" className={styles.fieldError}>
+                          {pmFieldErrors.cvv}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className={styles.paymentFormActions}>
+                    <button
+                      onClick={async (ev) => {
+                        ev.preventDefault();
+
+                        if (paymentFormMode === "edit") {
+                          // Handle edit mode
+                          await handleSaveEditPayment(editingPaymentId);
+                        } else {
+                          // Handle add mode
+                          await (async function handleAddPayment() {
+                            const fieldErrors = validatePmFields();
+                            if (Object.keys(fieldErrors).length > 0) {
+                              setPmFieldErrors(fieldErrors);
+                              return;
                             }
 
-                            // Reset form
-                            setPmBrand("");
-                            setPmNumber("");
-                            setPmNumberDigits("");
-                            setPmName("");
-                            setPmBillingAddress({
-                              street: "",
-                              city: "",
-                              state: "",
-                              postalCode: "",
+                            const tempId = `temp-${Date.now()}`;
+                            const masked = (digits) => {
+                              if (!digits) return "----";
+                              return digits.length >= 4
+                                ? digits.slice(-4)
+                                : digits.padStart(4, "-");
+                            };
+                            const optimistic = {
+                              id: tempId,
+                              brand: pmBrand || "Card",
+                              last4: masked(pmNumberDigits),
+                              cardholder_name: pmName,
+                              billing: pmBillingAddress,
+                              exp_month: "--",
+                              exp_year: "--",
+                            };
+                            setPaymentMethods((prev) => [...prev, optimistic]);
+
+                            const billingAddressStr = JSON.stringify({
+                              street: pmBillingAddress.street,
+                              city: pmBillingAddress.city,
+                              state: pmBillingAddress.state,
+                              postalCode: pmBillingAddress.postalCode,
                             });
-                            setPmCvv("");
-                            setPmFieldErrors({});
-                            setShowPaymentForm(false);
-                            setMessage({
-                              type: "success",
-                              text: "Payment method saved",
-                            });
-                            setTimeout(() => setMessage(null), 2500);
-                          } else {
-                            setPaymentMethods((prev) =>
-                              prev.filter((p) => p.id !== tempId)
-                            );
-                            setMessage({
-                              type: "error",
-                              text: res?.data?.message || "Save failed",
-                            });
-                            setTimeout(() => setMessage(null), 2500);
-                          }
-                        } catch (e) {
-                          setPaymentMethods((prev) =>
-                            prev.filter((p) => p.id !== tempId)
-                          );
-                          const serverMsg =
-                            e?.response?.data?.message ||
-                            e?.message ||
-                            "Save failed";
-                          setMessage({ type: "error", text: serverMsg });
-                          setTimeout(() => setMessage(null), 2500);
+
+                            const payload = {
+                              user_id: user.id,
+                              provider: "dev",
+                              provider_token: `tok_${Date.now()}_${pmNumberDigits.slice(
+                                -4
+                              )}`, // Mock token for dev mode
+                              brand: pmBrand,
+                              last4: masked(pmNumberDigits),
+                              billing_address: billingAddressStr,
+                            };
+
+                            try {
+                              const res = await api.post(
+                                "/payment-methods",
+                                payload
+                              );
+                              if (res?.data?.ok) {
+                                const refreshRes = await api.get(
+                                  `/payment-methods?userId=${user.id}`
+                                );
+                                if (refreshRes?.data?.ok) {
+                                  setPaymentMethods(
+                                    refreshRes.data.methods || []
+                                  );
+                                }
+
+                                // Reset form
+                                setPmBrand("");
+                                setPmNumber("");
+                                setPmNumberDigits("");
+                                setPmName("");
+                                setPmBillingAddress({
+                                  street: "",
+                                  city: "",
+                                  state: "",
+                                  postalCode: "",
+                                });
+                                setPmCvv("");
+                                setPmFieldErrors({});
+                                setShowPaymentForm(false);
+                                setMessage({
+                                  type: "success",
+                                  text: "Payment method saved",
+                                });
+                                setTimeout(() => setMessage(null), 2500);
+                              } else {
+                                setPaymentMethods((prev) =>
+                                  prev.filter((p) => p.id !== tempId)
+                                );
+                                setMessage({
+                                  type: "error",
+                                  text: res?.data?.message || "Save failed",
+                                });
+                                setTimeout(() => setMessage(null), 2500);
+                              }
+                            } catch (e) {
+                              setPaymentMethods((prev) =>
+                                prev.filter((p) => p.id !== tempId)
+                              );
+                              const serverMsg =
+                                e?.response?.data?.message ||
+                                e?.message ||
+                                "Save failed";
+                              setMessage({ type: "error", text: serverMsg });
+                              setTimeout(() => setMessage(null), 2500);
+                            }
+                          })();
                         }
-                      })();
-                    }}
-                    className={styles.btnAddCard}
-                    disabled={!isPmValid}
-                    title="Save payment method"
-                  >
-                    {pmLoading ? "Saving..." : "Add Card"}
-                  </button>
+                      }}
+                      className={styles.btnAddCard}
+                      disabled={
+                        paymentFormMode === "add" ? !isPmValid : pmLoading
+                      }
+                      title={
+                        paymentFormMode === "edit"
+                          ? "Update billing address"
+                          : "Save payment method"
+                      }
+                    >
+                      {pmLoading ? (
+                        <>
+                          <span className={styles.spinner} aria-hidden />{" "}
+                          Saving…
+                        </>
+                      ) : paymentFormMode === "edit" ? (
+                        "Update Billing Address"
+                      ) : (
+                        "Add Card"
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Show message if user has reached max cards */}
           {paymentMethods.length >= 3 && (

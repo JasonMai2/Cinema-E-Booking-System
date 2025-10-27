@@ -83,6 +83,43 @@ public class PaymentController {
         }
     }
 
+    @PutMapping("/{id}")
+    public Map<String, Object> update(@PathVariable("id") Long id, @RequestBody Map<String, Object> payload) {
+        Map<String, Object> resp = new HashMap<>();
+        try {
+            Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM payment_methods WHERE id = ?", Integer.class, id);
+            if (count == null || count == 0) {
+                resp.put("ok", false);
+                resp.put("message", "Payment method not found");
+                return resp;
+            }
+
+            // Only allow updating billing_address for security
+            String billing = (String) payload.getOrDefault("billing_address", null);
+
+            if (billing == null) {
+                resp.put("ok", false);
+                resp.put("message", "billing_address is required");
+                return resp;
+            }
+
+            jdbc.update("UPDATE payment_methods SET billing_address = ?, updated_at = ? WHERE id = ?",
+                    billing, new Timestamp(System.currentTimeMillis()), id);
+
+            Map<String, Object> method = jdbc.queryForMap("SELECT id, provider, provider_token, brand, last4, exp_month, exp_year, is_default, billing_address, created_at, updated_at FROM payment_methods WHERE id = ?", id);
+
+            resp.put("ok", true);
+            resp.put("message", "updated");
+            resp.put("method", method);
+            return resp;
+        } catch (Exception e) {
+            e.printStackTrace();
+            resp.put("ok", false);
+            resp.put("message", "error: " + e.getMessage());
+            return resp;
+        }
+    }
+
     // Delete a payment method by id (dev mode no auth check)
     @DeleteMapping("/{id}")
     public Map<String, Object> delete(@PathVariable("id") Long id) {

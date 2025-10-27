@@ -213,6 +213,32 @@
   border-color: rgba(231, 76, 60, 0.4);
 }
 
+.removeBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.editBtn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(100, 180, 255, 0.3);
+  background: transparent;
+  color: #64b4ff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.editBtn:hover {
+  background: rgba(100, 180, 255, 0.1);
+  border-color: rgba(100, 180, 255, 0.5);
+}
+
+.editBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* skeleton add card box */
 .addCardSkeleton {
   display: flex;
