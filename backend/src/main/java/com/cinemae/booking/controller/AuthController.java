@@ -446,7 +446,7 @@ public class AuthController {
         // Fetch stored hash
         try {
             Map<String, Object> row = jdbc.queryForMap(
-                    "SELECT id, password_hash, first_name, last_name, email FROM users WHERE email = ?", email);
+                    "SELECT id, password_hash, first_name, last_name, email, email_verified_at FROM users WHERE email = ?", email);
             byte[] stored = (byte[]) row.get("password_hash");
             String storedHash = new String(stored, java.nio.charset.StandardCharsets.UTF_8);
             if (passwordEncoder.matches(password, storedHash)) {
