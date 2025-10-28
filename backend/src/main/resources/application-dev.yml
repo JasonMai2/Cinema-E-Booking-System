@@ -46,3 +46,5 @@ app:
       subject: "Verify Your Email - Cinema E-Booking System"
     password-reset:
       subject: "Reset Your Password - Cinema E-Booking System"
+    promotion:
+      subject: "New Promotion from Cinema E-Booking!"

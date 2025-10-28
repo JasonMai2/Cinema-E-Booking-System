@@ -21,6 +21,9 @@ public class EmailService {
     @Value("${app.email.password-reset.subject}")
     private String passwordResetSubject;
 
+    @Value("${app.email.promotion.subject}")
+    private String promotionSubject;
+
     public void sendVerificationEmail(String toEmail, String verificationCode) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
@@ -100,6 +103,33 @@ public class EmailService {
         }
     }
 
+    public void sendPromotionEmail(String toEmail, String firstName, String title, String description,
+                               String discountText, String startsAt, String endsAt) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject(title);
+            message.setText(String.format("""
+                    Hi %s,
+
+                    %s
+
+                    Enjoy %s on your next order.
+                    Valid from %s to %s.
+
+                    – Cinema E-Booking Team
+                    """, firstName != null ? firstName : "Valued Customer",
+                        description, discountText, startsAt, endsAt));
+
+            emailSender.send(message);
+            System.out.println("✅ Promotion email sent to: " + toEmail);
+        } catch (Exception e) {
+            System.err.println("❌ Failed to send promotion email to " + toEmail + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private String buildPasswordResetEmailBody(String resetCode) {
         return String.format("""
             Dear Cinema E-Booking System User,
@@ -151,5 +181,35 @@ public class EmailService {
             ---
             Need help? Contact our support team or visit our FAQ section.
             """, firstName != null ? firstName : "Movie Lover");
+    }
+
+    private String buildPromotionEmailBody(String firstName, String promoTitle, String promoDesc,
+                                           String discountText, String startsAt, String endsAt) {
+        return String.format("""
+            Hi %s,
+            
+            🎬 %s
+            
+            %s
+            
+            Enjoy %s your next booking at Cinema E-Booking!
+            
+            📅 Valid from: %s
+            ⏰ Until: %s
+            
+            Don't miss out on this exclusive offer—book your next movie today!
+            
+            – Cinema E-Booking Team
+            
+            ---
+            This is an automated message. Please do not reply.
+            """,
+            firstName != null ? firstName : "Valued Customer",
+            promoTitle,
+            promoDesc != null ? promoDesc : "",
+            discountText,
+            startsAt,
+            endsAt
+        );
     }
 }

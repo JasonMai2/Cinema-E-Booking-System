@@ -368,24 +368,37 @@ export default function AdminDashboard() {
                 <div className="itemActions">
                   <button className="btnManage" onClick={() => openManagePromotion(p)}>Manage</button>
                   <button
-                    className="btnManage"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch(`${API_BASE}/subscribed-users`);
-                        if (!res.ok) throw new Error("Failed to fetch subscribed users");
-                        const data = await res.json();
-                        const userIds = data.map((u) => u.id);
-                        console.log(`Promotion ID: ${p.id}`);
-                        console.log("Subscribed User IDs:", userIds);
-                        alert(`Logged promotion ID ${p.id} and ${userIds.length} subscribed users to console.`);
-                      } catch (err) {
-                        console.error("Error fetching subscribed users:", err);
-                        alert("Failed to fetch subscribed users: " + err.message);
-                      }
-                    }}
-                  >
-                    Send Log
-                  </button>
+  className="btnManage"
+  onClick={async () => {
+    if (!window.confirm(`Send promotion "${p.title}" to all subscribed users?`)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/send-promotion/${p.id}`, {
+        method: "POST",
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) throw new Error(result.message || "Failed to send promotion");
+
+      if (result.status === "no_subscribers") {
+        alert("No subscribed users found.");
+      } else if (result.status === "success") {
+        alert(`✅ Successfully sent promotion to ${result.sentCount} users.`);
+      } else {
+        alert(`⚠️ ${result.message}`);
+      }
+
+      console.log("Promotion Email Response:", result);
+    } catch (err) {
+      console.error("Error sending promotion:", err);
+      alert("❌ Failed to send promotion: " + err.message);
+    }
+  }}
+>
+  Send Promotion
+</button>
+
                   <button className="btnDelete" onClick={() => deletePromotion(p.id)}>Delete</button>
                 </div>
               </div>
