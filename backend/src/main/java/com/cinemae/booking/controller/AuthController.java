@@ -867,9 +867,9 @@ public class AuthController {
                 return resp;
             }
 
-            if (newPassword == null || newPassword.length() < 8) {
+            if (newPassword == null || newPassword.length() < 6) {
                 resp.put("ok", false);
-                resp.put("message", "Password must be at least 8 characters long");
+                resp.put("message", "Password must be at least 6 characters long");
                 return resp;
             }
 
@@ -952,9 +952,9 @@ public class AuthController {
                 resp.put("message", "Current password is required");
                 return resp;
             }
-            if (newPassword == null || newPassword.length() < 8) {
+            if (newPassword == null || newPassword.length() < 6) {
                 resp.put("ok", false);
-                resp.put("message", "New password must be at least 8 characters");
+                resp.put("message", "New password must be at least 6 characters");
                 return resp;
             }
 

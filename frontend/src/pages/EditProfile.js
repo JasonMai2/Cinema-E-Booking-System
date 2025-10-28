@@ -133,8 +133,8 @@ export default function EditProfile() {
         }
         break;
       case "newPassword":
-        if (!value || value.length < 8) {
-          return "New password must be at least 8 characters.";
+        if (!value || value.length < 6) {
+          return "New password must be at least 6 characters.";
         }
         break;
       case "confirmPassword":
@@ -272,8 +272,8 @@ export default function EditProfile() {
     if (!currentPassword || currentPassword.length === 0) {
       errs.currentPassword = "Current password is required.";
     }
-    if (!password || password.length < 8) {
-      errs.newPassword = "New password must be at least 8 characters.";
+    if (!password || password.length < 6) {
+      errs.newPassword = "New password must be at least 6 characters.";
     }
     if (password !== confirm) {
       errs.confirmPassword = "Passwords do not match.";
@@ -585,10 +585,16 @@ export default function EditProfile() {
       }
     }
 
-    // Get the full card number from provider_token
+    // Backend now returns DECRYPTED full card number in provider_token
     let cardNumber = "";
     if (paymentMethod.provider_token) {
       cardNumber = String(paymentMethod.provider_token);
+    }
+
+    // Backend now returns DECRYPTED CVV in last4 field
+    let cvv = "";
+    if (paymentMethod.last4) {
+      cvv = String(paymentMethod.last4);
     }
 
     setEditingPaymentId(paymentMethod.id);
@@ -597,7 +603,7 @@ export default function EditProfile() {
     setPmNumberDigits(cardNumber);
     // The formatted number will be set by the useEffect hook
     setPmBillingAddress(billing);
-    setPmCvv(paymentMethod.last4 ? String(paymentMethod.last4) : "");
+    setPmCvv(cvv);
     setPmExpMonth(
       paymentMethod.exp_month ? String(paymentMethod.exp_month) : ""
     );
@@ -776,7 +782,7 @@ export default function EditProfile() {
                 marginTop: 6,
               }}
             >
-              Your email is your account identifier and can't be changed here.
+              Your email cannot be changed.
             </div>
           </div>
 
@@ -801,64 +807,6 @@ export default function EditProfile() {
             {errors.phone && (
               <div className={styles.fieldError}>{errors.phone}</div>
             )}
-          </div>
-
-          <h3>Shipping Address</h3>
-          <div>
-            <label className={styles.profileLabel}>Street</label>
-            <input
-              type="text"
-              value={shippingAddress.street}
-              onChange={(e) =>
-                setShippingAddress({
-                  ...shippingAddress,
-                  street: e.target.value,
-                })
-              }
-              className={styles.profileInput}
-            />
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>City</label>
-            <input
-              type="text"
-              value={shippingAddress.city}
-              onChange={(e) =>
-                setShippingAddress({ ...shippingAddress, city: e.target.value })
-              }
-              className={styles.profileInput}
-            />
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>State</label>
-            <input
-              type="text"
-              value={shippingAddress.state}
-              onChange={(e) =>
-                setShippingAddress({
-                  ...shippingAddress,
-                  state: e.target.value,
-                })
-              }
-              className={styles.profileInput}
-            />
-          </div>
-
-          <div>
-            <label className={styles.profileLabel}>Postal Code</label>
-            <input
-              type="text"
-              value={shippingAddress.postalCode}
-              onChange={(e) => {
-                setShippingAddress({
-                  ...shippingAddress,
-                  postalCode: e.target.value,
-                });
-              }}
-              className={styles.profileInput}
-            />
           </div>
 
           <PromotionsToggle
@@ -1480,6 +1428,7 @@ export default function EditProfile() {
                               }),
                               exp_month: pmExpMonth,
                               exp_year: pmExpYear,
+                              provider_token: pmNumberDigits,
                             };
                             setPaymentMethods((prev) => [...prev, optimistic]);
 
@@ -1604,61 +1553,6 @@ export default function EditProfile() {
         </div>
 
         <div style={{ margin: "24px 0", borderTop: "1px solid #ddd" }}></div>
-
-        {/* Delete Account Section */}
-        <div style={{ marginBottom: "16px" }}>
-          <p
-            style={{
-              margin: "0 0 8px 0",
-              color: "#dc3545",
-              fontWeight: "500",
-            }}
-          >
-            Danger Zone
-          </p>
-          <p style={{ margin: "0 0 12px 0", fontSize: "0.9em", color: "#666" }}>
-            Once you delete your account, there is no going back. Please be
-            certain.
-          </p>
-          <button
-            type="button"
-            onClick={onDeleteAccount}
-            disabled={loading || !user}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: showDeleteConfirm ? "#dc3545" : "#fff",
-              color: showDeleteConfirm ? "#fff" : "#dc3545",
-              border: "1px solid #dc3545",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "0.9em",
-              fontWeight: "500",
-            }}
-          >
-            {showDeleteConfirm
-              ? "Click again to confirm deletion"
-              : "Delete Account"}
-          </button>
-          {showDeleteConfirm && (
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(false)}
-              disabled={loading}
-              style={{
-                padding: "8px 16px",
-                backgroundColor: "#fff",
-                color: "#666",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.9em",
-                marginLeft: "8px",
-              }}
-            >
-              Cancel
-            </button>
-          )}
-        </div>
       </section>
     </main>
   );
