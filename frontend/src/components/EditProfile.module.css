@@ -47,6 +47,12 @@
   box-sizing: border-box;
 }
 
+.profileInput[disabled],
+.profileInput[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
 .profileActions {
   display: flex;
   gap: 10px;
@@ -77,4 +83,278 @@
 .btnCancel:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.fieldError {
+  color: #e74c3c;
+  font-size: 0.88rem;
+  margin-top: 4px;
+  line-height: 1.2;
+}
+
+.inputError {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.08);
+}
+
+.formMessage {
+  margin-top: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.successBadge {
+  background: rgba(40, 167, 69, 0.12);
+  border: 1px solid rgba(40, 167, 69, 0.2);
+  color: #28a745;
+}
+
+.errorBadge {
+  background: rgba(231, 76, 60, 0.08);
+  border: 1px solid rgba(231, 76, 60, 0.16);
+  color: #e74c3c;
+}
+
+/* two column helpers for wider screens */
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* spinner for buttons */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--text-primary);
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* payment list */
+.paymentList {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.paymentCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
+}
+
+.paymentCard:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.paymentInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardBrand {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cardDetails {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.cardName {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 2px;
+}
+
+.removeBtn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(231, 76, 60, 0.2);
+  background: transparent;
+  color: #ff7b7b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.removeBtn:hover {
+  background: rgba(231, 76, 60, 0.1);
+  border-color: rgba(231, 76, 60, 0.4);
+}
+
+.removeBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.editBtn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(100, 180, 255, 0.3);
+  background: transparent;
+  color: #64b4ff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.editBtn:hover {
+  background: rgba(100, 180, 255, 0.1);
+  border-color: rgba(100, 180, 255, 0.5);
+}
+
+.editBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* skeleton add card box */
+.addCardSkeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  min-height: 100px;
+}
+
+.addCardSkeleton:hover {
+  border-color: var(--primary-accent);
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-2px);
+}
+
+.addCardSkeleton:active {
+  transform: translateY(0);
+}
+
+.plusIcon {
+  font-size: 2.5rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 8px;
+  transition: color 0.2s ease;
+}
+
+.addCardSkeleton:hover .plusIcon {
+  color: var(--primary-accent);
+}
+
+.addCardText {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* payment form container */
+.paymentFormContainer {
+  margin-top: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.paymentFormHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.paymentFormTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.closeFormBtn {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.closeFormBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.paymentFormActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btnAddCard {
+  padding: 10px 18px;
+  background: var(--primary-accent);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+
+.btnAddCard:hover {
+  opacity: 0.9;
+}
+
+.btnAddCard:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dirtyIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.dirtyDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f0ad4e;
 }

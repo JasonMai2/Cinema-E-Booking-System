@@ -28,8 +28,9 @@ import java.util.stream.Collectors;
 public class AuthController {
 
     private final JdbcTemplate jdbc;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10); // Reduced from default 12 to 10 for faster hashing
-    
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10); // Reduced from default 12 to
+                                                                                         // 10 for faster hashing
+
     @Autowired
     private EmailService emailService;
 
@@ -41,12 +42,12 @@ public class AuthController {
     @PostMapping("/register")
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> register(@RequestBody(required = false) Map<String, Object> payload,
-                                        HttpServletRequest request) {
+            HttpServletRequest request) {
         Map<String, Object> resp = new HashMap<>();
         try {
             // Fast path: if payload is already parsed, use it directly
             Map<String, Object> actualPayload = payload;
-            
+
             // Only do defensive parsing if payload is null (rare case)
             if (actualPayload == null) {
                 String raw = request.getReader().lines().collect(Collectors.joining());
@@ -84,15 +85,14 @@ public class AuthController {
             String password = (String) actualPayload.get("password");
             String phone = (String) actualPayload.getOrDefault("phone", null);
             Boolean subscribeToPromotions = (Boolean) actualPayload.getOrDefault("subscribe_to_promotions", false);
-            
+
             // Optional address information
             @SuppressWarnings("unchecked")
-            Map<String, Object> homeAddress = (Map<String, Object>) actualPayload.get("home_address");
-            @SuppressWarnings("unchecked")
             Map<String, Object> shippingAddress = (Map<String, Object>) actualPayload.get("shipping_address");
-            
+
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> paymentCards = (List<Map<String, Object>>) actualPayload.getOrDefault("payment_cards", new ArrayList<>());
+            List<Map<String, Object>> paymentCards = (List<Map<String, Object>>) actualPayload
+                    .getOrDefault("payment_cards", new ArrayList<>());
 
             // require either a name or firstName
             String storeFirst = firstName;
@@ -105,7 +105,8 @@ public class AuthController {
                 }
             }
 
-            if (storeFirst == null || storeFirst.isBlank() || email == null || email.isBlank() || password == null || password.isBlank()) {
+            if (storeFirst == null || storeFirst.isBlank() || email == null || email.isBlank() || password == null
+                    || password.isBlank()) {
                 resp.put("ok", false);
                 resp.put("message", "first name, email and password are required");
                 return resp;
@@ -131,8 +132,10 @@ public class AuthController {
             byte[] hash = hashed.getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
             // Insert user with inactive status (requires email verification)
-            jdbc.update("INSERT INTO users (email, password_hash, first_name, last_name, phone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
-                email, hash, storeFirst, lastName, phone, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()));
+            jdbc.update(
+                    "INSERT INTO users (email, password_hash, first_name, last_name, phone, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
+                    email, hash, storeFirst, lastName, phone, new Timestamp(System.currentTimeMillis()),
+                    new Timestamp(System.currentTimeMillis()));
 
             // Get the user ID for additional data
             Map<String, Object> userIdResult = jdbc.queryForMap("SELECT id FROM users WHERE email = ?", email);
@@ -156,16 +159,13 @@ public class AuthController {
                 jdbc.update("INSERT INTO promotion_subscriptions (user_id, subscribed) VALUES (?, ?)", userId, true);
             }
 
-            // Handle home address if provided
-            if (homeAddress != null && homeAddress.get("street") != null && !((String)homeAddress.get("street")).isBlank()) {
-                jdbc.update("INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'HOME', ?, ?, ?, ?)",
-                    userId, homeAddress.get("street"), homeAddress.get("city"), homeAddress.get("state"), homeAddress.get("zipCode"));
-            }
-
             // Handle shipping address if provided (max 1)
-            if (shippingAddress != null && shippingAddress.get("street") != null && !((String)shippingAddress.get("street")).isBlank()) {
-                jdbc.update("INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'SHIPPING', ?, ?, ?, ?)",
-                    userId, shippingAddress.get("street"), shippingAddress.get("city"), shippingAddress.get("state"), shippingAddress.get("zipCode"));
+            if (shippingAddress != null && shippingAddress.get("street") != null
+                    && !((String) shippingAddress.get("street")).isBlank()) {
+                jdbc.update(
+                        "INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'SHIPPING', ?, ?, ?, ?)",
+                        userId, shippingAddress.get("street"), shippingAddress.get("city"),
+                        shippingAddress.get("state"), shippingAddress.get("zipCode"));
             }
 
             // Handle payment cards if provided (max 3)
@@ -175,7 +175,7 @@ public class AuthController {
                         // Store payment card info (in a real app, this would be tokenized)
                         @SuppressWarnings("unchecked")
                         Map<String, Object> billingAddr = (Map<String, Object>) card.get("billingAddress");
-                        
+
                         // Extract payment card fields from frontend
                         String cardNumber = (String) card.get("cardNumber");
                         String cardType = (String) card.get("cardType");
@@ -183,30 +183,32 @@ public class AuthController {
                         String cvv = (String) card.get("cvv");
                         Object expMonth = card.get("expirationMonth");
                         Object expYear = card.get("expirationYear");
-                        
+
                         // Store name on card in billing address JSON since no dedicated column exists
                         String billingAddressJson = null;
                         if (billingAddr != null || nameOnCard != null) {
                             // Enhanced JSON with name on card included
-                            billingAddressJson = String.format("{\"street\":\"%s\",\"city\":\"%s\",\"state\":\"%s\",\"zipCode\":\"%s\",\"nameOnCard\":\"%s\"}",
-                                billingAddr != null ? billingAddr.getOrDefault("street", "") : "",
-                                billingAddr != null ? billingAddr.getOrDefault("city", "") : "",
-                                billingAddr != null ? billingAddr.getOrDefault("state", "") : "",
-                                billingAddr != null ? billingAddr.getOrDefault("zipCode", "") : "",
-                                nameOnCard != null ? nameOnCard : "");
+                            billingAddressJson = String.format(
+                                    "{\"street\":\"%s\",\"city\":\"%s\",\"state\":\"%s\",\"zipCode\":\"%s\",\"nameOnCard\":\"%s\"}",
+                                    billingAddr != null ? billingAddr.getOrDefault("street", "") : "",
+                                    billingAddr != null ? billingAddr.getOrDefault("city", "") : "",
+                                    billingAddr != null ? billingAddr.getOrDefault("state", "") : "",
+                                    billingAddr != null ? billingAddr.getOrDefault("zipCode", "") : "",
+                                    nameOnCard != null ? nameOnCard : "");
                         }
-                        
+
                         // Insert into payment_methods table using existing columns only
                         // provider_token = full card number, last4 = CVV (as per your requirements)
-                        jdbc.update("INSERT INTO payment_methods (user_id, provider, provider_token, brand, last4, exp_month, exp_year, billing_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                            userId, 
-                            "dev", // provider
-                            cardNumber, // provider_token = full card number
-                            cardType, // brand = card type
-                            cvv, // last4 = CVV
-                            expMonth,
-                            expYear,
-                            billingAddressJson); // billing_address includes nameOnCard in JSON
+                        jdbc.update(
+                                "INSERT INTO payment_methods (user_id, provider, provider_token, brand, last4, exp_month, exp_year, billing_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                userId,
+                                "dev", // provider
+                                cardNumber, // provider_token = full card number
+                                cardType, // brand = card type
+                                cvv, // last4 = CVV
+                                expMonth,
+                                expYear,
+                                billingAddressJson); // billing_address includes nameOnCard in JSON
                     }
                 }
             }
@@ -214,14 +216,14 @@ public class AuthController {
             // Generate and send email verification code
             String verificationCode = generateVerificationCode();
             LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
-            
+
             jdbc.update("INSERT INTO verification_codes (user_id, code, expires_at) VALUES (?, ?, ?)",
-                userId, verificationCode, Timestamp.valueOf(expiresAt));
+                    userId, verificationCode, Timestamp.valueOf(expiresAt));
 
             // Store email and verification code to send outside transaction
             String finalEmail = email;
             String finalVerificationCode = verificationCode;
-            
+
             // Commit transaction first, then send email outside of it
             return sendEmailAndReturnResponse(finalEmail, finalVerificationCode);
         } catch (Exception e) {
@@ -232,7 +234,7 @@ public class AuthController {
             throw new RuntimeException("Registration failed", e);
         }
     }
-    
+
     // This method runs OUTSIDE the transaction to avoid email timeout issues
     private Map<String, Object> sendEmailAndReturnResponse(String email, String verificationCode) {
         Map<String, Object> resp = new HashMap<>();
@@ -248,7 +250,8 @@ public class AuthController {
             // If email fails, still return success since user is registered
             e.printStackTrace();
             resp.put("ok", true);
-            resp.put("message", "Registration successful! Email sending failed, but you can request a new verification code.");
+            resp.put("message",
+                    "Registration successful! Email sending failed, but you can request a new verification code.");
             resp.put("verification_required", true);
             return resp;
         }
@@ -274,10 +277,10 @@ public class AuthController {
 
             // Find user and check verification code
             List<Map<String, Object>> results = jdbc.queryForList(
-                "SELECT vc.id, vc.user_id, vc.expires_at, vc.used_at FROM verification_codes vc " +
-                "JOIN users u ON vc.user_id = u.id " +
-                "WHERE u.email = ? AND vc.code = ? ORDER BY vc.sent_at DESC LIMIT 1",
-                email, code);
+                    "SELECT vc.id, vc.user_id, vc.expires_at, vc.used_at FROM verification_codes vc " +
+                            "JOIN users u ON vc.user_id = u.id " +
+                            "WHERE u.email = ? AND vc.code = ? ORDER BY vc.sent_at DESC LIMIT 1",
+                    email, code);
 
             if (results.isEmpty()) {
                 resp.put("ok", false);
@@ -286,7 +289,7 @@ public class AuthController {
             }
 
             Map<String, Object> verification = results.get(0);
-            
+
             // Handle different date/time types that might be returned
             Object expiresAtObj = verification.get("expires_at");
             LocalDateTime expiresAt;
@@ -298,7 +301,7 @@ public class AuthController {
                 // Fallback - this shouldn't happen but provides safety
                 expiresAt = LocalDateTime.parse(expiresAtObj.toString());
             }
-            
+
             Object usedAt = verification.get("used_at");
 
             if (usedAt != null) {
@@ -327,11 +330,11 @@ public class AuthController {
             }
 
             // Mark code as used and activate user account
-            jdbc.update("UPDATE verification_codes SET used_at = ? WHERE id = ?", 
-                new Timestamp(System.currentTimeMillis()), verification.get("id"));
-            
-            jdbc.update("UPDATE users SET email_verified_at = ? WHERE id = ?", 
-                new Timestamp(System.currentTimeMillis()), userId);
+            jdbc.update("UPDATE verification_codes SET used_at = ? WHERE id = ?",
+                    new Timestamp(System.currentTimeMillis()), verification.get("id"));
+
+            jdbc.update("UPDATE users SET email_verified_at = ? WHERE id = ?",
+                    new Timestamp(System.currentTimeMillis()), userId);
 
             resp.put("ok", true);
             resp.put("message", "Email verified successfully! Your account is now active.");
@@ -359,7 +362,7 @@ public class AuthController {
 
             // Check if user exists and is not already verified
             List<Map<String, Object>> users = jdbc.queryForList(
-                "SELECT id, email_verified_at FROM users WHERE email = ?", email);
+                    "SELECT id, email_verified_at FROM users WHERE email = ?", email);
 
             if (users.isEmpty()) {
                 resp.put("ok", false);
@@ -389,8 +392,8 @@ public class AuthController {
 
             // Check for recent verification codes (rate limiting)
             Integer recentCodes = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM verification_codes WHERE user_id = ? AND sent_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE)",
-                Integer.class, userId);
+                    "SELECT COUNT(*) FROM verification_codes WHERE user_id = ? AND sent_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE)",
+                    Integer.class, userId);
 
             if (recentCodes != null && recentCodes > 0) {
                 resp.put("ok", false);
@@ -401,9 +404,9 @@ public class AuthController {
             // Generate new verification code
             String verificationCode = generateVerificationCode();
             LocalDateTime expiresAt = LocalDateTime.now().plusHours(24);
-            
+
             jdbc.update("INSERT INTO verification_codes (user_id, code, expires_at) VALUES (?, ?, ?)",
-                userId, verificationCode, Timestamp.valueOf(expiresAt));
+                    userId, verificationCode, Timestamp.valueOf(expiresAt));
 
             // Send verification email
             emailService.sendVerificationEmail(email, verificationCode);
@@ -434,7 +437,7 @@ public class AuthController {
         
         // Fetch stored hash
         try {
-            Map<String, Object> row = jdbc.queryForMap("SELECT id, password_hash, first_name, last_name, email, email_verified_at, IFNULL(is_suspended, false) AS is_suspended FROM users WHERE email = ?", email);
+            Map<String, Object> row = jdbc.queryForMap("SELECT id, password_hash, first_name, last_name, email, phone, email_verified_at, IFNULL(is_suspended, false) AS is_suspended FROM users WHERE email = ?", email);
             byte[] stored = (byte[]) row.get("password_hash");
             String storedHash = new String(stored, java.nio.charset.StandardCharsets.UTF_8);
             if (passwordEncoder.matches(password, storedHash)) {
@@ -471,6 +474,55 @@ public class AuthController {
                 user.put("last_name", row.get("last_name"));
                 user.put("is_suspended", isSuspended); // Add suspension info
                 user.put("roles", rolesList);
+                user.put("phone", row.get("phone"));
+
+                try {
+                    List<Map<String, Object>> subs = jdbc.queryForList(
+                            "SELECT subscribed FROM promotion_subscriptions WHERE user_id = ? LIMIT 1", row.get("id"));
+                    boolean subscribed = false;
+                    if (!subs.isEmpty()) {
+                        Object s = subs.get(0).get("subscribed");
+                        if (s instanceof Boolean)
+                            subscribed = (Boolean) s;
+                        else if (s instanceof Number)
+                            subscribed = ((Number) s).intValue() != 0;
+                    }
+                    user.put("promotions", subscribed);
+                } catch (Exception ex) {
+                    user.put("promotions", false);
+                }
+
+                try {
+                    Object userIdObj = row.get("id");
+                    Long userId = null;
+                    if (userIdObj instanceof java.math.BigInteger) {
+                        userId = ((java.math.BigInteger) userIdObj).longValue();
+                    } else if (userIdObj instanceof Long) {
+                        userId = (Long) userIdObj;
+                    } else if (userIdObj instanceof Integer) {
+                        userId = ((Integer) userIdObj).longValue();
+                    } else if (userIdObj != null) {
+                        userId = Long.valueOf(userIdObj.toString());
+                    }
+
+                    if (userId != null) {
+                        List<Map<String, Object>> shippingAddresses = jdbc.queryForList(
+                                "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'SHIPPING' LIMIT 1",
+                                userId);
+                        if (!shippingAddresses.isEmpty()) {
+                            Map<String, Object> shipAddr = shippingAddresses.get(0);
+                            Map<String, Object> shipAddrObj = new HashMap<>();
+                            shipAddrObj.put("street", shipAddr.get("street"));
+                            shipAddrObj.put("city", shipAddr.get("city"));
+                            shipAddrObj.put("state", shipAddr.get("state"));
+                            shipAddrObj.put("postalCode", shipAddr.get("postal_code"));
+                            user.put("shipping_address", shipAddrObj);
+                        }
+                    }
+                } catch (Exception ex) {
+                    // Addresses are optional, continue without them
+                }
+
                 resp.put("user", user);
 
                 return resp;
@@ -506,17 +558,20 @@ public class AuthController {
 
             // first_name may be provided as 'name' or 'first_name'
             if (payload.containsKey("name") || payload.containsKey("first_name")) {
-                String first = payload.containsKey("first_name") ? (String) payload.get("first_name") : (String) payload.get("name");
+                String first = payload.containsKey("first_name") ? (String) payload.get("first_name")
+                        : (String) payload.get("name");
                 setClause.append("first_name = ?");
                 params.add(first);
             }
             if (payload.containsKey("last_name")) {
-                if (setClause.length() > 0) setClause.append(", ");
+                if (setClause.length() > 0)
+                    setClause.append(", ");
                 setClause.append("last_name = ?");
                 params.add((String) payload.get("last_name"));
             }
             if (payload.containsKey("phone")) {
-                if (setClause.length() > 0) setClause.append(", ");
+                if (setClause.length() > 0)
+                    setClause.append(", ");
                 setClause.append("phone = ?");
                 params.add((String) payload.get("phone"));
             }
@@ -525,7 +580,8 @@ public class AuthController {
             if (payload.containsKey("password") && payload.get("password") != null) {
                 String pw = (String) payload.get("password");
                 if (pw != null && !pw.isBlank()) {
-                    if (setClause.length() > 0) setClause.append(", ");
+                    if (setClause.length() > 0)
+                        setClause.append(", ");
                     String hashed = passwordEncoder.encode(pw);
                     byte[] hash = hashed.getBytes(java.nio.charset.StandardCharsets.UTF_8);
                     setClause.append("password_hash = ?");
@@ -560,11 +616,15 @@ public class AuthController {
             // return updated user (use queryForList to avoid exceptions if missing)
             Map<String, Object> row = null;
             if (idObj != null) {
-                List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, email, first_name, last_name, phone FROM users WHERE id = ?", idObj);
-                if (!rows.isEmpty()) row = rows.get(0);
+                List<Map<String, Object>> rows = jdbc
+                        .queryForList("SELECT id, email, first_name, last_name, phone FROM users WHERE id = ?", idObj);
+                if (!rows.isEmpty())
+                    row = rows.get(0);
             } else {
-                List<Map<String, Object>> rows = jdbc.queryForList("SELECT id, email, first_name, last_name, phone FROM users WHERE email = ?", email);
-                if (!rows.isEmpty()) row = rows.get(0);
+                List<Map<String, Object>> rows = jdbc.queryForList(
+                        "SELECT id, email, first_name, last_name, phone FROM users WHERE email = ?", email);
+                if (!rows.isEmpty())
+                    row = rows.get(0);
             }
 
             if (row == null) {
@@ -579,6 +639,114 @@ public class AuthController {
             user.put("first_name", row.get("first_name"));
             user.put("last_name", row.get("last_name"));
             user.put("phone", row.get("phone"));
+
+            Object userIdObj = row.get("id");
+            Long userId = null;
+            if (userIdObj instanceof java.math.BigInteger) {
+                userId = ((java.math.BigInteger) userIdObj).longValue();
+            } else if (userIdObj instanceof Long) {
+                userId = (Long) userIdObj;
+            } else if (userIdObj instanceof Integer) {
+                userId = ((Integer) userIdObj).longValue();
+            } else if (userIdObj != null) {
+                userId = Long.valueOf(userIdObj.toString());
+            }
+
+            try {
+                if (payload.containsKey("promotions") && userId != null) {
+                    Boolean desired = null;
+                    Object raw = payload.get("promotions");
+                    if (raw instanceof Boolean)
+                        desired = (Boolean) raw;
+                    else if (raw instanceof Number)
+                        desired = ((Number) raw).intValue() != 0;
+                    else if (raw instanceof String)
+                        desired = Boolean.parseBoolean((String) raw);
+
+                    if (desired != null) {
+                        if (desired) {
+                            Integer existing = jdbc.queryForObject(
+                                    "SELECT COUNT(*) FROM promotion_subscriptions WHERE user_id = ?",
+                                    Integer.class, userId);
+                            if (existing == null || existing == 0) {
+                                jdbc.update("INSERT INTO promotion_subscriptions (user_id, subscribed) VALUES (?, ?)",
+                                        userId, true);
+                            } else {
+                                jdbc.update("UPDATE promotion_subscriptions SET subscribed = ? WHERE user_id = ?", true,
+                                        userId);
+                            }
+                        } else {
+                            jdbc.update("DELETE FROM promotion_subscriptions WHERE user_id = ?", userId);
+                        }
+                    }
+                }
+
+                boolean subscribed = false;
+                if (row.get("id") != null) {
+                    List<Map<String, Object>> subs = jdbc.queryForList(
+                            "SELECT subscribed FROM promotion_subscriptions WHERE user_id = ? LIMIT 1", row.get("id"));
+                    if (!subs.isEmpty()) {
+                        Object s = subs.get(0).get("subscribed");
+                        if (s instanceof Boolean)
+                            subscribed = (Boolean) s;
+                        else if (s instanceof Number)
+                            subscribed = ((Number) s).intValue() != 0;
+                    }
+                }
+                user.put("promotions", subscribed);
+            } catch (Exception ex) {
+                user.put("promotions", false);
+            }
+
+            if (userId != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> shippingAddress = (Map<String, Object>) payload.get("shipping_address");
+
+                if (shippingAddress != null) {
+                    String street = (String) shippingAddress.get("street");
+                    String city = (String) shippingAddress.get("city");
+                    String state = (String) shippingAddress.get("state");
+                    String postalCode = (String) shippingAddress.get("postalCode");
+
+                    Integer shippingCount = jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM addresses WHERE user_id = ? AND type = 'SHIPPING'",
+                            Integer.class, userId);
+                    
+                    if (shippingCount != null && shippingCount > 0) {
+                        jdbc.update(
+                                "UPDATE addresses SET street = ?, city = ?, state = ?, postal_code = ? WHERE user_id = ? AND type = 'SHIPPING'",
+                                street, city, state, postalCode, userId);
+                    } else {
+                        jdbc.update(
+                                "INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'SHIPPING', ?, ?, ?, ?)",
+                                userId, street, city, state, postalCode);
+                    }
+                }
+
+                List<Map<String, Object>> shippingAddresses = jdbc.queryForList(
+                        "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'SHIPPING' LIMIT 1",
+                        userId);
+                if (!shippingAddresses.isEmpty()) {
+                    Map<String, Object> shipAddr = shippingAddresses.get(0);
+                    Map<String, Object> shipAddrObj = new HashMap<>();
+                    shipAddrObj.put("street", shipAddr.get("street"));
+                    shipAddrObj.put("city", shipAddr.get("city"));
+                    shipAddrObj.put("state", shipAddr.get("state"));
+                    shipAddrObj.put("postalCode", shipAddr.get("postal_code"));
+                    user.put("shipping_address", shipAddrObj);
+                }
+            }
+
+            try {
+                String userEmail = (String) user.get("email");
+                String userFirstName = (String) user.get("first_name");
+                if (userEmail != null && !userEmail.isBlank()) {
+                    emailService.sendProfileChangeNotification(userEmail, userFirstName);
+                }
+            } catch (Exception emailEx) {
+                System.err.println("Warning: Failed to send profile change notification email: " + emailEx.getMessage());
+                emailEx.printStackTrace();
+            }
 
             resp.put("ok", true);
             resp.put("user", user);
@@ -603,9 +771,8 @@ public class AuthController {
         try {
             // Check if user exists
             List<Map<String, Object>> users = jdbc.queryForList(
-                "SELECT id FROM users WHERE id = ?", userId
-            );
-            
+                    "SELECT id FROM users WHERE id = ?", userId);
+
             if (users.isEmpty()) {
                 resp.put("ok", false);
                 resp.put("message", "User not found");
@@ -615,19 +782,19 @@ public class AuthController {
             // Delete related data in order (due to foreign key constraints)
             // Delete promotion subscriptions
             jdbc.update("DELETE FROM promotion_subscriptions WHERE user_id = ?", userId);
-            
+
             // Delete payment methods
             jdbc.update("DELETE FROM payment_methods WHERE user_id = ?", userId);
-            
+
             // Delete addresses
             jdbc.update("DELETE FROM addresses WHERE user_id = ?", userId);
-            
+
             // Delete verification codes
             jdbc.update("DELETE FROM verification_codes WHERE user_id = ?", userId);
-            
+
             // Finally delete the user
             int rowsAffected = jdbc.update("DELETE FROM users WHERE id = ?", userId);
-            
+
             if (rowsAffected > 0) {
                 resp.put("ok", true);
                 resp.put("message", "Account deleted successfully");
@@ -635,7 +802,7 @@ public class AuthController {
                 resp.put("ok", false);
                 resp.put("message", "Failed to delete account");
             }
-            
+
             return resp;
         } catch (Exception e) {
             e.printStackTrace();
@@ -650,30 +817,30 @@ public class AuthController {
         Map<String, Object> resp = new HashMap<>();
         try {
             String email = (String) payload.get("email");
-            
+
             if (email == null || email.trim().isEmpty()) {
                 resp.put("ok", false);
                 resp.put("message", "Email is required");
                 return resp;
             }
-            
+
             email = email.trim().toLowerCase();
-            
+
             // Check if user exists
             List<Map<String, Object>> userResult = jdbc.queryForList(
-                "SELECT id, first_name FROM users WHERE LOWER(email) = ?", email);
-            
+                    "SELECT id, first_name FROM users WHERE LOWER(email) = ?", email);
+
             if (userResult.isEmpty()) {
                 // For security, don't reveal if email exists - always return success
                 resp.put("ok", true);
                 resp.put("message", "If an account with this email exists, a password reset code has been sent.");
                 return resp;
             }
-            
+
             Map<String, Object> user = userResult.get(0);
             Object userIdObj = user.get("id");
             Long userId;
-            
+
             if (userIdObj instanceof BigInteger) {
                 userId = ((BigInteger) userIdObj).longValue();
             } else if (userIdObj instanceof Long) {
@@ -681,25 +848,25 @@ public class AuthController {
             } else {
                 userId = Long.valueOf(userIdObj.toString());
             }
-            
+
             // Generate reset code (6 digits, same as verification)
             String resetCode = String.format("%06d", new Random().nextInt(999999));
             LocalDateTime expiresAt = LocalDateTime.now().plusHours(1); // 1 hour expiry
-            
+
             // Delete any existing verification codes for this user (cleanup)
             jdbc.update("DELETE FROM verification_codes WHERE user_id = ?", userId);
-            
+
             // Insert new reset code using existing verification_codes table
             jdbc.update("INSERT INTO verification_codes (user_id, code, expires_at) VALUES (?, ?, ?)",
-                userId, resetCode, Timestamp.valueOf(expiresAt));
-            
+                    userId, resetCode, Timestamp.valueOf(expiresAt));
+
             // Send password reset email
             emailService.sendPasswordResetEmail(email, resetCode);
-            
+
             resp.put("ok", true);
             resp.put("message", "If an account with this email exists, a password reset code has been sent.");
             return resp;
-            
+
         } catch (Exception e) {
             e.printStackTrace();
             resp.put("ok", false);
@@ -714,35 +881,35 @@ public class AuthController {
         try {
             String code = (String) payload.get("code");
             String newPassword = (String) payload.get("password");
-            
+
             if (code == null || code.trim().isEmpty()) {
                 resp.put("ok", false);
                 resp.put("message", "Reset code is required");
                 return resp;
             }
-            
-            if (newPassword == null || newPassword.length() < 8) {
+
+            if (newPassword == null || newPassword.length() < 6) {
                 resp.put("ok", false);
-                resp.put("message", "Password must be at least 8 characters long");
+                resp.put("message", "Password must be at least 6 characters long");
                 return resp;
             }
-            
+
             code = code.trim();
-            
+
             // Find valid reset code in verification_codes table
             List<Map<String, Object>> codeResult = jdbc.queryForList(
-                "SELECT user_id, expires_at FROM verification_codes WHERE code = ?", code);
-            
+                    "SELECT user_id, expires_at FROM verification_codes WHERE code = ?", code);
+
             if (codeResult.isEmpty()) {
                 resp.put("ok", false);
                 resp.put("message", "Invalid reset code");
                 return resp;
             }
-            
+
             Map<String, Object> codeData = codeResult.get(0);
             Object userIdObj = codeData.get("user_id");
             Long userId;
-            
+
             if (userIdObj instanceof BigInteger) {
                 userId = ((BigInteger) userIdObj).longValue();
             } else if (userIdObj instanceof Long) {
@@ -750,46 +917,93 @@ public class AuthController {
             } else {
                 userId = Long.valueOf(userIdObj.toString());
             }
-            
+
             // Check if code is expired
             Object expiresAtObj = codeData.get("expires_at");
             LocalDateTime expiresAt;
-            
+
             if (expiresAtObj instanceof Timestamp) {
                 expiresAt = ((Timestamp) expiresAtObj).toLocalDateTime();
             } else {
                 expiresAt = (LocalDateTime) expiresAtObj;
             }
-            
+
             if (LocalDateTime.now().isAfter(expiresAt)) {
                 resp.put("ok", false);
                 resp.put("message", "Reset code has expired");
                 return resp;
             }
-            
+
             // Hash the new password
             String hashedPassword = passwordEncoder.encode(newPassword);
-            
+
             // Update user password
             int rowsAffected = jdbc.update("UPDATE users SET password_hash = ? WHERE id = ?", hashedPassword, userId);
-            
+
             if (rowsAffected == 0) {
                 resp.put("ok", false);
                 resp.put("message", "Failed to update password");
                 return resp;
             }
-            
+
             // Delete the used verification code
             jdbc.update("DELETE FROM verification_codes WHERE code = ?", code);
-            
+
             resp.put("ok", true);
             resp.put("message", "Password reset successfully");
             return resp;
-            
+
         } catch (Exception e) {
             e.printStackTrace();
             resp.put("ok", false);
             resp.put("message", "Password reset failed: " + e.getMessage());
+            return resp;
+        }
+    }
+
+    @PutMapping("/users/change-password")
+    public Map<String, Object> changePassword(@RequestParam Long userId, @RequestBody Map<String, Object> payload) {
+        Map<String, Object> resp = new HashMap<>();
+        try {
+            String currentPassword = (String) payload.get("currentPassword");
+            String newPassword = (String) payload.get("newPassword");
+
+            if (currentPassword == null || currentPassword.isBlank()) {
+                resp.put("ok", false);
+                resp.put("message", "Current password is required");
+                return resp;
+            }
+            if (newPassword == null || newPassword.length() < 6) {
+                resp.put("ok", false);
+                resp.put("message", "New password must be at least 6 characters");
+                return resp;
+            }
+
+            String currentHash = jdbc.queryForObject("SELECT password_hash FROM users WHERE id = ?", String.class,
+                    userId);
+            if (currentHash == null) {
+                resp.put("ok", false);
+                resp.put("message", "User not found");
+                return resp;
+            }
+
+            if (!passwordEncoder.matches(currentPassword, currentHash)) {
+                resp.put("ok", false);
+                resp.put("message", "Current password is incorrect");
+                return resp;
+            }
+
+            String newHash = passwordEncoder.encode(newPassword);
+            jdbc.update("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
+                    newHash, new Timestamp(System.currentTimeMillis()), userId);
+
+            resp.put("ok", true);
+            resp.put("message", "Password updated successfully");
+            return resp;
+        } catch (Exception e) {
+            e.printStackTrace();
+            resp.put("ok", false);
+            resp.put("message", "Error changing password: " + e.getMessage());
             return resp;
         }
     }

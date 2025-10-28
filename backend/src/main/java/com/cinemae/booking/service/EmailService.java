@@ -212,4 +212,56 @@ public class EmailService {
             endsAt
         );
     }
+    
+    public void sendProfileChangeNotification(String toEmail, String firstName) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("Profile Updated - Cinema E-Booking System");
+            message.setText(buildProfileChangeEmailBody(firstName));
+            
+            emailSender.send(message);
+            System.out.println("✅ Profile change notification sent successfully to: " + toEmail);
+        } catch (Exception e) {
+            System.err.println("❌ Failed to send profile change notification to " + toEmail + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private String buildProfileChangeEmailBody(String firstName) {
+        return String.format("""
+            Hi %s,
+            
+            Your profile information has been successfully updated on Cinema E-Booking System.
+            
+            If you made these changes, no further action is required. Your updated information is now active and will be used for your future bookings and communications.
+            
+            Profile Update Details:
+            • Date: %s
+            • Changes: Your profile information has been modified
+            
+            Security Notice:
+            If you did NOT make these changes to your profile, please take immediate action:
+            1. Reset your password immediately
+            2. Review your account activity
+            3. Contact our support team if you notice any suspicious activity
+            
+            Your account security is our top priority. We recommend:
+            • Using a strong, unique password
+            • Regularly reviewing your account settings
+            
+            Thank you for keeping your account information up to date!
+            
+            Best regards,
+            Cinema E-Booking System Team
+            
+            ---
+            This is an automated security notification. Please do not reply to this email.
+            If you need assistance, please contact our support team.
+            """, 
+            firstName != null ? firstName : "Valued Customer",
+            java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy 'at' hh:mm a"))
+        );
+    }
 }
