@@ -150,11 +150,28 @@ export default function Login() {
       const res = await api.post('/auth/login', { email, password });
       setLoading(false);
       if (res?.data?.ok) {
-        // set auth user (backend returns { ok: true, user: { ... } })
-        if (res.data.user) {
-          authLogin(res.data.user);
+        const user = res.data.user;
+
+        console.log("LOGIN TEST LOGS:");
+        console.log(res.data.user);
+        console.log("Login response:", res?.data);
+        console.log("User roles:", res?.data?.user?.roles);
+        console.log("Is suspended:", res?.data?.user?.is_suspended);
+
+        // Suspended check
+        if (user.is_suspended) {
+          return setError("Your account is suspended. Please contact an administrator.");
         }
-        navigate('/');
+
+        // Determine destination
+        const isAdmin = user.roles?.some(r => r.name === 'admin' || r.id === 1);
+        const destination = isAdmin ? '/admin' : '/';
+
+        // Set user in context first
+        authLogin(user);
+
+        // Navigate AFTER setting user
+        navigate(destination);
       } else {
         // Check if email verification is required
         if (res?.data?.email_verification_required) {

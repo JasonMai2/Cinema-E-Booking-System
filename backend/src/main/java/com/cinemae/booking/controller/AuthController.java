@@ -431,10 +431,10 @@ public class AuthController {
             resp.put("message", "email and password required");
             return resp;
         }
-
+        
         // Fetch stored hash
         try {
-            Map<String, Object> row = jdbc.queryForMap("SELECT id, password_hash, first_name, last_name, email, email_verified_at FROM users WHERE email = ?", email);
+            Map<String, Object> row = jdbc.queryForMap("SELECT id, password_hash, first_name, last_name, email, email_verified_at, IFNULL(is_suspended, false) AS is_suspended FROM users WHERE email = ?", email);
             byte[] stored = (byte[]) row.get("password_hash");
             String storedHash = new String(stored, java.nio.charset.StandardCharsets.UTF_8);
             if (passwordEncoder.matches(password, storedHash)) {
@@ -447,13 +447,32 @@ public class AuthController {
                     return resp;
                 }
 
+                // Fetch user roles
+                List<Map<String, Object>> rolesList = jdbc.queryForList(
+                    "SELECT r.id, r.name FROM roles r " +
+                    "JOIN user_roles ur ON ur.role_id = r.id " +
+                    "WHERE ur.user_id = ?", row.get("id")
+                );
+
+                // Check if user is suspended
+                Object isSuspendedObj = row.get("is_suspended");
+                Boolean isSuspended = false;
+                if (isSuspendedObj instanceof Number) {
+                    isSuspended = ((Number) isSuspendedObj).intValue() != 0;
+                } else if (isSuspendedObj instanceof Boolean) {
+                    isSuspended = (Boolean) isSuspendedObj;
+                }
+
                 resp.put("ok", true);
                 Map<String, Object> user = new HashMap<>();
                 user.put("id", row.get("id"));
                 user.put("email", row.get("email"));
                 user.put("first_name", row.get("first_name"));
                 user.put("last_name", row.get("last_name"));
+                user.put("is_suspended", isSuspended); // Add suspension info
+                user.put("roles", rolesList);
                 resp.put("user", user);
+
                 return resp;
             } else {
                 resp.put("ok", false);
