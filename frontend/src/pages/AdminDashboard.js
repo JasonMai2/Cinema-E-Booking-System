@@ -367,6 +367,25 @@ export default function AdminDashboard() {
                 </div>
                 <div className="itemActions">
                   <button className="btnManage" onClick={() => openManagePromotion(p)}>Manage</button>
+                  <button
+                    className="btnManage"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`${API_BASE}/subscribed-users`);
+                        if (!res.ok) throw new Error("Failed to fetch subscribed users");
+                        const data = await res.json();
+                        const userIds = data.map((u) => u.id);
+                        console.log(`Promotion ID: ${p.id}`);
+                        console.log("Subscribed User IDs:", userIds);
+                        alert(`Logged promotion ID ${p.id} and ${userIds.length} subscribed users to console.`);
+                      } catch (err) {
+                        console.error("Error fetching subscribed users:", err);
+                        alert("Failed to fetch subscribed users: " + err.message);
+                      }
+                    }}
+                  >
+                    Send Log
+                  </button>
                   <button className="btnDelete" onClick={() => deletePromotion(p.id)}>Delete</button>
                 </div>
               </div>
