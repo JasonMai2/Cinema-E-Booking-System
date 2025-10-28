@@ -90,7 +90,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const openEditUser = (user) => {
+  const openManageUser = (user) => {
     setSelectedUser(user);
     setFormData({
       id: user.id,
@@ -184,7 +184,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const openEditPromotion = (promo) => {
+  const openManagePromotion = (promo) => {
     setSelectedPromotion(promo);
     setPromoFormData({ ...promo });
     setShowPromoModal(true);
@@ -263,6 +263,23 @@ export default function AdminDashboard() {
     }
   };
 
+    // --- Subscribed Users API ---
+  const logSubscribedUsers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/subscribed-users`);
+      if (!res.ok) throw new Error("Failed to fetch subscribed users");
+      const data = await res.json();
+
+      const userIds = data.map((u) => u.id);
+      console.log("Subscribed User IDs:", userIds);
+
+      alert(`Logged ${userIds.length} subscribed user IDs to console.`);
+    } catch (err) {
+      console.error("Error fetching subscribed users:", err);
+      alert("Failed to fetch subscribed users: " + err.message);
+    }
+  };
+
   // --- Render ---
   return (
     <div className="body">
@@ -307,7 +324,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
                 <div className="itemActions">
-                  <button className="btnEdit" onClick={() => openEditUser(u)}>Edit</button>
+                  <button className="btnManage" onClick={() => openManageUser(u)}>Manage</button>
                   <button className="btnDelete" onClick={() => deleteUser(u.id)}>Delete</button>
                 </div>
               </div>
@@ -349,7 +366,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
                 <div className="itemActions">
-                  <button className="btnEdit" onClick={() => openEditPromotion(p)}>Edit</button>
+                  <button className="btnManage" onClick={() => openManagePromotion(p)}>Manage</button>
                   <button className="btnDelete" onClick={() => deletePromotion(p.id)}>Delete</button>
                 </div>
               </div>
@@ -388,7 +405,7 @@ function UserModal({ formData, handleInputChange, handleSubmit, loading, close }
     <div className="modalOverlay" onClick={close}>
       <div className="modalContent" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
-          <h2 className="modalTitle">Edit User</h2>
+          <h2 className="modalTitle">Manage User</h2>
           <button className="closeButton" onClick={close}><X size={24} /></button>
         </div>
         <div>
@@ -441,7 +458,7 @@ function PromotionModal({ promoFormData, handleInputChange, handleSave, close })
     <div className="modalOverlay" onClick={close}>
       <div className="modalContent" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
-          <h2 className="modalTitle">{promoFormData.id ? "Edit Promotion" : "Add Promotion"}</h2>
+          <h2 className="modalTitle">{promoFormData.id ? "Manage Promotion" : "Add Promotion"}</h2>
           <button className="closeButton" onClick={close}><X size={24} /></button>
         </div>
         <div>
