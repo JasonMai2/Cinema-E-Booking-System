@@ -22,6 +22,18 @@ import SearchResults from './pages/SearchResults';
 import SeatSelection from './pages/SeatSelection';
 import ShowTimes from './pages/ShowTimes';
 
+// In your main app file:
+
+// AdminDashboard imports:
+import AdminUsers from "./pages/AdminUsers";
+import AdminPromotions from "./pages/AdminPromotions";
+
+// AdminUsers imports:
+import UserModal from "./pages/UserModal";
+
+// AdminPromotions imports:
+import PromotionModal from "./pages/PromotionModal";
+
 function App() {
   return (
     <BookingProvider>
@@ -46,6 +58,13 @@ function App() {
 
           {/* Admin / additional pages */}
           <Route path="/admin" element={<AdminDashboard />} />
+
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/promotions" element={<AdminPromotions />} />
+
+          
+          <Route path="/admin/movies" element={<AdminDashboard />} />
+
           <Route path="/registration-confirmation" element={<RegistrationConfirmation />} />
           <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/movies" element={<MovieSelection />} />
