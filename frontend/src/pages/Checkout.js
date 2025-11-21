@@ -1,137 +1,330 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useBooking } from '../context/BookingContext.js';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 export default function Checkout() {
-  const { selectedShow, selectedSeats, setCustomer, createOrderDraft, customer } = useBooking();
-  const [name, setName] = useState(customer?.name || '');
-  const [email, setEmail] = useState(customer?.email || '');
-  const [phone, setPhone] = useState(customer?.phone || '');
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const { 
+    bookingData, 
+    bookingId, 
+    bookingNumber, 
+    ticketNumbers, 
+    movie, 
+    showtime, 
+    selectedSeats,
+    ageCategories 
+  } = location.state || {};
 
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [cardDetails, setCardDetails] = useState({
+    number: '',
+    expiry: '',
+    cvv: '',
+    name: ''
+  });
+  const [processing, setProcessing] = useState(false);
+
+  // Redirect if no booking data
   useEffect(() => {
-    if (customer) {
-      setName(customer.name || '');
-      setEmail(customer.email || '');
-      setPhone(customer.phone || '');
+    if (!bookingData || !bookingId || !movie || !user) {
+      navigate('/movies');
     }
-  }, [customer]);
+  }, [bookingData, bookingId, movie, user, navigate]);
 
-  const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
+  const processPayment = async () => {
+    if (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv || !cardDetails.name) {
+      alert('Please fill in all payment details');
+      return;
+    }
 
-  async function submit() {
-    const errs = {};
-    if (!name) errs.name = 'Name is required';
-    if (!email) errs.email = 'Email is required';
-    if (!selectedShow) errs.show = 'No show selected';
-    if (!selectedSeats || selectedSeats.length === 0) errs.seats = 'No seats selected';
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-
-    const payload = {
-      showId: selectedShow.id,
-      seats: selectedSeats.map((s) => s.id),
-      customer: { name, email, phone },
-    };
-    setLoading(true);
     try {
-      await createOrderDraft(payload);
-      setCustomer({ name, email, phone });
-      navigate('/order-summary');
-    } catch (err) {
-      alert('Failed to create order: ' + (err.message || err));
+      setProcessing(true);
+      
+      // Simulate payment processing (in real app, this would integrate with Stripe/PayPal etc.)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // For demo purposes, proceed to confirmation
+      navigate('/booking-confirmation', {
+        state: {
+          bookingData,
+          bookingId,
+          bookingNumber,
+          ticketNumbers,
+          movie,
+          showtime,
+          selectedSeats,
+          paymentConfirmed: true
+        }
+      });
+    } catch (error) {
+      alert('Payment processing failed: ' + error.message);
     } finally {
-      setLoading(false);
+      setProcessing(false);
     }
+  };
+
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  if (!bookingData || !bookingId || !movie || !user) {
+    return (
+      <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+        <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>Invalid checkout session</div>
+        <button onClick={() => navigate('/movies')} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 16px', borderRadius: '6px', border: 'none' }}>
+          Back to Movies
+        </button>
+      </div>
+    );
   }
 
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '640px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
-        <header style={{ marginBottom: 12 }}>
-          <h1 style={{ margin: 0, color: '#fff' }}>Checkout</h1>
-          <div style={{ color: '#cbd5da', marginTop: 6 }}>Enter your details to complete the booking.</div>
-        </header>
+      <div style={{ maxWidth: '900px', width: '100%', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
+        
+        {/* Header */}
+        <div style={{ marginBottom: 32 }}>
+          <button 
+            onClick={() => navigate(-1)} 
+            style={{ background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 12px', borderRadius: 6, marginBottom: 16 }}
+          >
+            ← Back to Seat Selection
+          </button>
+          <h1 style={{ margin: 0, color: '#fff', marginBottom: 8 }}>Checkout</h1>
+          <p style={{ color: '#cbd5da', margin: 0 }}>Complete your booking for {movie.title}</p>
+        </div>
 
-        <div style={{ display: 'flex', gap: 20 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ background: '#0b0d0f', padding: 16, borderRadius: 8 }}>
-              <h3 style={{ marginTop: 0, color: '#fff' }}>Contact Details</h3>
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ color: '#cbd5da', fontWeight: 500 }}>
-                  Name
-                  <br />
-                  <input required value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
-                  {errors.name && <div style={{ color: '#ff6b6b', marginTop: 6 }}>{errors.name}</div>}
-                </label>
-              </div>
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ color: '#cbd5da', fontWeight: 500 }}>
-                  Email
-                  <br />
-                  <input required value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
-                  {errors.email && <div style={{ color: '#ff6b6b', marginTop: 6 }}>{errors.email}</div>}
-                </label>
-              </div>
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ color: '#cbd5da', fontWeight: 500 }}>
-                  Phone
-                  <br />
-                  <input value={phone} onChange={(e) => setPhone(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} />
-                </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 32 }}>
+          
+          {/* Payment Form */}
+          <div>
+            <div style={{ background: '#0b0d0f', padding: 24, borderRadius: 8, marginBottom: 24 }}>
+              <h3 style={{ margin: '0 0 20px 0', color: '#fff' }}>Payment Information</h3>
+              
+              {/* Payment Method Selection */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 8 }}>Payment Method</label>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button
+                    onClick={() => setPaymentMethod('card')}
+                    style={{
+                      padding: '12px 20px',
+                      borderRadius: 6,
+                      border: '1px solid #222',
+                      background: paymentMethod === 'card' ? '#7a1f1f' : 'transparent',
+                      color: paymentMethod === 'card' ? '#fff' : '#cbd5da',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Credit/Debit Card
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('paypal')}
+                    style={{
+                      padding: '12px 20px',
+                      borderRadius: 6,
+                      border: '1px solid #222',
+                      background: paymentMethod === 'paypal' ? '#7a1f1f' : 'transparent',
+                      color: paymentMethod === 'paypal' ? '#fff' : '#cbd5da',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    PayPal
+                  </button>
+                </div>
               </div>
 
-              <div style={{ marginTop: 12 }}>
-                <button onClick={submit} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Creating...' : 'Continue to Summary'}</button>
-                <button onClick={() => navigate('/order-summary')} style={{ marginLeft: 8, background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 14px', borderRadius: 6 }}>Cancel</button>
-                <button onClick={async () => {
-                  // create a demo order draft and go straight to order summary
-                  const demoSeats = (selectedSeats && selectedSeats.length > 0) ? selectedSeats : [
-                    { id: 'demo-A1', row: 'A', number: 1, price: 10 },
-                    { id: 'demo-A2', row: 'A', number: 2, price: 10 }
-                  ];
-                  const draft = {
-                    id: `demo-draft-${Date.now()}`,
-                    orderId: `demo-draft-${Date.now()}`,
-                    showId: selectedShow?.id || 'demo-show-1',
-                    show: selectedShow || { id: 'demo-show-1', title: 'Demo Movie — 7:00 PM' },
-                    seats: demoSeats,
-                    customer: { name: name || 'Demo User', email: email || 'demo@example.com', phone: phone || '' }
-                  };
-                  setLoading(true);
-                  try {
-                    await createOrderDraft(draft);
-                    setCustomer({ name: draft.customer.name, email: draft.customer.email, phone: draft.customer.phone });
-                    navigate('/order-summary');
-                  } catch (err) {
-                    alert('Failed to create demo order: ' + (err.message || err));
-                  } finally {
-                    setLoading(false);
-                  }
-                }} style={{ marginLeft: 8, background: '#444', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>Generate demo order</button>
-              </div>
+              {/* Card Details Form */}
+              {paymentMethod === 'card' && (
+                <div style={{ display: 'grid', gap: 16 }}>
+                  <div>
+                    <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 6 }}>
+                      Cardholder Name
+                    </label>
+                    <input
+                      type="text"
+                      value={cardDetails.name}
+                      onChange={(e) => setCardDetails({...cardDetails, name: e.target.value})}
+                      placeholder="John Doe"
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: 6,
+                        background: '#1a1d21',
+                        color: '#fff',
+                        border: '1px solid #222',
+                        fontSize: 14
+                      }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 6 }}>
+                      Card Number
+                    </label>
+                    <input
+                      type="text"
+                      value={cardDetails.number}
+                      onChange={(e) => setCardDetails({...cardDetails, number: e.target.value})}
+                      placeholder="1234 5678 9012 3456"
+                      maxLength={19}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: 6,
+                        background: '#1a1d21',
+                        color: '#fff',
+                        border: '1px solid #222',
+                        fontSize: 14
+                      }}
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 6 }}>
+                        Expiry Date
+                      </label>
+                      <input
+                        type="text"
+                        value={cardDetails.expiry}
+                        onChange={(e) => setCardDetails({...cardDetails, expiry: e.target.value})}
+                        placeholder="MM/YY"
+                        maxLength={5}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          borderRadius: 6,
+                          background: '#1a1d21',
+                          color: '#fff',
+                          border: '1px solid #222',
+                          fontSize: 14
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 6 }}>
+                        CVV
+                      </label>
+                      <input
+                        type="text"
+                        value={cardDetails.cvv}
+                        onChange={(e) => setCardDetails({...cardDetails, cvv: e.target.value})}
+                        placeholder="123"
+                        maxLength={4}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          borderRadius: 6,
+                          background: '#1a1d21',
+                          color: '#fff',
+                          border: '1px solid #222',
+                          fontSize: 14
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'paypal' && (
+                <div style={{ textAlign: 'center', padding: '40px 20px', border: '2px dashed #222', borderRadius: 8 }}>
+                  <div style={{ color: '#cbd5da', marginBottom: 12 }}>You will be redirected to PayPal to complete payment</div>
+                  <div style={{ fontSize: 14, color: '#888' }}>PayPal integration coming soon</div>
+                </div>
+              )}
+
+              {/* Process Payment Button */}
+              <button
+                onClick={processPayment}
+                disabled={processing || (paymentMethod === 'paypal')}
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  marginTop: 24,
+                  borderRadius: 8,
+                  border: 'none',
+                  background: processing ? '#444' : (paymentMethod === 'paypal' ? '#666' : '#51cf66'),
+                  color: '#fff',
+                  fontSize: 16,
+                  fontWeight: 'bold',
+                  cursor: processing || (paymentMethod === 'paypal') ? 'not-allowed' : 'pointer',
+                  opacity: processing || (paymentMethod === 'paypal') ? 0.6 : 1
+                }}
+              >
+                {processing ? 'Processing Payment...' : `Pay $${bookingData.total?.toFixed(2)}`}
+              </button>
             </div>
           </div>
 
-          <aside style={{ width: 260 }}>
-            <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
-              <h3 style={{ marginTop: 0, color: '#fff' }}>Order Preview</h3>
-              <div style={{ color: '#cbd5da' }}><strong>Show:</strong> {selectedShow?.title || selectedShow?.id || '—'}</div>
-              <div style={{ marginTop: 6, color: '#cbd5da' }}><strong>Seats:</strong></div>
-              {selectedSeats.length === 0 ? (
-                <div style={{ color: '#cbd5da' }}>No seats selected</div>
-              ) : (
-                <ul>
-                  {selectedSeats.map((s) => (
-                    <li key={s.id} style={{ color: '#f4f6f8' }}>{`${s.row}${s.number} — $${(s.price||0).toFixed(2)}`}</li>
+          {/* Order Summary */}
+          <div>
+            <div style={{ background: '#0b0d0f', padding: 24, borderRadius: 8, position: 'sticky', top: 20 }}>
+              <h3 style={{ margin: '0 0 20px 0', color: '#fff' }}>Order Summary</h3>
+              
+              {/* Movie Info */}
+              <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
+                <div style={{ fontWeight: 'bold', color: '#fff', marginBottom: 8 }}>{movie.title}</div>
+                <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 4 }}>
+                  {formatDateTime(bookingData.showTime)}
+                </div>
+                <div style={{ color: '#cbd5da', fontSize: 14 }}>
+                  {bookingData.auditoriumName}
+                </div>
+              </div>
+
+              {/* Seats */}
+              <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
+                <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 8 }}>Selected Seats</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                  {selectedSeats && selectedSeats.map((seat, index) => (
+                    <div key={seat} style={{
+                      background: '#222',
+                      padding: '4px 8px',
+                      borderRadius: 4,
+                      fontSize: 14,
+                      color: '#fff'
+                    }}>
+                      {seat} ({ageCategories?.[seat] || 'Adult'})
+                    </div>
                   ))}
-                </ul>
-              )}
-              <div style={{ marginTop: 8, color: '#cbd5da' }}><strong>Subtotal:</strong> <span style={{ color: '#fff' }}>${subtotal.toFixed(2)}</span></div>
+                </div>
+              </div>
+
+              {/* Pricing */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#cbd5da' }}>
+                  <span>Subtotal ({selectedSeats?.length || 0} tickets)</span>
+                  <span>${bookingData.subtotal?.toFixed(2) || '0.00'}</span>
+                </div>
+                {bookingData.discount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#51cf66' }}>
+                    <span>Discount</span>
+                    <span>-${bookingData.discount?.toFixed(2)}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#cbd5da' }}>
+                  <span>Taxes & Fees</span>
+                  <span>$0.00</span>
+                </div>
+                <div style={{ borderTop: '1px solid #222', paddingTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 'bold', color: '#fff' }}>
+                  <span>Total</span>
+                  <span>${bookingData.total?.toFixed(2) || '0.00'}</span>
+                </div>
+              </div>
+
+              {/* Booking Details */}
+              <div style={{ background: '#1a1d21', padding: 12, borderRadius: 6 }}>
+                <div style={{ color: '#cbd5da', fontSize: 12, marginBottom: 4 }}>Booking Number</div>
+                <div style={{ color: '#fff', fontSize: 14, fontFamily: 'monospace' }}>{bookingNumber}</div>
+              </div>
             </div>
-          </aside>
+          </div>
         </div>
       </div>
     </div>

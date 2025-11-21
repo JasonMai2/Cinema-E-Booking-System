@@ -7,19 +7,19 @@ function BookingConfirmation() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { bookingData, bookingIds, movie } = location.state || {};
+  const { bookingData, bookingId, bookingNumber, ticketNumbers, movie } = location.state || {};
   
   const [userBookings, setUserBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!bookingData || !bookingIds || !movie || !user) {
+    if (!bookingData || !bookingId || !movie || !user) {
       navigate('/movies');
       return;
     }
     loadUserBookings();
-  }, [bookingData, bookingIds, movie, user, navigate]);
+  }, [bookingData, bookingId, movie, user, navigate]);
 
   const loadUserBookings = async () => {
     try {
@@ -66,7 +66,7 @@ function BookingConfirmation() {
     return seats || '';
   };
 
-  if (!bookingData || !bookingIds || !movie || !user) {
+  if (!bookingData || !bookingId || !movie || !user) {
     return (
       <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
         <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>Invalid booking confirmation session</div>
@@ -99,28 +99,47 @@ function BookingConfirmation() {
             </div>
             <div>
               <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 4 }}>Show Time</div>
-              <div style={{ color: '#fff' }}>{formatDateTime(bookingData.show_time)}</div>
+              <div style={{ color: '#fff' }}>{formatDateTime(bookingData.showTime)}</div>
             </div>
             <div>
               <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 4 }}>Theater</div>
-              <div style={{ color: '#fff' }}>{bookingData.theater_name}</div>
+              <div style={{ color: '#fff' }}>{bookingData.auditoriumName}</div>
             </div>
             <div>
               <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 4 }}>Seats</div>
               <div style={{ color: '#fff' }}>{formatSeats(bookingData.seats)}</div>
             </div>
           </div>
+          
+          {ticketNumbers && ticketNumbers.length > 0 && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #222' }}>
+              <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 8 }}>Ticket Numbers</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {ticketNumbers.map((ticket, index) => (
+                  <div key={index} style={{ 
+                    background: '#222', 
+                    padding: '4px 8px', 
+                    borderRadius: 4, 
+                    fontSize: 12, 
+                    fontFamily: 'monospace',
+                    color: '#fff'
+                  }}>
+                    {ticket}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div style={{ borderTop: '1px solid #222', paddingTop: 16, display: 'flex', justifyContent: 'space-between' }}>
             <div>
               <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 4 }}>Total Amount</div>
-              <div style={{ color: '#51cf66', fontSize: 20, fontWeight: 'bold' }}>${bookingData.total_price}</div>
+              <div style={{ color: '#51cf66', fontSize: 20, fontWeight: 'bold' }}>${bookingData.total?.toFixed(2)}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 4 }}>Booking IDs</div>
-              <div style={{ color: '#fff', fontSize: 12, fontFamily: 'monospace' }}>
-                {bookingIds.slice(0, 3).join(', ')}
-                {bookingIds.length > 3 && '...'}
+              <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 4 }}>Booking Number</div>
+              <div style={{ color: '#fff', fontSize: 14, fontFamily: 'monospace' }}>
+                {bookingNumber}
               </div>
             </div>
           </div>

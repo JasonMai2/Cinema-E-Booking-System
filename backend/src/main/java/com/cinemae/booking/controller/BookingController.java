@@ -118,7 +118,17 @@ public class BookingController {
             Long showtimeId = ((Number) payload.get("showtimeId")).longValue();
             @SuppressWarnings("unchecked")
             List<String> selectedSeats = (List<String>) payload.get("selectedSeats");
+            @SuppressWarnings("unchecked")
+            List<String> ageCategories = (List<String>) payload.get("ageCategories");
             String promoCode = payload.get("promoCode") != null ? payload.get("promoCode").toString() : null;
+            
+            // Default to ADULT if no age categories provided
+            if (ageCategories == null || ageCategories.size() != selectedSeats.size()) {
+                ageCategories = new ArrayList<>();
+                for (int i = 0; i < selectedSeats.size(); i++) {
+                    ageCategories.add("ADULT");
+                }
+            }
             
             if (selectedSeats == null || selectedSeats.isEmpty()) {
                 Map<String, Object> response = new HashMap<>();
@@ -181,8 +191,8 @@ public class BookingController {
             
             Double total = subtotal - discount;
             
-            // Generate unique booking number
-            String bookingNumber = "BK" + System.currentTimeMillis();
+            // Generate unique booking number (max 14 chars)
+            String bookingNumber = "BK" + String.format("%010d", System.currentTimeMillis() % 10000000000L);
             
             // Convert to cents for database storage
             int subtotalCents = (int) Math.round(subtotal * 100);
@@ -201,7 +211,10 @@ public class BookingController {
             
             // Create tickets for each selected seat
             List<String> ticketNumbers = new ArrayList<>();
-            for (String seatIdentifier : selectedSeats) {
+            for (int i = 0; i < selectedSeats.size(); i++) {
+                String seatIdentifier = selectedSeats.get(i);
+                String ageCategory = ageCategories.get(i);
+                
                 // Parse seat identifier (e.g., "A1" -> row "A", seat 1)
                 String rowLabel = seatIdentifier.substring(0, 1);
                 int seatNum = Integer.parseInt(seatIdentifier.substring(1));
@@ -215,17 +228,25 @@ public class BookingController {
                 Long seatId = jdbc.queryForObject(findSeatSql, Long.class, showtimeId, rowLabel, seatNum);
                 
                 if (seatId != null) {
-                    // Generate unique ticket number
-                    String ticketNumber = "TK" + System.currentTimeMillis() + seatId;
+                    // Calculate price based on age category
+                    double seatPrice = ticketPrice;
+                    if ("CHILD".equals(ageCategory)) {
+                        seatPrice = ticketPrice * 0.75; // 25% discount for children
+                    } else if ("SENIOR".equals(ageCategory)) {
+                        seatPrice = ticketPrice * 0.80; // 20% discount for seniors
+                    }
+                    int seatPriceCents = (int) Math.round(seatPrice * 100);
+                    
+                    // Generate unique ticket number (max 16 chars)
+                    String ticketNumber = String.format("TK%012d", (System.currentTimeMillis() % 1000000000000L) + seatId);
                     ticketNumbers.add(ticketNumber);
                     
                     // Insert ticket
                     String insertTicketSql = """
                         INSERT INTO tickets (ticket_number, booking_id, showtime_id, seat_id, age_category, price_cents)
-                        VALUES (?, ?, ?, ?, 'ADULT', ?)
+                        VALUES (?, ?, ?, ?, ?, ?)
                     """;
-                    int ticketPriceCents = (int) Math.round(ticketPrice * 100);
-                    jdbc.update(insertTicketSql, ticketNumber, bookingId, showtimeId, seatId, ticketPriceCents);
+                    jdbc.update(insertTicketSql, ticketNumber, bookingId, showtimeId, seatId, ageCategory, seatPriceCents);
                 }
             }
             

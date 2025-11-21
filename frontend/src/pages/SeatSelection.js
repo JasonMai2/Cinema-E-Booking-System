@@ -11,6 +11,7 @@ export default function SeatSelection() {
   
   const [seats, setSeats] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]);
+  const [ageCategories, setAgeCategories] = useState({});
   const [bookedSeats, setBookedSeats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,9 +61,19 @@ export default function SeatSelection() {
     
     if (selectedSeats.includes(seatNumber)) {
       setSelectedSeats(selectedSeats.filter(s => s !== seatNumber));
+      // Remove age category when deselecting seat
+      const newAgeCategories = { ...ageCategories };
+      delete newAgeCategories[seatNumber];
+      setAgeCategories(newAgeCategories);
     } else {
       setSelectedSeats([...selectedSeats, seatNumber]);
+      // Set default age category to ADULT
+      setAgeCategories({...ageCategories, [seatNumber]: 'ADULT'});
     }
+  };
+
+  const updateAgeCategory = (seatNumber, ageCategory) => {
+    setAgeCategories({...ageCategories, [seatNumber]: ageCategory});
   };
 
   const getSeatClass = (seat) => {
@@ -73,7 +84,18 @@ export default function SeatSelection() {
   };
 
   const calculateTotal = () => {
-    return selectedSeats.length * parseFloat(showtime.price);
+    let total = 0;
+    selectedSeats.forEach(seatNumber => {
+      const ageCategory = ageCategories[seatNumber] || 'ADULT';
+      let price = parseFloat(showtime.price);
+      if (ageCategory === 'CHILD') {
+        price *= 0.75; // 25% discount for children
+      } else if (ageCategory === 'SENIOR') {
+        price *= 0.80; // 20% discount for seniors  
+      }
+      total += price;
+    });
+    return total;
   };
 
   const proceedToBooking = async () => {
@@ -88,18 +110,25 @@ export default function SeatSelection() {
         userId: parseInt(user.id),
         showtimeId: showtime.id,
         selectedSeats: selectedSeats,
+        ageCategories: selectedSeats.map(seat => ageCategories[seat] || 'ADULT'),
         promoCode: promoCode.trim() || null
       };
 
       const response = await api.post('/bookings/create', bookingData);
       
       if (response.data.ok) {
-        // Navigate to booking confirmation
-        navigate('/booking-confirmation', {
+        // Navigate to checkout for payment processing
+        navigate('/checkout', {
           state: {
             bookingData: response.data.bookingDetails,
-            bookingIds: response.data.bookingIds,
-            movie: movie
+            bookingId: response.data.bookingId,
+            bookingNumber: response.data.bookingNumber,
+            ticketNumbers: response.data.ticketNumbers,
+            movie: movie,
+            showtime: showtime,
+            selectedSeats: selectedSeats,
+            ageCategories: ageCategories,
+            promoCode: promoCode
           }
         });
       } else {
@@ -271,8 +300,29 @@ export default function SeatSelection() {
               ) : (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ color: '#f4f6f8', marginBottom: 8 }}>
-                    Seats: {selectedSeats.sort().join(', ')}
+                    Selected Seats:
                   </div>
+                  {selectedSeats.sort().map(seatNumber => (
+                    <div key={seatNumber} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '8px', background: '#1a1d21', borderRadius: 4 }}>
+                      <span style={{ color: '#f4f6f8' }}>Seat {seatNumber}</span>
+                      <select
+                        value={ageCategories[seatNumber] || 'ADULT'}
+                        onChange={(e) => updateAgeCategory(seatNumber, e.target.value)}
+                        style={{ 
+                          background: '#0b0d0f', 
+                          color: '#fff', 
+                          border: '1px solid #222', 
+                          borderRadius: 4, 
+                          padding: '4px 8px',
+                          fontSize: '12px'
+                        }}
+                      >
+                        <option value="CHILD">Child (${ (parseFloat(showtime.price) * 0.75).toFixed(2) })</option>
+                        <option value="ADULT">Adult (${ parseFloat(showtime.price).toFixed(2) })</option>
+                        <option value="SENIOR">Senior (${ (parseFloat(showtime.price) * 0.80).toFixed(2) })</option>
+                      </select>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -297,8 +347,25 @@ export default function SeatSelection() {
               </div>
 
               <div style={{ borderTop: '1px solid #222', paddingTop: 16 }}>
+                {selectedSeats.length > 0 && (
+                  <>
+                    {selectedSeats.sort().map(seatNumber => {
+                      const ageCategory = ageCategories[seatNumber] || 'ADULT';
+                      let price = parseFloat(showtime.price);
+                      if (ageCategory === 'CHILD') price *= 0.75;
+                      else if (ageCategory === 'SENIOR') price *= 0.80;
+                      return (
+                        <div key={seatNumber} style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5da', marginBottom: 4, fontSize: 12 }}>
+                          <span>Seat {seatNumber} ({ageCategory.toLowerCase()}):</span>
+                          <span>${price.toFixed(2)}</span>
+                        </div>
+                      );
+                    })}
+                    <div style={{ borderTop: '1px solid #333', paddingTop: 8, marginTop: 8 }}></div>
+                  </>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5da', marginBottom: 8 }}>
-                  <span>Seats ({selectedSeats.length}):</span>
+                  <span>Subtotal ({selectedSeats.length} seats):</span>
                   <span>${calculateTotal().toFixed(2)}</span>
                 </div>
                 {promoCode.trim() && (
