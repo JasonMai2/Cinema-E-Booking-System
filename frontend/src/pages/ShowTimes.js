@@ -111,13 +111,13 @@ export default function ShowTimes() {
 
   function generateDemoShows(seed) {
     const now = Date.now();
-    // Use numeric IDs that the backend can parse as Long
-    const baseId = seed.toString().replace(/\D/g, '') || '1'; // Extract numbers or default to 1
-    const numericBaseId = parseInt(baseId) * 1000; // Multiply to avoid conflicts
+    // Use small sequential IDs that are more likely to exist in the database
+    const baseId = parseInt(seed.toString().replace(/\D/g, '') || '1'); // Extract numbers or default to 1
     
+    // Generate future dates: start from 2 hours from now, then add 3-hour intervals
     return [0, 1, 2, 3].map((i) => ({ 
-      id: numericBaseId + i, // Use numeric ID instead of string
-      startTime: new Date(now + i * 3600 * 1000).toISOString(), 
+      id: baseId + i, // Use small sequential IDs like 1, 2, 3, 4 instead of 1000, 1001, etc.
+      startTime: new Date(now + (2 + i * 3) * 3600 * 1000).toISOString(), // 2h, 5h, 8h, 11h from now
       runtimeMinutes: 120, 
       auditorium: `Aud ${i + 1}` 
     }));
