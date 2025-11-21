@@ -111,7 +111,16 @@ export default function ShowTimes() {
 
   function generateDemoShows(seed) {
     const now = Date.now();
-    return [0, 1, 2, 3].map((i) => ({ id: `demo-show-${seed}-${i}`, startTime: new Date(now + i * 3600 * 1000).toISOString(), runtimeMinutes: 120, auditorium: `Aud ${i + 1}` }));
+    // Use numeric IDs that the backend can parse as Long
+    const baseId = seed.toString().replace(/\D/g, '') || '1'; // Extract numbers or default to 1
+    const numericBaseId = parseInt(baseId) * 1000; // Multiply to avoid conflicts
+    
+    return [0, 1, 2, 3].map((i) => ({ 
+      id: numericBaseId + i, // Use numeric ID instead of string
+      startTime: new Date(now + i * 3600 * 1000).toISOString(), 
+      runtimeMinutes: 120, 
+      auditorium: `Aud ${i + 1}` 
+    }));
   }
 
   function retry() {
