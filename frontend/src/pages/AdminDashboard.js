@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Film, Users, Percent, X } from "lucide-react";
+import { Film, Users, Percent, Calendar, X } from "lucide-react";
 import "./AdminDashboard.css";
 
 const API_BASE = "http://localhost:8080/api";
@@ -38,6 +38,18 @@ export default function AdminDashboard() {
   });
   const [loadingPromo, setLoadingPromo] = useState(false);
 
+  // Showtimes state
+  const [showtimes, setShowtimes] = useState([]);
+  const [movies, setMovies] = useState([]);
+  const [auditoriums, setAuditoriums] = useState([]);
+  const [showShowtimeModal, setShowShowtimeModal] = useState(false);
+  const [showtimeFormData, setShowtimeFormData] = useState({
+    movieId: "",
+    auditoriumId: "",
+    startsAt: "",
+  });
+  const [loadingShowtime, setLoadingShowtime] = useState(false);
+
   // --- Load screens ---
   useEffect(() => {
     const showScreen = (screen) => {
@@ -45,8 +57,9 @@ export default function AdminDashboard() {
       const movies = document.getElementById("moviesScreen");
       const usersS = document.getElementById("usersScreen");
       const promos = document.getElementById("promotionsScreen");
+      const showtimesS = document.getElementById("showtimesScreen");
 
-      [main, movies, usersS, promos].forEach((s) => (s.style.display = "none"));
+      [main, movies, usersS, promos, showtimesS].forEach((s) => (s.style.display = "none"));
       if (screen === "main") main.style.display = "block";
       if (screen === "movies") movies.style.display = "block";
       if (screen === "users") {
@@ -56,6 +69,12 @@ export default function AdminDashboard() {
       if (screen === "promotions") {
         loadPromotions();
         promos.style.display = "block";
+      }
+      if (screen === "showtimes") {
+        loadShowtimes();
+        loadMoviesForAdmin();
+        loadAuditoriums();
+        showtimesS.style.display = "block";
       }
     };
     window.showScreen = showScreen;
@@ -280,6 +299,120 @@ export default function AdminDashboard() {
     }
   };
 
+  // --- Showtimes API ---
+  const loadShowtimes = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/bookings/admin/showtimes`);
+      if (!res.ok) throw new Error("Failed to load showtimes");
+      const data = await res.json();
+      if (data.ok) {
+        setShowtimes(data.showtimes);
+      } else {
+        throw new Error(data.message || "Failed to load showtimes");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load showtimes: " + err.message);
+    }
+  };
+
+  const loadMoviesForAdmin = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/bookings/admin/movies`);
+      if (!res.ok) throw new Error("Failed to load movies");
+      const data = await res.json();
+      if (data.ok) {
+        setMovies(data.movies);
+      } else {
+        throw new Error(data.message || "Failed to load movies");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load movies: " + err.message);
+    }
+  };
+
+  const loadAuditoriums = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/bookings/admin/auditoriums`);
+      if (!res.ok) throw new Error("Failed to load auditoriums");
+      const data = await res.json();
+      if (data.ok) {
+        setAuditoriums(data.auditoriums);
+      } else {
+        throw new Error(data.message || "Failed to load auditoriums");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load auditoriums: " + err.message);
+    }
+  };
+
+  const openCreateShowtime = () => {
+    setShowtimeFormData({
+      movieId: "",
+      auditoriumId: "",
+      startsAt: "",
+    });
+    setShowShowtimeModal(true);
+  };
+
+  const handleShowtimeInputChange = (e) => {
+    const { name, value } = e.target;
+    setShowtimeFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSaveShowtime = async () => {
+    setLoadingShowtime(true);
+    try {
+      const res = await fetch(`${API_BASE}/bookings/admin/showtimes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(showtimeFormData),
+      });
+      const result = await res.json();
+      
+      if (!result.ok) {
+        throw new Error(result.message || "Failed to create showtime");
+      }
+
+      alert("Showtime created successfully!");
+      await loadShowtimes();
+      setShowShowtimeModal(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save showtime: " + err.message);
+    } finally {
+      setLoadingShowtime(false);
+    }
+  };
+
+  const deleteShowtime = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this showtime?")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/bookings/admin/showtimes/${id}`, {
+        method: "DELETE",
+      });
+      const result = await res.json();
+      
+      if (!result.ok) {
+        throw new Error(result.message || "Failed to delete showtime");
+      }
+
+      alert("Showtime deleted successfully!");
+      await loadShowtimes();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete showtime: " + err.message);
+    }
+  };
+
   // --- Render ---
   return (
     <div className="body">
@@ -304,6 +437,11 @@ export default function AdminDashboard() {
             <div className="adminCard" onClick={() => window.showScreen("promotions")}>
               <div className="adminCardIcon"><Percent className="iconStyle" /></div>
               <h2 className="adminCardTitle">Manage<br />Promotions</h2>
+            </div>
+
+            <div className="adminCard" onClick={() => window.showScreen("showtimes")}>
+              <div className="adminCardIcon"><Calendar className="iconStyle" /></div>
+              <h2 className="adminCardTitle">Manage<br />Showtimes</h2>
             </div>
           </div>
         </div>
@@ -528,6 +666,85 @@ function PromotionModal({ promoFormData, handleInputChange, handleSave, close })
           <button className="btnSave" onClick={handleSave}>Save Promotion</button>
         </div>
       </div>
+
+      {/* Showtimes Screen */}
+      <div id="showtimesScreen" style={{ display: "none" }}>
+        <button className="backButton" onClick={() => window.showScreen("main")}>← Back to Dashboard</button>
+        <h2 className="headerTitle">Manage Showtimes</h2>
+        
+        <button className="btnAdd" onClick={openCreateShowtime}>Add New Showtime</button>
+
+        {showtimes.length === 0 ? (
+          <p>No showtimes found.</p>
+        ) : (
+          showtimes.map((showtime) => (
+            <div key={showtime.id} className="itemCardDetailed">
+              <div>
+                <h3>{showtime.movie_title}</h3>
+                <p><strong>Theater:</strong> {showtime.auditorium_name}</p>
+                <p><strong>Time:</strong> {new Date(showtime.starts_at).toLocaleString()}</p>
+                <p><strong>Movie ID:</strong> {showtime.movie_id} | <strong>Theater ID:</strong> {showtime.auditorium_id}</p>
+              </div>
+              <button className="btnDelete" onClick={() => deleteShowtime(showtime.id)}>Delete</button>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Showtime Modal */}
+      {showShowtimeModal && (
+        <div className="modalOverlay">
+          <div className="modal">
+            <div className="modalHeader">
+              <h2>Add New Showtime</h2>
+              <X className="modalClose" onClick={() => setShowShowtimeModal(false)} />
+            </div>
+            
+            <div className="formGroup">
+              <label className="label">Movie</label>
+              <select className="input" name="movieId" value={showtimeFormData.movieId} onChange={handleShowtimeInputChange}>
+                <option value="">Select a movie...</option>
+                {movies.map((movie) => (
+                  <option key={movie.id} value={movie.id}>
+                    {movie.title} (ID: {movie.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="formGroup">
+              <label className="label">Theater</label>
+              <select className="input" name="auditoriumId" value={showtimeFormData.auditoriumId} onChange={handleShowtimeInputChange}>
+                <option value="">Select a theater...</option>
+                {auditoriums.map((auditorium) => (
+                  <option key={auditorium.id} value={auditorium.id}>
+                    {auditorium.name} ({auditorium.seat_rows}x{auditorium.seat_cols} seats)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="formGroup">
+              <label className="label">Show Time</label>
+              <input
+                className="input"
+                type="datetime-local"
+                name="startsAt"
+                value={showtimeFormData.startsAt}
+                onChange={handleShowtimeInputChange}
+              />
+            </div>
+
+            <button 
+              className="btnSave" 
+              onClick={handleSaveShowtime}
+              disabled={loadingShowtime}
+            >
+              {loadingShowtime ? "Creating..." : "Create Showtime"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

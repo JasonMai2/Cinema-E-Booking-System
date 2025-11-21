@@ -312,4 +312,182 @@ public class BookingController {
         seatMap.put("capacity", capacity);
         return seatMap;
     }
+
+    // ============= ADMIN ENDPOINTS =============
+    
+    @PostMapping("/admin/auditoriums")
+    public Map<String, Object> createAuditorium(@RequestBody Map<String, Object> request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            String name = (String) request.get("name");
+            Integer seatRows = (Integer) request.get("seatRows");
+            Integer seatCols = (Integer) request.get("seatCols");
+            
+            if (name == null || seatRows == null || seatCols == null) {
+                response.put("ok", false);
+                response.put("message", "Missing required fields: name, seatRows, seatCols");
+                return response;
+            }
+            
+            String sql = "INSERT INTO auditoriums (name, seat_rows, seat_cols) VALUES (?, ?, ?)";
+            jdbc.update(sql, name, seatRows, seatCols);
+            
+            response.put("ok", true);
+            response.put("message", "Auditorium created successfully");
+            return response;
+            
+        } catch (Exception e) {
+            response.put("ok", false);
+            response.put("message", "Failed to create auditorium: " + e.getMessage());
+            return response;
+        }
+    }
+    
+    @GetMapping("/admin/auditoriums")
+    public Map<String, Object> getAuditoriums() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            String sql = "SELECT id, name, seat_rows, seat_cols FROM auditoriums ORDER BY name";
+            List<Map<String, Object>> auditoriums = jdbc.queryForList(sql);
+            
+            response.put("ok", true);
+            response.put("auditoriums", auditoriums);
+            return response;
+            
+        } catch (Exception e) {
+            response.put("ok", false);
+            response.put("message", "Failed to load auditoriums: " + e.getMessage());
+            return response;
+        }
+    }
+    
+    @PostMapping("/admin/showtimes")
+    public Map<String, Object> createShowtime(@RequestBody Map<String, Object> request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            Integer movieId = (Integer) request.get("movieId");
+            Integer auditoriumId = (Integer) request.get("auditoriumId");
+            String startsAt = (String) request.get("startsAt");
+            
+            if (movieId == null || auditoriumId == null || startsAt == null) {
+                response.put("ok", false);
+                response.put("message", "Missing required fields: movieId, auditoriumId, startsAt");
+                return response;
+            }
+            
+            // Validate movie exists
+            String movieCheck = "SELECT COUNT(*) FROM movies WHERE id = ?";
+            Integer movieCount = jdbc.queryForObject(movieCheck, Integer.class, movieId);
+            if (movieCount == null || movieCount == 0) {
+                response.put("ok", false);
+                response.put("message", "Movie with ID " + movieId + " not found");
+                return response;
+            }
+            
+            // Validate auditorium exists
+            String auditoriumCheck = "SELECT COUNT(*) FROM auditoriums WHERE id = ?";
+            Integer auditoriumCount = jdbc.queryForObject(auditoriumCheck, Integer.class, auditoriumId);
+            if (auditoriumCount == null || auditoriumCount == 0) {
+                response.put("ok", false);
+                response.put("message", "Auditorium with ID " + auditoriumId + " not found");
+                return response;
+            }
+            
+            // Insert into showtimes table
+            String sql = "INSERT INTO showtimes (movie_id, auditorium_id, starts_at) VALUES (?, ?, ?)";
+            jdbc.update(sql, movieId, auditoriumId, startsAt);
+            
+            response.put("ok", true);
+            response.put("message", "Showtime created successfully");
+            return response;
+            
+        } catch (Exception e) {
+            response.put("ok", false);
+            response.put("message", "Failed to create showtime: " + e.getMessage());
+            return response;
+        }
+    }
+    
+    @GetMapping("/admin/showtimes")
+    public Map<String, Object> getAllShowtimes() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            String sql = """
+                SELECT s.id, s.movie_id, s.auditorium_id, s.starts_at,
+                       m.title as movie_title, a.name as auditorium_name
+                FROM showtimes s
+                JOIN movies m ON s.movie_id = m.id
+                JOIN auditoriums a ON s.auditorium_id = a.id
+                ORDER BY s.starts_at DESC
+                """;
+            List<Map<String, Object>> showtimes = jdbc.queryForList(sql);
+            
+            response.put("ok", true);
+            response.put("showtimes", showtimes);
+            return response;
+            
+        } catch (Exception e) {
+            response.put("ok", false);
+            response.put("message", "Failed to load showtimes: " + e.getMessage());
+            return response;
+        }
+    }
+    
+    @GetMapping("/admin/movies")
+    public Map<String, Object> getMoviesForAdmin() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            String sql = "SELECT id, title, status FROM movies ORDER BY title";
+            List<Map<String, Object>> movies = jdbc.queryForList(sql);
+            
+            response.put("ok", true);
+            response.put("movies", movies);
+            return response;
+            
+        } catch (Exception e) {
+            response.put("ok", false);
+            response.put("message", "Failed to load movies: " + e.getMessage());
+            return response;
+        }
+    }
+    
+    @DeleteMapping("/admin/showtimes/{showtimeId}")
+    public Map<String, Object> deleteShowtime(@PathVariable Long showtimeId) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Check if showtime has bookings
+            String bookingCheck = "SELECT COUNT(*) FROM bookings WHERE showtime_id = ?";
+            Integer bookingCount = jdbc.queryForObject(bookingCheck, Integer.class, showtimeId);
+            
+            if (bookingCount != null && bookingCount > 0) {
+                response.put("ok", false);
+                response.put("message", "Cannot delete showtime with existing bookings");
+                return response;
+            }
+            
+            String sql = "DELETE FROM showtimes WHERE id = ?";
+            int rowsAffected = jdbc.update(sql, showtimeId);
+            
+            if (rowsAffected > 0) {
+                response.put("ok", true);
+                response.put("message", "Showtime deleted successfully");
+            } else {
+                response.put("ok", false);
+                response.put("message", "Showtime not found");
+            }
+            
+            return response;
+            
+        } catch (Exception e) {
+            response.put("ok", false);
+            response.put("message", "Failed to delete showtime: " + e.getMessage());
+            return response;
+        }
+    }
 }
