@@ -73,9 +73,9 @@ public class BookingController {
             }
             
             Map<String, Object> showtime = showtimeResults.get(0);
-            Integer seatRows = (Integer) showtime.get("seat_rows");
-            Integer seatCols = (Integer) showtime.get("seat_cols");
-            Integer auditoriumId = (Integer) showtime.get("auditorium_id");
+            Integer seatRows = showtime.get("seat_rows") != null ? ((Number) showtime.get("seat_rows")).intValue() : 10;
+            Integer seatCols = showtime.get("seat_cols") != null ? ((Number) showtime.get("seat_cols")).intValue() : 10;
+            Integer auditoriumId = showtime.get("auditorium_id") != null ? ((Number) showtime.get("auditorium_id")).intValue() : 1;
             
             // Check if seats exist for this auditorium, if not create them
             ensureSeatsExist(auditoriumId, seatRows != null ? seatRows : 10, seatCols != null ? seatCols : 10);
@@ -403,8 +403,8 @@ public class BookingController {
         
         try {
             String name = (String) request.get("name");
-            Integer seatRows = (Integer) request.get("seatRows");
-            Integer seatCols = (Integer) request.get("seatCols");
+            Integer seatRows = request.get("seatRows") != null ? ((Number) request.get("seatRows")).intValue() : null;
+            Integer seatCols = request.get("seatCols") != null ? ((Number) request.get("seatCols")).intValue() : null;
             
             if (name == null || seatRows == null || seatCols == null) {
                 response.put("ok", false);
@@ -490,8 +490,8 @@ public class BookingController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            Integer movieId = (Integer) request.get("movieId");
-            Integer auditoriumId = (Integer) request.get("auditoriumId");
+            Integer movieId = request.get("movieId") != null ? ((Number) request.get("movieId")).intValue() : null;
+            Integer auditoriumId = request.get("auditoriumId") != null ? ((Number) request.get("auditoriumId")).intValue() : null;
             String startsAt = (String) request.get("startsAt");
             
             if (movieId == null || auditoriumId == null || startsAt == null) {
