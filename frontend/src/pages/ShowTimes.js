@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import bookingApi from '../services/bookingApi.js';
+import api from '../services/api.js';
 import ShowList from '../components/ShowList.jsx';
 import { useSearch } from '../context/SearchContext.js';
 
@@ -13,37 +13,83 @@ export default function ShowTimes() {
   const fetchId = useRef(0);
 
   useEffect(() => {
-    // Demo-only mode: don't call backend, always show local demo movies/shows
+    loadMoviesAndShowtimes();
+  }, [movieId]);
+
+  const loadMoviesAndShowtimes = async () => {
     setLoading(true);
     setError(null);
+    
+    try {
+      const response = await api.get('/bookings/movies');
+      
+      if (response.data.ok) {
+        let moviesData = response.data.movies;
+        
+        // Filter by specific movie if movieId is provided
+        if (movieId) {
+          moviesData = moviesData.filter(movie => movie.id.toString() === movieId);
+        }
+        
+        // Transform data to match ShowList component expectations
+        const transformedMovies = moviesData.map(movie => ({
+          id: movie.id,
+          title: movie.title,
+          synopsis: movie.description || movie.synopsis || 'No description available',
+          poster_url: movie.poster_url || movie.trailer_image_url,
+          shows: movie.showtimes.map(showtime => ({
+            id: showtime.id,
+            startTime: showtime.starts_at, // Updated to use correct API field
+            runtimeMinutes: movie.duration || 120,
+            auditorium: showtime.auditorium_name, // Updated to use correct API field
+            price: showtime.price || 12.50, // Default price if not provided
+            capacity: showtime.capacity || (showtime.seat_rows * showtime.seat_cols)
+          }))
+        }));
+        
+        setMovies(transformedMovies);
+      } else {
+        throw new Error(response.data.message || 'Failed to load movies');
+      }
+    } catch (err) {
+      console.error('Error loading movies and showtimes:', err);
+      setError(err.message || 'Failed to load shows');
+      
+      // Fallback to demo data if API fails
+      setMovies(generateDemoMovies());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateDemoMovies = () => {
     if (movieId) {
-      const demoId = movieId || 'demo-1';
-      const singleDemo = {
-        id: demoId,
-        title: movieId ? `Demo Movie ${movieId}` : 'Demo Movie 1',
+      return [{
+        id: movieId,
+        title: `Demo Movie ${movieId}`,
         synopsis: 'Demo synopsis',
-        shows: generateDemoShows(demoId),
-      };
-      setMovies([singleDemo]);
+        shows: generateDemoShows(movieId),
+      }];
     } else {
-      const demoMovies = [1, 2].map((n) => ({
+      return [1, 2].map((n) => ({
         id: `demo-${n}`,
         title: `Demo Movie ${n}`,
         synopsis: `Demo synopsis ${n}`,
         shows: generateDemoShows(`demo-${n}`),
       }));
-      setMovies(demoMovies);
     }
-    setLoading(false);
-  }, [movieId]);
+  };
 
   useEffect(() => {
     if (movies && movies.length > 0) {
-      const updated = movies.map((m) => {
-        if (Array.isArray(m.shows) && m.shows.length > 0) return m;
-        return { ...m, shows: generateDemoShowsForMovie(m) };
-      });
-      setMovies(updated);
+      const needsUpdate = movies.some(m => !Array.isArray(m.shows) || m.shows.length === 0);
+      if (needsUpdate) {
+        const updated = movies.map((m) => {
+          if (Array.isArray(m.shows) && m.shows.length > 0) return m;
+          return { ...m, shows: generateDemoShowsForMovie(m) };
+        });
+        setMovies(updated);
+      }
     } else if (!loading && (!movies || movies.length === 0)) {
       // Show a single demo movie with multiple showtimes so the demo page
       // focuses on booking different times for one movie.
@@ -69,29 +115,7 @@ export default function ShowTimes() {
   }
 
   function retry() {
-    // start a new fetch id to invalidate previous requests
-    fetchId.current += 1;
-    setError(null);
-    setErrorDetailsOpen(false);
-    setLoading(true);
-    const id = fetchId.current;
-
-    bookingApi
-      .getMovies()
-      .then((res) => {
-        if (id !== fetchId.current) return;
-        const payload = res && res.data ? (res.data.content || res.data) : [];
-        setMovies(payload || []);
-      })
-      .catch((err) => {
-        if (id !== fetchId.current) return;
-        const msg = (err && (err.message || (err.response && err.response.statusText))) || 'Failed to load shows';
-        setError(msg);
-      })
-      .finally(() => {
-        if (id !== fetchId.current) return;
-        setLoading(false);
-      });
+    loadMoviesAndShowtimes();
   }
 
   // Apply client-side name filter using global search query and filters

@@ -37,11 +37,14 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/movie-details" element={<MovieDetails />} />
-          <Route path="/movies/:movieId" element={<MovieDetails />} />
+          
+          {/* Put specific routes before parameterized ones */}
+          <Route path="/seat-selection" element={<SeatSelection />} />
           <Route path="/shows" element={<ShowTimes />} />
           <Route path="/shows/:movieId" element={<ShowTimes />} />
           <Route path="/shows/:showId/seats" element={<SeatSelection />} />
-          <Route path="/seat-selection" element={<SeatSelection />} />
+          
+          <Route path="/movies/:movieId" element={<MovieDetails />} />
           <Route path="/booking-confirmation" element={<BookingConfirmation />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-summary" element={<OrderSummary />} />

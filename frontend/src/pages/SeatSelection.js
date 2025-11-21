@@ -18,13 +18,24 @@ export default function SeatSelection() {
   const [promoCode, setPromoCode] = useState('');
   const [bookingInProgress, setBookingInProgress] = useState(false);
 
+  // Check for required data
+  if (!movie || !showtime || !user) {
+    return (
+      <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+        <h2>Booking Error</h2>
+        <p>Missing required booking information. Please return to movie selection and try again.</p>
+        <button onClick={() => navigate('/shows')} style={{ marginTop: '20px', padding: '10px 20px' }}>
+          Back to Movies
+        </button>
+      </div>
+    );
+  }
+
   useEffect(() => {
-    if (!movie || !showtime || !user) {
-      navigate('/movies');
-      return;
+    if (movie && showtime && user && showtime.id) {
+      loadSeats();
     }
-    loadSeats();
-  }, [movie, showtime, user, navigate]);
+  }, [movie?.id, showtime?.id, user?.id]); // Use IDs instead of objects to prevent infinite loops
 
   const loadSeats = async () => {
     try {
@@ -110,16 +121,21 @@ export default function SeatSelection() {
   };
 
   if (loading) return (
-    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div>Loading seats...</div>
+    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', background: '#0f1417', color: 'white' }}>
+      <h1 style={{ color: 'yellow', fontSize: '32px', marginBottom: '20px' }}>🎬 SEAT SELECTION LOADING 🎬</h1>
+      <div>Loading seats for showtime {showtime?.id}...</div>
+      <div style={{ color: '#cbd5da', fontSize: '14px', marginTop: '8px' }}>
+        Movie: {movie?.title || 'Unknown'} | Showtime: {showtime?.id || 'Unknown'}
+      </div>
     </div>
   );
   
   if (error) return (
-    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', background: '#0f1417', color: 'white' }}>
+      <h1 style={{ color: 'red', fontSize: '32px', marginBottom: '20px' }}>🚨 SEAT SELECTION ERROR 🚨</h1>
       <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>{error}</div>
-      <button onClick={() => navigate('/movies')} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 16px', borderRadius: '6px', border: 'none' }}>
-        Back to Movies
+      <button onClick={() => navigate('/shows')} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 16px', borderRadius: '6px', border: 'none' }}>
+        Back to Show Times
       </button>
     </div>
   );
@@ -160,7 +176,7 @@ export default function SeatSelection() {
           </button>
           <h1 style={{ margin: 0, color: '#fff' }}>{movie.title}</h1>
           <div style={{ color: '#cbd5da', marginTop: 6, fontWeight: 500 }}>
-            {formatDateTime(showtime.show_time)} • {showtimeDetails?.theater_name} • ${showtime.price} per seat
+            {formatDateTime(showtime.show_time || showtimeDetails?.starts_at)} • {showtimeDetails?.auditorium_name || showtime.theater_name} • ${showtime.price} per seat
           </div>
         </header>
 

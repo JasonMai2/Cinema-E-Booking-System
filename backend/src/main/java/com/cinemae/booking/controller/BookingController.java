@@ -20,19 +20,19 @@ public class BookingController {
     @GetMapping("/movies")
     public Map<String, Object> getMoviesWithShowtimes() {
         try {
-            // Get all active movies
-            String movieSql = "SELECT id, title, genre, rating, duration, poster_url, trailer_url, description, status FROM movies WHERE status = 'active'";
+            // Get all active movies - using correct column names from actual database schema
+            String movieSql = "SELECT id, title, synopsis, mpaa_rating, trailer_image_url FROM movies";
             List<Map<String, Object>> movies = jdbc.queryForList(movieSql);
             
             // Get showtimes for each movie
             for (Map<String, Object> movie : movies) {
                 Long movieId = ((Number) movie.get("id")).longValue();
                 String showtimeSql = """
-                    SELECT s.id, s.show_time, s.price, t.name as theater_name, t.capacity
+                    SELECT s.id, s.starts_at, a.name as auditorium_name, a.seat_rows, a.seat_cols
                     FROM showtimes s
-                    JOIN theaters t ON s.theater_id = t.id
-                    WHERE s.movie_id = ? AND s.show_time > NOW()
-                    ORDER BY s.show_time
+                    JOIN auditoriums a ON s.auditorium_id = a.id
+                    WHERE s.movie_id = ? AND s.starts_at > NOW()
+                    ORDER BY s.starts_at
                 """;
                 List<Map<String, Object>> showtimes = jdbc.queryForList(showtimeSql, movieId);
                 movie.put("showtimes", showtimes);
@@ -55,27 +55,43 @@ public class BookingController {
     @GetMapping("/showtimes/{showtimeId}/seats")
     public Map<String, Object> getAvailableSeats(@PathVariable Long showtimeId) {
         try {
-            // Get theater capacity and showtime details
+            // Get auditorium capacity and showtime details - using correct table and column names
             String showtimeSql = """
-                SELECT s.id, s.show_time, s.price, t.capacity, t.name as theater_name, m.title as movie_title
+                SELECT s.id, s.starts_at, a.seat_rows, a.seat_cols, a.name as auditorium_name, a.id as auditorium_id, m.title as movie_title
                 FROM showtimes s
-                JOIN theaters t ON s.theater_id = t.id
+                JOIN auditoriums a ON s.auditorium_id = a.id
                 JOIN movies m ON s.movie_id = m.id
                 WHERE s.id = ?
             """;
-            Map<String, Object> showtime = jdbc.queryForMap(showtimeSql, showtimeId);
-            Integer capacity = (Integer) showtime.get("capacity");
             
-            // Get booked seats
+            List<Map<String, Object>> showtimeResults = jdbc.queryForList(showtimeSql, showtimeId);
+            if (showtimeResults.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("ok", false);
+                response.put("message", "Showtime not found with ID: " + showtimeId);
+                return response;
+            }
+            
+            Map<String, Object> showtime = showtimeResults.get(0);
+            Integer seatRows = (Integer) showtime.get("seat_rows");
+            Integer seatCols = (Integer) showtime.get("seat_cols");
+            Integer auditoriumId = (Integer) showtime.get("auditorium_id");
+            
+            // Check if seats exist for this auditorium, if not create them
+            ensureSeatsExist(auditoriumId, seatRows != null ? seatRows : 10, seatCols != null ? seatCols : 10);
+            
+            // Get booked seats - using correct table structure with tickets and seats
             String bookedSeatsSql = """
-                SELECT seat_number 
-                FROM bookings 
-                WHERE showtime_id = ? AND status != 'cancelled'
+                SELECT CONCAT(s.row_label, s.seat_number) as seat_identifier
+                FROM tickets t
+                JOIN seats s ON t.seat_id = s.id
+                JOIN bookings b ON t.booking_id = b.id
+                WHERE t.showtime_id = ? AND b.status != 'CANCELLED'
             """;
             List<String> bookedSeats = jdbc.queryForList(bookedSeatsSql, String.class, showtimeId);
             
-            // Generate seat map
-            Map<String, Object> seatMap = generateSeatMap(capacity, bookedSeats);
+            // Generate seat map using rows and columns
+            Map<String, Object> seatMap = generateSeatMap(seatRows, seatCols, bookedSeats);
             
             Map<String, Object> response = new HashMap<>();
             response.put("ok", true);
@@ -111,32 +127,36 @@ public class BookingController {
                 return response;
             }
             
-            // Verify seats are available
-            for (String seat : selectedSeats) {
+            // Check seat availability - using correct table structure
+            for (String seatIdentifier : selectedSeats) {
                 String checkSeatSql = """
                     SELECT COUNT(*) 
-                    FROM bookings 
-                    WHERE showtime_id = ? AND seat_number = ? AND status != 'cancelled'
+                    FROM tickets t
+                    JOIN seats s ON t.seat_id = s.id
+                    JOIN bookings b ON t.booking_id = b.id
+                    WHERE t.showtime_id = ? AND CONCAT(s.row_label, s.seat_number) = ? AND b.status != 'CANCELLED'
                 """;
-                Integer count = jdbc.queryForObject(checkSeatSql, Integer.class, showtimeId, seat);
-                if (count > 0) {
+                Integer count = jdbc.queryForObject(checkSeatSql, Integer.class, showtimeId, seatIdentifier);
+                if (count != null && count > 0) {
                     Map<String, Object> response = new HashMap<>();
                     response.put("ok", false);
-                    response.put("message", "Seat " + seat + " is no longer available");
+                    response.put("message", "Seat " + seatIdentifier + " is no longer available");
                     return response;
                 }
             }
             
-            // Get showtime details for pricing
+            // Get showtime details for pricing - using correct table structure
             String showtimeSql = """
-                SELECT s.price, s.show_time, m.title, t.name as theater_name
+                SELECT s.starts_at, m.title, a.name as auditorium_name
                 FROM showtimes s
                 JOIN movies m ON s.movie_id = m.id
-                JOIN theaters t ON s.theater_id = t.id
+                JOIN auditoriums a ON s.auditorium_id = a.id
                 WHERE s.id = ?
             """;
             Map<String, Object> showtimeDetails = jdbc.queryForMap(showtimeSql, showtimeId);
-            Double ticketPrice = Double.valueOf(showtimeDetails.get("price").toString());
+            
+            // For now, use a fixed ticket price since there's no price column in showtimes
+            Double ticketPrice = 12.50; // Default ticket price
             
             // Calculate total price
             Double subtotal = ticketPrice * selectedSeats.size();
@@ -151,7 +171,9 @@ public class BookingController {
                 """;
                 try {
                     Double discountPercentage = jdbc.queryForObject(promoSql, Double.class, promoCode.trim());
-                    discount = subtotal * (discountPercentage / 100);
+                    if (discountPercentage != null) {
+                        discount = subtotal * (discountPercentage / 100);
+                    }
                 } catch (Exception e) {
                     // Promo code not found or expired - continue without discount
                 }
@@ -159,36 +181,70 @@ public class BookingController {
             
             Double total = subtotal - discount;
             
-            // Create booking records
+            // Generate unique booking number
+            String bookingNumber = "BK" + System.currentTimeMillis();
+            
+            // Convert to cents for database storage
+            int subtotalCents = (int) Math.round(subtotal * 100);
+            int totalCents = (int) Math.round(total * 100);
+            
+            // Create main booking record
             String insertBookingSql = """
-                INSERT INTO bookings (user_id, showtime_id, seat_number, ticket_price, status, booking_time, promo_code, discount_amount, total_amount)
-                VALUES (?, ?, ?, ?, 'pending', NOW(), ?, ?, ?)
+                INSERT INTO bookings (booking_number, user_id, status, subtotal_cents, total_cents, created_at)
+                VALUES (?, ?, 'PENDING', ?, ?, NOW())
             """;
             
-            List<Long> bookingIds = new ArrayList<>();
-            for (String seat : selectedSeats) {
-                jdbc.update(insertBookingSql, userId, showtimeId, seat, ticketPrice, promoCode, discount / selectedSeats.size(), total / selectedSeats.size());
+            jdbc.update(insertBookingSql, bookingNumber, userId, subtotalCents, totalCents);
+            
+            // Get the booking ID
+            Long bookingId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+            
+            // Create tickets for each selected seat
+            List<String> ticketNumbers = new ArrayList<>();
+            for (String seatIdentifier : selectedSeats) {
+                // Parse seat identifier (e.g., "A1" -> row "A", seat 1)
+                String rowLabel = seatIdentifier.substring(0, 1);
+                int seatNum = Integer.parseInt(seatIdentifier.substring(1));
                 
-                // Get the booking ID
-                Long bookingId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
-                bookingIds.add(bookingId);
+                // Find the seat ID
+                String findSeatSql = """
+                    SELECT id FROM seats 
+                    WHERE auditorium_id = (SELECT auditorium_id FROM showtimes WHERE id = ?) 
+                    AND row_label = ? AND seat_number = ?
+                """;
+                Long seatId = jdbc.queryForObject(findSeatSql, Long.class, showtimeId, rowLabel, seatNum);
+                
+                if (seatId != null) {
+                    // Generate unique ticket number
+                    String ticketNumber = "TK" + System.currentTimeMillis() + seatId;
+                    ticketNumbers.add(ticketNumber);
+                    
+                    // Insert ticket
+                    String insertTicketSql = """
+                        INSERT INTO tickets (ticket_number, booking_id, showtime_id, seat_id, age_category, price_cents)
+                        VALUES (?, ?, ?, ?, 'ADULT', ?)
+                    """;
+                    int ticketPriceCents = (int) Math.round(ticketPrice * 100);
+                    jdbc.update(insertTicketSql, ticketNumber, bookingId, showtimeId, seatId, ticketPriceCents);
+                }
             }
             
             // Prepare response
             Map<String, Object> response = new HashMap<>();
             response.put("ok", true);
             response.put("message", "Booking created successfully");
-            response.put("bookingIds", bookingIds);
+            response.put("bookingId", bookingId);
+            response.put("bookingNumber", bookingNumber);
+            response.put("ticketNumbers", ticketNumbers);
             response.put("bookingDetails", Map.of(
                 "movieTitle", showtimeDetails.get("title"),
-                "theaterName", showtimeDetails.get("theater_name"),
-                "showTime", showtimeDetails.get("show_time"),
+                "auditoriumName", showtimeDetails.get("auditorium_name"),
+                "showTime", showtimeDetails.get("starts_at"),
                 "seats", selectedSeats,
                 "ticketPrice", ticketPrice,
                 "subtotal", subtotal,
                 "discount", discount,
-                "total", total,
-                "promoCode", promoCode != null ? promoCode : ""
+                "total", total
             ));
             
             return response;
@@ -206,14 +262,18 @@ public class BookingController {
     public Map<String, Object> getUserBookings(@PathVariable Long userId) {
         try {
             String sql = """
-                SELECT b.id, b.seat_number, b.ticket_price, b.status, b.booking_time, b.total_amount,
-                       m.title as movie_title, m.poster_url, s.show_time, t.name as theater_name
+                SELECT b.id, b.booking_number, b.status, b.created_at, b.total_cents,
+                       m.title as movie_title, m.trailer_image_url, s.starts_at, a.name as auditorium_name,
+                       GROUP_CONCAT(CONCAT(st.row_label, st.seat_number)) as seat_numbers
                 FROM bookings b
-                JOIN showtimes s ON b.showtime_id = s.id
+                JOIN tickets t ON b.id = t.booking_id
+                JOIN showtimes s ON t.showtime_id = s.id
                 JOIN movies m ON s.movie_id = m.id
-                JOIN theaters t ON s.theater_id = t.id
+                JOIN auditoriums a ON s.auditorium_id = a.id
+                JOIN seats st ON t.seat_id = st.id
                 WHERE b.user_id = ?
-                ORDER BY b.booking_time DESC
+                GROUP BY b.id, b.booking_number, b.status, b.created_at, b.total_cents, m.title, m.trailer_image_url, s.starts_at, a.name
+                ORDER BY b.created_at DESC
             """;
             
             List<Map<String, Object>> bookings = jdbc.queryForList(sql, userId);
@@ -240,17 +300,19 @@ public class BookingController {
             
             // Verify booking belongs to user and is cancellable
             String checkSql = """
-                SELECT b.status, s.show_time
+                SELECT b.status, s.starts_at
                 FROM bookings b
-                JOIN showtimes s ON b.showtime_id = s.id
+                JOIN tickets t ON b.id = t.booking_id
+                JOIN showtimes s ON t.showtime_id = s.id
                 WHERE b.id = ? AND b.user_id = ?
+                LIMIT 1
             """;
             
             Map<String, Object> booking = jdbc.queryForMap(checkSql, bookingId, userId);
             String status = booking.get("status").toString();
-            Timestamp showTime = (Timestamp) booking.get("show_time");
+            Timestamp showTime = (Timestamp) booking.get("starts_at");
             
-            if (!"pending".equals(status) && !"confirmed".equals(status)) {
+            if (!"PENDING".equals(status) && !"PAID".equals(status)) {
                 Map<String, Object> response = new HashMap<>();
                 response.put("ok", false);
                 response.put("message", "This booking cannot be cancelled");
@@ -284,18 +346,38 @@ public class BookingController {
         }
     }
 
+    // Helper method to ensure seats exist for an auditorium
+    private void ensureSeatsExist(Integer auditoriumId, int seatRows, int seatCols) {
+        // Check if seats already exist for this auditorium
+        String checkSeatsSql = "SELECT COUNT(*) FROM seats WHERE auditorium_id = ?";
+        Integer seatCount = jdbc.queryForObject(checkSeatsSql, Integer.class, auditoriumId);
+        
+        if (seatCount == null || seatCount == 0) {
+            // Create seats for this auditorium
+            String insertSeatSql = "INSERT INTO seats (auditorium_id, row_label, seat_number, seat_type) VALUES (?, ?, ?, 'STANDARD')";
+            
+            for (int row = 0; row < seatRows; row++) {
+                char rowLabel = (char) ('A' + row);
+                for (int seat = 1; seat <= seatCols; seat++) {
+                    jdbc.update(insertSeatSql, auditoriumId, String.valueOf(rowLabel), seat);
+                }
+            }
+        }
+    }
+
     // Helper method to generate seat map
-    private Map<String, Object> generateSeatMap(Integer capacity, List<String> bookedSeats) {
+    private Map<String, Object> generateSeatMap(Integer seatRows, Integer seatCols, List<String> bookedSeats) {
         Map<String, Object> seatMap = new HashMap<>();
         List<Map<String, Object>> seats = new ArrayList<>();
         
-        // Calculate rows and seats per row based on capacity
-        int seatsPerRow = 10;
-        int numRows = (int) Math.ceil((double) capacity / seatsPerRow);
+        // Use actual rows and columns from auditorium
+        int numRows = seatRows != null ? seatRows : 10;
+        int seatsPerRow = seatCols != null ? seatCols : 10;
+        int totalCapacity = numRows * seatsPerRow;
         
         for (int row = 0; row < numRows; row++) {
             char rowLetter = (char) ('A' + row);
-            for (int seat = 1; seat <= seatsPerRow && (row * seatsPerRow + seat) <= capacity; seat++) {
+            for (int seat = 1; seat <= seatsPerRow; seat++) {
                 String seatNumber = rowLetter + String.valueOf(seat);
                 Map<String, Object> seatInfo = new HashMap<>();
                 seatInfo.put("number", seatNumber);
@@ -309,7 +391,7 @@ public class BookingController {
         seatMap.put("seats", seats);
         seatMap.put("rows", numRows);
         seatMap.put("seatsPerRow", seatsPerRow);
-        seatMap.put("capacity", capacity);
+        seatMap.put("capacity", totalCapacity);
         return seatMap;
     }
 
@@ -359,6 +441,46 @@ public class BookingController {
         } catch (Exception e) {
             response.put("ok", false);
             response.put("message", "Failed to load auditoriums: " + e.getMessage());
+            return response;
+        }
+    }
+    
+    @DeleteMapping("/admin/auditoriums/{auditoriumId}")
+    public Map<String, Object> deleteAuditorium(@PathVariable Integer auditoriumId) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Check if auditorium has any showtimes
+            String checkShowtimesSql = "SELECT COUNT(*) FROM showtimes WHERE auditorium_id = ?";
+            Integer showtimeCount = jdbc.queryForObject(checkShowtimesSql, Integer.class, auditoriumId);
+            
+            if (showtimeCount != null && showtimeCount > 0) {
+                response.put("ok", false);
+                response.put("message", "Cannot delete auditorium with existing showtimes. Please delete the showtimes first.");
+                return response;
+            }
+            
+            // Delete associated seats first
+            String deleteSeatsSql = "DELETE FROM seats WHERE auditorium_id = ?";
+            jdbc.update(deleteSeatsSql, auditoriumId);
+            
+            // Delete auditorium
+            String deleteAuditoriumSql = "DELETE FROM auditoriums WHERE id = ?";
+            int deletedRows = jdbc.update(deleteAuditoriumSql, auditoriumId);
+            
+            if (deletedRows == 0) {
+                response.put("ok", false);
+                response.put("message", "Auditorium not found");
+                return response;
+            }
+            
+            response.put("ok", true);
+            response.put("message", "Auditorium deleted successfully");
+            return response;
+            
+        } catch (Exception e) {
+            response.put("ok", false);
+            response.put("message", "Failed to delete auditorium: " + e.getMessage());
             return response;
         }
     }
@@ -461,8 +583,8 @@ public class BookingController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            // Check if showtime has bookings
-            String bookingCheck = "SELECT COUNT(*) FROM bookings WHERE showtime_id = ?";
+            // Check if showtime has bookings (through tickets)
+            String bookingCheck = "SELECT COUNT(*) FROM tickets WHERE showtime_id = ?";
             Integer bookingCount = jdbc.queryForObject(bookingCheck, Integer.class, showtimeId);
             
             if (bookingCount != null && bookingCount > 0) {
