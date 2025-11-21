@@ -1,247 +1,304 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import bookingApi from '../services/bookingApi.js';
-import SeatMap from '../components/SeatMap.jsx';
-import { useBooking } from '../context/BookingContext.js';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 export default function SeatSelection() {
-  const { showId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const {
-    selectedShow,
-    selectedSeats,
-    addSeat,
-    removeSeat,
-    updateSeat,
-    createOrderDraft,
-    reservation,
-    setOrderDetails,
-    setSelectedShow,
-  } = useBooking();
-
-  const [ageCategory, setAgeCategory] = useState('adult');
-
+  const { user } = useAuth();
+  const { movie, showtime } = location.state || {};
+  
   const [seats, setSeats] = useState([]);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const [bookedSeats, setBookedSeats] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [reserving, setReserving] = useState(false);
-  const [useDemo, setUseDemo] = useState(false);
-
-  const pollRef = useRef(null);
-
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    bookingApi
-      .getSeatMap(showId)
-      .then((res) => {
-        if (!mounted) return;
-        // support multiple shapes: array, { seats: [...] }, or paginated { content: [...] }
-        const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
-        if (!payload || payload.length === 0) {
-          // if API returned nothing, automatically show demo seatmap so the user can continue
-          const demo = generateDemoSeats();
-          setSeats(demo);
-          setUseDemo(true);
-          setError(null);
-        } else {
-          setSeats(payload || []);
-        }
-      })
-      .catch((err) => {
-        if (!mounted) return;
-        const msg = err && (err.message || (err.response && err.response.statusText)) || 'Failed to load seat map';
-        // on error, fall back to demo seatmap automatically
-        const demo = generateDemoSeats();
-        setSeats(demo);
-        setUseDemo(true);
-        setError(msg);
-      })
-      .finally(() => mounted && setLoading(false));
-    return () => (mounted = false);
-  }, [showId]);
+  const [error, setError] = useState('');
+  const [showtimeDetails, setShowtimeDetails] = useState(null);
+  const [promoCode, setPromoCode] = useState('');
+  const [bookingInProgress, setBookingInProgress] = useState(false);
 
   useEffect(() => {
-    // Optionally poll seat map every 15s to keep availability fresh
-    if (useDemo) return; // skip polling when demo mode is active
-    pollRef.current = setInterval(() => {
-      bookingApi.getSeatMap(showId).then((res) => {
-        const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
-        if (payload && payload.length > 0) setSeats(payload || []);
-      }).catch(() => {});
-    }, 15000);
-    return () => clearInterval(pollRef.current);
-  }, [showId]);
-
-  const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
-
-  function toggleSeat(seat) {
-    if (seat.status !== 'available') return;
-    const exists = selectedSeats.find((s) => s.id === seat.id);
-    if (exists) {
-      removeSeat(seat.id);
-    } else {
-      // apply age-based pricing modifier when adding the seat
-      const modifiers = { adult: 1.0, child: 0.5, senior: 0.8 };
-      const basePrice = seat.price || 0;
-      const price = +(basePrice * (modifiers[ageCategory] || 1)).toFixed(2);
-      const seatWithAge = { ...seat, price, ageCategory };
-      addSeat(seatWithAge);
+    if (!movie || !showtime || !user) {
+      navigate('/movies');
+      return;
     }
-  }
+    loadSeats();
+  }, [movie, showtime, user, navigate]);
 
-  async function proceedToCheckout() {
-    if (selectedSeats.length === 0) return alert('Select seats first');
-    setReserving(true);
+  const loadSeats = async () => {
     try {
-      const seatIds = selectedSeats.map((s) => s.id);
-      if (useDemo) {
-        // create a simple order draft in context and go to checkout
-        const draft = {
-          showId: showId,
-          show: selectedShow,
-          seats: selectedSeats,
-          customer: null,
-        };
-        if (typeof createOrderDraft === 'function') {
-          await createOrderDraft(draft);
-        }
-        navigate('/checkout');
+      setLoading(true);
+      const response = await api.get(`/bookings/showtimes/${showtime.id}/seats`);
+      if (response.data.ok) {
+        setSeats(response.data.seats.seats);
+        setBookedSeats(response.data.bookedSeats);
+        setShowtimeDetails(response.data.showtime);
       } else {
-        // call API to reserve seats; bookingApi.reserveSeats returns reservation/order data
-        const res = await bookingApi.reserveSeats(showId, { seats: seatIds });
-        const data = res && res.data ? res.data : res;
-        // store resulting reservation/order in context if setter exists
-        if (setOrderDetails) setOrderDetails(data);
-        // start a countdown or show expiry info if provided
-        navigate('/checkout');
+        setError(response.data.message || 'Failed to load seats');
       }
     } catch (err) {
-      // Try to refresh seat map and show helpful message
-      await bookingApi.getSeatMap(showId).then((res) => setSeats(res.data.seats || [])).catch(() => {});
-      alert('Failed to reserve seats — some may no longer be available. Please reselect.');
-    } finally {
-      setReserving(false);
-    }
-  }
-
-  async function refreshSeats() {
-    setLoading(true);
-    try {
-  const res = await bookingApi.getSeatMap(showId);
-  const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
-  setSeats(payload || []);
-    } catch (err) {
-      setError(err.message || 'Failed to refresh');
+      setError('Failed to load seats: ' + err.message);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  function generateDemoSeats() {
-    const rows = 'ABCDEFGHIJ'.split('');
-    const seats = [];
-    let id = 1;
-    for (const r of rows) {
-      for (let n = 1; n <= 12; n++) {
-        seats.push({ id: `demo-${r}${n}-${id}`, row: r, number: n, status: 'available', price: 10.0 });
-        id += 1;
-      }
+  const toggleSeat = (seatNumber) => {
+    if (bookedSeats.includes(seatNumber)) return; // Can't select booked seats
+    
+    if (selectedSeats.includes(seatNumber)) {
+      setSelectedSeats(selectedSeats.filter(s => s !== seatNumber));
+    } else {
+      setSelectedSeats([...selectedSeats, seatNumber]);
     }
-    return seats;
-  }
+  };
 
-  function showDemoSeatmap() {
-    setUseDemo(true);
-    setError(null);
-    const demo = generateDemoSeats();
-    setSeats(demo);
-  }
+  const getSeatClass = (seat) => {
+    const seatNumber = seat.number;
+    if (bookedSeats.includes(seatNumber)) return 'seat booked';
+    if (selectedSeats.includes(seatNumber)) return 'seat selected';
+    return 'seat available';
+  };
+
+  const calculateTotal = () => {
+    return selectedSeats.length * parseFloat(showtime.price);
+  };
+
+  const proceedToBooking = async () => {
+    if (selectedSeats.length === 0) {
+      alert('Please select at least one seat');
+      return;
+    }
+
+    try {
+      setBookingInProgress(true);
+      const bookingData = {
+        userId: parseInt(user.id),
+        showtimeId: showtime.id,
+        selectedSeats: selectedSeats,
+        promoCode: promoCode.trim() || null
+      };
+
+      const response = await api.post('/bookings/create', bookingData);
+      
+      if (response.data.ok) {
+        // Navigate to booking confirmation
+        navigate('/booking-confirmation', {
+          state: {
+            bookingData: response.data.bookingDetails,
+            bookingIds: response.data.bookingIds,
+            movie: movie
+          }
+        });
+      } else {
+        alert(response.data.message || 'Failed to create booking');
+        // Reload seats in case some were taken
+        await loadSeats();
+        setSelectedSeats([]);
+      }
+    } catch (err) {
+      alert('Failed to create booking: ' + err.message);
+    } finally {
+      setBookingInProgress(false);
+    }
+  };
+
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  if (loading) return (
+    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div>Loading seats...</div>
+    </div>
+  );
+  
+  if (error) return (
+    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+      <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>{error}</div>
+      <button onClick={() => navigate('/movies')} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 16px', borderRadius: '6px', border: 'none' }}>
+        Back to Movies
+      </button>
+    </div>
+  );
+  
+  if (!movie || !showtime) return (
+    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+      <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>Invalid booking session</div>
+      <button onClick={() => navigate('/movies')} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 16px', borderRadius: '6px', border: 'none' }}>
+        Back to Movies
+      </button>
+    </div>
+  );
+
+  // Group seats by row for display
+  const seatRows = {};
+  seats.forEach(seat => {
+    if (!seatRows[seat.row]) {
+      seatRows[seat.row] = [];
+    }
+    seatRows[seat.row].push(seat);
+  });
+
+  // Sort rows alphabetically and seats numerically within each row
+  const sortedRows = Object.keys(seatRows).sort();
+  sortedRows.forEach(row => {
+    seatRows[row].sort((a, b) => a.seat - b.seat);
+  });
 
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '820px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
-        <header style={{ marginBottom: 12 }}>
-          <h1 style={{ margin: 0, color: '#fff' }}>Seat Selection</h1>
-          <div style={{ color: '#cbd5da', marginTop: 6, fontWeight: 500 }}>{selectedShow ? `${selectedShow.title || selectedShow.id}` : `Show ${showId}`}</div>
+        <header style={{ marginBottom: 20 }}>
+          <button 
+            onClick={() => navigate('/movies')} 
+            style={{ background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 12px', borderRadius: 6, marginBottom: 16 }}
+          >
+            ← Back to Movies
+          </button>
+          <h1 style={{ margin: 0, color: '#fff' }}>{movie.title}</h1>
+          <div style={{ color: '#cbd5da', marginTop: 6, fontWeight: 500 }}>
+            {formatDateTime(showtime.show_time)} • {showtimeDetails?.theater_name} • ${showtime.price} per seat
+          </div>
         </header>
 
-        {loading ? (
-          <div style={{ color: '#cbd5da' }}>Loading seats…</div>
-        ) : error ? (
-          <div>
-            <div style={{ color: '#ff6b6b' }}>Error: {error}</div>
-            <div style={{ marginTop: 8 }}>
-              <button onClick={refreshSeats} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 12px', borderRadius: 6, border: 'none' }}>Retry</button>
-              <button onClick={showDemoSeatmap} style={{ marginLeft: 8, background: '#444', color: '#fff', padding: '8px 12px', borderRadius: 6, border: 'none' }}>Show demo seatmap</button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', gap: 20 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ background: '#0b0d0f', padding: 16, borderRadius: 8 }}>
-                <SeatMap seats={seats} selectedSeatIds={selectedSeats.map((s) => s.id)} onToggleSeat={toggleSeat} />
+        <div style={{ display: 'flex', gap: 20 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ background: '#0b0d0f', padding: 16, borderRadius: 8, marginBottom: 16 }}>
+              <div style={{ textAlign: 'center', background: '#222', padding: '8px', marginBottom: '20px', borderRadius: '4px' }}>
+                SCREEN
               </div>
-              <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                <button onClick={refreshSeats} style={{ background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 12px', borderRadius: 6 }}>Refresh</button>
-                <button onClick={proceedToCheckout} disabled={reserving} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{reserving ? 'Reserving...' : 'Reserve & Checkout'}</button>
-              </div>
-            </div>
-
-            <aside style={{ width: 320, paddingLeft: 8 }}>
-              <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
-                <h3 style={{ marginTop: 0, color: '#fff' }}>Selected Seats</h3>
-                <div style={{ marginBottom: 8 }}>
-                  <label style={{ color: '#cbd5da', fontSize: 13, display: 'block', marginBottom: 6 }}>Age category for new seats</label>
-                  <select value={ageCategory} onChange={(e) => setAgeCategory(e.target.value)} style={{ padding: '6px 8px', borderRadius: 6, background: '#0b0d0f', color: '#fff', border: '1px solid #222' }}>
-                    <option value="adult">Adult</option>
-                    <option value="child">Child (50%)</option>
-                    <option value="senior">Senior (20% off)</option>
-                  </select>
-                </div>
-                {selectedSeats.length === 0 ? (
-                  <div style={{ color: '#cbd5da' }}>No seats selected</div>
-                ) : (
-                  <ul>
-                    {selectedSeats.map((s) => (
-                      <li key={s.id} style={{ color: '#f4f6f8', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>{`${s.row}${s.number} — $${(s.price || 0).toFixed(2)}`}</div>
-                          <div>
-                            <select value={s.ageCategory || ageCategory} onChange={(e) => {
-                              const newAge = e.target.value;
-                              const modifiers = { adult: 1.0, child: 0.5, senior: 0.8 };
-                              const basePrice = (s.originalPrice || s.price || 0);
-                              const newPrice = +(basePrice * (modifiers[newAge] || 1)).toFixed(2);
-                              // update seat in context: store originalPrice if not present
-                              updateSeat(s.id, { ageCategory: newAge, price: newPrice, originalPrice: s.originalPrice || s.price || 0 });
-                            }} style={{ background: '#0b0d0f', color: '#fff', border: '1px solid #222', borderRadius: 6, padding: '4px 6px' }}>
-                              <option value="adult">Adult</option>
-                              <option value="child">Child</option>
-                              <option value="senior">Senior</option>
-                            </select>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <div style={{ marginTop: 12, color: '#cbd5da' }}>
-                  <div>Subtotal: <strong style={{ color: '#fff' }}>${subtotal.toFixed(2)}</strong></div>
-                </div>
-
-                {reservation ? (
-                  <div style={{ marginTop: 12 }}>
-                    <h4 style={{ color: '#fff' }}>Reservation</h4>
-                    <div style={{ color: '#cbd5da' }}>Reservation id: {reservation.reservationId || reservation.id}</div>
-                    {reservation.expiresAt && <div style={{ color: '#cbd5da' }}>Expires at: {new Date(reservation.expiresAt).toLocaleString()}</div>}
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                {sortedRows.map(rowLetter => (
+                  <div key={rowLetter} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '20px', textAlign: 'center', color: '#cbd5da', fontSize: '14px' }}>{rowLetter}</div>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {seatRows[rowLetter].map(seat => (
+                        <button
+                          key={seat.number}
+                          onClick={() => toggleSeat(seat.number)}
+                          disabled={bookedSeats.includes(seat.number)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '4px',
+                            border: 'none',
+                            fontSize: '12px',
+                            cursor: bookedSeats.includes(seat.number) ? 'not-allowed' : 'pointer',
+                            background: bookedSeats.includes(seat.number) ? '#ff6b6b' :
+                                      selectedSeats.includes(seat.number) ? '#51cf66' : '#444',
+                            color: '#fff'
+                          }}
+                          title={`Seat ${seat.number} - ${
+                            bookedSeats.includes(seat.number) ? 'Booked' :
+                            selectedSeats.includes(seat.number) ? 'Selected' : 'Available'
+                          }`}
+                        >
+                          {seat.seat}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ width: '20px', textAlign: 'center', color: '#cbd5da', fontSize: '14px' }}>{rowLetter}</div>
                   </div>
-                ) : null}
+                ))}
               </div>
-            </aside>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px', fontSize: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '16px', height: '16px', background: '#444', borderRadius: '2px' }}></div>
+                  <span>Available</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '16px', height: '16px', background: '#51cf66', borderRadius: '2px' }}></div>
+                  <span>Selected</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '16px', height: '16px', background: '#ff6b6b', borderRadius: '2px' }}></div>
+                  <span>Booked</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button 
+                onClick={loadSeats} 
+                style={{ background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 12px', borderRadius: 6 }}
+              >
+                Refresh Seats
+              </button>
+              <button 
+                onClick={proceedToBooking} 
+                disabled={selectedSeats.length === 0 || bookingInProgress}
+                style={{ 
+                  background: selectedSeats.length === 0 || bookingInProgress ? '#444' : '#7a1f1f', 
+                  color: '#fff', 
+                  padding: '8px 14px', 
+                  borderRadius: 6, 
+                  border: 'none',
+                  cursor: selectedSeats.length === 0 || bookingInProgress ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {bookingInProgress ? 'Creating Booking...' : 'Proceed to Booking'}
+              </button>
+            </div>
           </div>
-        )}
+
+          <aside style={{ width: 300 }}>
+            <div style={{ background: '#0b0d0f', padding: 16, borderRadius: 8 }}>
+              <h3 style={{ marginTop: 0, color: '#fff' }}>Selected Seats</h3>
+              
+              {selectedSeats.length === 0 ? (
+                <div style={{ color: '#cbd5da' }}>No seats selected</div>
+              ) : (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ color: '#f4f6f8', marginBottom: 8 }}>
+                    Seats: {selectedSeats.sort().join(', ')}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ color: '#cbd5da', fontSize: 13, display: 'block', marginBottom: 6 }}>
+                  Promo Code (optional):
+                </label>
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  placeholder="Enter promo code"
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px', 
+                    borderRadius: 6, 
+                    background: '#0b0d0f', 
+                    color: '#fff', 
+                    border: '1px solid #222' 
+                  }}
+                />
+              </div>
+
+              <div style={{ borderTop: '1px solid #222', paddingTop: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5da', marginBottom: 8 }}>
+                  <span>Seats ({selectedSeats.length}):</span>
+                  <span>${calculateTotal().toFixed(2)}</span>
+                </div>
+                {promoCode.trim() && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5da', marginBottom: 8, fontSize: 12 }}>
+                    <span>Promo: {promoCode}</span>
+                    <span>Applied at checkout</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
+                  <span>Total:</span>
+                  <span>${calculateTotal().toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

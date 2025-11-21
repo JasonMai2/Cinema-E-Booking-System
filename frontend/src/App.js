@@ -2,6 +2,7 @@ import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 
 import AdminDashboard from './pages/AdminDashboard';
 import { AuthProvider } from './context/AuthContext';
+import BookingConfirmation from './pages/BookingConfirmation';
 import { BookingProvider } from './context/BookingContext';
 import Checkout from './pages/Checkout';
 import EditProfile from './pages/EditProfile';
@@ -40,6 +41,8 @@ function App() {
           <Route path="/shows" element={<ShowTimes />} />
           <Route path="/shows/:movieId" element={<ShowTimes />} />
           <Route path="/shows/:showId/seats" element={<SeatSelection />} />
+          <Route path="/seat-selection" element={<SeatSelection />} />
+          <Route path="/booking-confirmation" element={<BookingConfirmation />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-summary" element={<OrderSummary />} />
           <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
