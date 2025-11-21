@@ -1,10 +1,38 @@
 import React, { useEffect, useState } from "react";
-import { Film, Users, Percent, Calendar, X } from "lucide-react";
+import { Users, Percent, X, Film } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import "./AdminDashboard.css";
 
 const API_BASE = "http://localhost:8080/api";
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Check authentication and admin role
+  useEffect(() => {
+    if (!user) {
+      // User not logged in, redirect to login
+      navigate('/login');
+      return;
+    }
+    
+    // Check if user has admin role
+    const hasAdminRole = user.roles && user.roles.some(role => role.name === 'ADMIN');
+    if (!hasAdminRole) {
+      // User is not an admin, redirect to home
+      alert('Access denied. Admin privileges required.');
+      navigate('/');
+      return;
+    }
+  }, [user, navigate]);
+
+  // Don't render anything if user is not authenticated or not admin
+  if (!user || !user.roles || !user.roles.some(role => role.name === 'ADMIN')) {
+    return <div>Checking authentication...</div>;
+  }
+
   // Users state
   const [users, setUsers] = useState([]);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -38,27 +66,7 @@ export default function AdminDashboard() {
   });
   const [loadingPromo, setLoadingPromo] = useState(false);
 
-  // Auditoriums state
-  const [auditoriums, setAuditoriums] = useState([]);
-  const [showAuditoriumModal, setShowAuditoriumModal] = useState(false);
-  const [selectedAuditorium, setSelectedAuditorium] = useState(null);
-  const [auditoriumFormData, setAuditoriumFormData] = useState({
-    name: "",
-    seatRows: "",
-    seatCols: "",
-  });
-  const [loadingAuditorium, setLoadingAuditorium] = useState(false);
 
-  // Showtimes state
-  const [showtimes, setShowtimes] = useState([]);
-  const [movies, setMovies] = useState([]);
-  const [showShowtimeModal, setShowShowtimeModal] = useState(false);
-  const [showtimeFormData, setShowtimeFormData] = useState({
-    movieId: "",
-    auditoriumId: "",
-    startsAt: "",
-  });
-  const [loadingShowtime, setLoadingShowtime] = useState(false);
 
   // --- Load screens ---
   useEffect(() => {
@@ -67,33 +75,29 @@ export default function AdminDashboard() {
       const movies = document.getElementById("moviesScreen");
       const usersS = document.getElementById("usersScreen");
       const promos = document.getElementById("promotionsScreen");
-      const showtimesS = document.getElementById("showtimesScreen");
-      const auditoriumsS = document.getElementById("auditoriumsScreen");
 
-      [main, movies, usersS, promos, showtimesS, auditoriumsS].forEach((s) => (s.style.display = "none"));
-      if (screen === "main") main.style.display = "block";
-      if (screen === "movies") movies.style.display = "block";
-      if (screen === "users") {
+      // Add null checks to prevent errors
+      [main, movies, usersS, promos].forEach((s) => {
+        if (s) s.style.display = "none";
+      });
+      
+      if (screen === "main" && main) main.style.display = "block";
+      if (screen === "movies" && movies) movies.style.display = "block";
+      if (screen === "users" && usersS) {
         loadUsers();
         usersS.style.display = "block";
       }
-      if (screen === "promotions") {
+      if (screen === "promotions" && promos) {
         loadPromotions();
         promos.style.display = "block";
       }
-      if (screen === "showtimes") {
-        loadShowtimes();
-        loadMoviesForAdmin();
-        loadAuditoriums();
-        showtimesS.style.display = "block";
-      }
-      if (screen === "auditoriums") {
-        loadAuditoriums();
-        auditoriumsS.style.display = "block";
-      }
     };
     window.showScreen = showScreen;
-    window.showScreen("main");
+    
+    // Delay the initial screen show to ensure DOM is ready
+    setTimeout(() => {
+      window.showScreen("main");
+    }, 0);
   }, []);
 
   // --- Users API ---
@@ -314,219 +318,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- Showtimes API ---
-  const loadShowtimes = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/bookings/admin/showtimes`);
-      if (!res.ok) throw new Error("Failed to load showtimes");
-      const data = await res.json();
-      if (data.ok) {
-        setShowtimes(data.showtimes);
-      } else {
-        throw new Error(data.message || "Failed to load showtimes");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to load showtimes: " + err.message);
-    }
-  };
 
-  const loadMoviesForAdmin = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/bookings/admin/movies`);
-      if (!res.ok) throw new Error("Failed to load movies");
-      const data = await res.json();
-      if (data.ok) {
-        setMovies(data.movies);
-      } else {
-        throw new Error(data.message || "Failed to load movies");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to load movies: " + err.message);
-    }
-  };
-
-  const loadAuditoriums = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/bookings/admin/auditoriums`);
-      if (!res.ok) throw new Error("Failed to load auditoriums");
-      const data = await res.json();
-      if (data.ok) {
-        setAuditoriums(data.auditoriums);
-      } else {
-        throw new Error(data.message || "Failed to load auditoriums");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to load auditoriums: " + err.message);
-    }
-  };
-
-  const openCreateAuditorium = () => {
-    setSelectedAuditorium(null);
-    setAuditoriumFormData({
-      name: "",
-      seatRows: "",
-      seatCols: "",
-    });
-    setShowAuditoriumModal(true);
-  };
-
-  const openEditAuditorium = (auditorium) => {
-    setSelectedAuditorium(auditorium);
-    setAuditoriumFormData({
-      name: auditorium.name,
-      seatRows: auditorium.seat_rows.toString(),
-      seatCols: auditorium.seat_cols.toString(),
-    });
-    setShowAuditoriumModal(true);
-  };
-
-  const handleAuditoriumInputChange = (e) => {
-    const { name, value } = e.target;
-    setAuditoriumFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleAuditoriumSubmit = async () => {
-    if (!auditoriumFormData.name.trim()) {
-      alert("Auditorium name is required");
-      return;
-    }
-
-    const seatRows = parseInt(auditoriumFormData.seatRows);
-    const seatCols = parseInt(auditoriumFormData.seatCols);
-
-    if (!seatRows || seatRows < 1 || seatRows > 20) {
-      alert("Seat rows must be between 1 and 20");
-      return;
-    }
-
-    if (!seatCols || seatCols < 1 || seatCols > 30) {
-      alert("Seat columns must be between 1 and 30");
-      return;
-    }
-
-    setLoadingAuditorium(true);
-    try {
-      const payload = {
-        name: auditoriumFormData.name.trim(),
-        seatRows: seatRows,
-        seatCols: seatCols,
-      };
-
-      const res = await fetch(`${API_BASE}/bookings/admin/auditoriums`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await res.json();
-      if (!result.ok) {
-        throw new Error(result.message || "Failed to save auditorium");
-      }
-
-      alert("Auditorium saved successfully!");
-      setShowAuditoriumModal(false);
-      await loadAuditoriums();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save auditorium: " + err.message);
-    } finally {
-      setLoadingAuditorium(false);
-    }
-  };
-
-  const deleteAuditorium = async (id) => {
-    if (!confirm("Are you sure you want to delete this auditorium? This will also delete all associated seats and may affect showtimes.")) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/bookings/admin/auditoriums/${id}`, {
-        method: "DELETE",
-      });
-      const result = await res.json();
-      
-      if (!result.ok) {
-        throw new Error(result.message || "Failed to delete auditorium");
-      }
-
-      alert("Auditorium deleted successfully!");
-      await loadAuditoriums();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete auditorium: " + err.message);
-    }
-  };
-
-  const resetShowtimeForm = () => {
-    setShowtimeFormData({
-      movieId: "",
-      auditoriumId: "",
-      startsAt: "",
-    });
-    setShowShowtimeModal(true);
-  };
-
-  const handleShowtimeInputChange = (e) => {
-    const { name, value } = e.target;
-    setShowtimeFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSaveShowtime = async () => {
-    setLoadingShowtime(true);
-    try {
-      const res = await fetch(`${API_BASE}/bookings/admin/showtimes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(showtimeFormData),
-      });
-      const result = await res.json();
-      
-      if (!result.ok) {
-        throw new Error(result.message || "Failed to create showtime");
-      }
-
-      alert("Showtime created successfully!");
-      await loadShowtimes();
-      setShowShowtimeModal(false);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save showtime: " + err.message);
-    } finally {
-      setLoadingShowtime(false);
-    }
-  };
-
-  const deleteShowtime = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this showtime?")) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/bookings/admin/showtimes/${id}`, {
-        method: "DELETE",
-      });
-      const result = await res.json();
-      
-      if (!result.ok) {
-        throw new Error(result.message || "Failed to delete showtime");
-      }
-
-      alert("Showtime deleted successfully!");
-      await loadShowtimes();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete showtime: " + err.message);
-    }
-  };
 
   // --- Render ---
   return (
@@ -552,16 +344,6 @@ export default function AdminDashboard() {
             <div className="adminCard" onClick={() => window.showScreen("promotions")}>
               <div className="adminCardIcon"><Percent className="iconStyle" /></div>
               <h2 className="adminCardTitle">Manage<br />Promotions</h2>
-            </div>
-
-            <div className="adminCard" onClick={() => window.showScreen("showtimes")}>
-              <div className="adminCardIcon"><Calendar className="iconStyle" /></div>
-              <h2 className="adminCardTitle">Manage<br />Showtimes</h2>
-            </div>
-
-            <div className="adminCard" onClick={() => window.showScreen("auditoriums")}>
-              <div className="adminCardIcon"><Film className="iconStyle" /></div>
-              <h2 className="adminCardTitle">Manage<br />Auditoriums</h2>
             </div>
           </div>
         </div>
@@ -737,92 +519,6 @@ function UserModal({ formData, handleInputChange, handleSubmit, loading, close }
           </div>
           <button className="btnSave" onClick={handleSubmit} disabled={loading}>{loading ? "Saving..." : "Save"}</button>
         </div>
-
-        {/* Auditoriums Screen */}
-        <div id="auditoriumsScreen" style={{ display: "none" }}>
-          <button className="backButton" onClick={() => window.showScreen("main")}>← Back to Dashboard</button>
-          <h2 className="screenTitle">Auditorium Management</h2>
-          
-          <button className="btnAdd" onClick={openCreateAuditorium}>Add New Auditorium</button>
-          
-          <div className="auditoriumGrid">
-            {auditoriums.map((auditorium) => (
-              <div key={auditorium.id} className="auditoriumCard">
-                <h3>{auditorium.name}</h3>
-                <p><strong>Capacity:</strong> {auditorium.seat_rows} × {auditorium.seat_cols} = {auditorium.seat_rows * auditorium.seat_cols} seats</p>
-                <p><strong>Layout:</strong> {auditorium.seat_rows} rows, {auditorium.seat_cols} seats per row</p>
-                <div className="auditoriumActions">
-                  <button className="btnManage" onClick={() => openEditAuditorium(auditorium)}>Edit</button>
-                  <button className="btnDelete" onClick={() => deleteAuditorium(auditorium.id)}>Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Auditorium Modal */}
-        {showAuditoriumModal && (
-          <div className="modal">
-            <div className="modalContent">
-              <button className="closeButton" onClick={() => setShowAuditoriumModal(false)}><X size={24} /></button>
-              <h2>{selectedAuditorium ? "Edit Auditorium" : "Create New Auditorium"}</h2>
-              
-              <div className="formGroup">
-                <label className="label">Auditorium Name</label>
-                <input 
-                  type="text" 
-                  name="name" 
-                  value={auditoriumFormData.name} 
-                  onChange={handleAuditoriumInputChange}
-                  placeholder="Enter auditorium name"
-                  className="input"
-                />
-              </div>
-              
-              <div className="formGroup">
-                <label className="label">Number of Rows (1-20)</label>
-                <input 
-                  type="number" 
-                  name="seatRows" 
-                  value={auditoriumFormData.seatRows} 
-                  onChange={handleAuditoriumInputChange}
-                  placeholder="Enter number of rows"
-                  min="1"
-                  max="20"
-                  className="input"
-                />
-              </div>
-              
-              <div className="formGroup">
-                <label className="label">Seats per Row (1-30)</label>
-                <input 
-                  type="number" 
-                  name="seatCols" 
-                  value={auditoriumFormData.seatCols} 
-                  onChange={handleAuditoriumInputChange}
-                  placeholder="Enter seats per row"
-                  min="1"
-                  max="30"
-                  className="input"
-                />
-              </div>
-              
-              {auditoriumFormData.seatRows && auditoriumFormData.seatCols && (
-                <div className="capacityPreview">
-                  <p><strong>Total Capacity:</strong> {parseInt(auditoriumFormData.seatRows || 0) * parseInt(auditoriumFormData.seatCols || 0)} seats</p>
-                </div>
-              )}
-              
-              <button 
-                className="btnSave" 
-                onClick={handleAuditoriumSubmit} 
-                disabled={loadingAuditorium}
-              >
-                {loadingAuditorium ? "Saving..." : "Save Auditorium"}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -872,85 +568,6 @@ function PromotionModal({ promoFormData, handleInputChange, handleSave, close })
           <button className="btnSave" onClick={handleSave}>Save Promotion</button>
         </div>
       </div>
-
-      {/* Showtimes Screen */}
-      <div id="showtimesScreen" style={{ display: "none" }}>
-        <button className="backButton" onClick={() => window.showScreen("main")}>← Back to Dashboard</button>
-        <h2 className="headerTitle">Manage Showtimes</h2>
-        
-        <button className="btnAdd" onClick={openCreateShowtime}>Add New Showtime</button>
-
-        {showtimes.length === 0 ? (
-          <p>No showtimes found.</p>
-        ) : (
-          showtimes.map((showtime) => (
-            <div key={showtime.id} className="itemCardDetailed">
-              <div>
-                <h3>{showtime.movie_title}</h3>
-                <p><strong>Theater:</strong> {showtime.auditorium_name}</p>
-                <p><strong>Time:</strong> {new Date(showtime.starts_at).toLocaleString()}</p>
-                <p><strong>Movie ID:</strong> {showtime.movie_id} | <strong>Theater ID:</strong> {showtime.auditorium_id}</p>
-              </div>
-              <button className="btnDelete" onClick={() => deleteShowtime(showtime.id)}>Delete</button>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Showtime Modal */}
-      {showShowtimeModal && (
-        <div className="modalOverlay">
-          <div className="modal">
-            <div className="modalHeader">
-              <h2>Add New Showtime</h2>
-              <X className="modalClose" onClick={() => setShowShowtimeModal(false)} />
-            </div>
-            
-            <div className="formGroup">
-              <label className="label">Movie</label>
-              <select className="input" name="movieId" value={showtimeFormData.movieId} onChange={handleShowtimeInputChange}>
-                <option value="">Select a movie...</option>
-                {movies.map((movie) => (
-                  <option key={movie.id} value={movie.id}>
-                    {movie.title} (ID: {movie.id})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="formGroup">
-              <label className="label">Theater</label>
-              <select className="input" name="auditoriumId" value={showtimeFormData.auditoriumId} onChange={handleShowtimeInputChange}>
-                <option value="">Select a theater...</option>
-                {auditoriums.map((auditorium) => (
-                  <option key={auditorium.id} value={auditorium.id}>
-                    {auditorium.name} ({auditorium.seat_rows}x{auditorium.seat_cols} seats)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="formGroup">
-              <label className="label">Show Time</label>
-              <input
-                className="input"
-                type="datetime-local"
-                name="startsAt"
-                value={showtimeFormData.startsAt}
-                onChange={handleShowtimeInputChange}
-              />
-            </div>
-
-            <button 
-              className="btnSave" 
-              onClick={handleSaveShowtime}
-              disabled={loadingShowtime}
-            >
-              {loadingShowtime ? "Creating..." : "Create Showtime"}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
