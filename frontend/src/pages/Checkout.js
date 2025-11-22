@@ -1,81 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useBooking } from '../context/BookingContext.js';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
 
 export default function Checkout() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { selectedShow, selectedSeats, setCustomer, createOrderDraft, customer } = useBooking();
   const { user } = useAuth();
-  
-  const { 
-    bookingData, 
-    bookingId, 
-    bookingNumber, 
-    ticketNumbers, 
-    movie, 
-    showtime, 
-    selectedSeats,
-    ageCategories 
-  } = location.state || {};
+  const [name, setName] = useState(customer?.name || '');
+  const [email, setEmail] = useState(customer?.email || '');
+  const [phone, setPhone] = useState(customer?.phone || '');
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
 
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [cardDetails, setCardDetails] = useState({
-    number: '',
-    expiry: '',
-    cvv: '',
-    name: ''
-  });
-  const [processing, setProcessing] = useState(false);
-
-  // Redirect if no booking data
+  // Redirect to login if user is not authenticated
   useEffect(() => {
-    if (!bookingData || !bookingId || !movie || !user) {
-      navigate('/movies');
+    if (user === null) {
+      navigate('/login');
     }
-  }, [bookingData, bookingId, movie, user, navigate]);
+  }, [user, navigate]);
 
-  const processPayment = async () => {
-    if (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv || !cardDetails.name) {
-      alert('Please fill in all payment details');
-      return;
+  useEffect(() => {
+    if (customer) {
+      setName(customer.name || '');
+      setEmail(customer.email || '');
+      setPhone(customer.phone || '');
     }
+  }, [customer]);
 
+  const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
+
+  async function submit() {
+    const errs = {};
+    if (!name) errs.name = 'Name is required';
+    if (!email) errs.email = 'Email is required';
+    if (!selectedShow) errs.show = 'No show selected';
+    if (!selectedSeats || selectedSeats.length === 0) errs.seats = 'No seats selected';
+    setErrors(errs);
+
+    if (Object.keys(errs).length > 0) return;
+
+    setLoading(true);
     try {
-      setProcessing(true);
-      
-      // Simulate payment processing (in real app, this would integrate with Stripe/PayPal etc.)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // For demo purposes, proceed to confirmation
-      navigate('/booking-confirmation', {
-        state: {
-          bookingData,
-          bookingId,
-          bookingNumber,
-          ticketNumbers,
-          movie,
-          showtime,
-          selectedSeats,
-          paymentConfirmed: true
-        }
+      setCustomer({ name, email, phone });
+      const res = await createOrderDraft({
+        showId: selectedShow.id,
+        seats: selectedSeats,
+        customer: { name, email, phone },
       });
-    } catch (error) {
-      alert('Payment processing failed: ' + error.message);
+      navigate('/order-summary');
+    } catch (err) {
+      alert('Error: ' + (err.message || err));
     } finally {
-      setProcessing(false);
+      setLoading(false);
     }
-  };
+  }
 
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  if (!bookingData || !bookingId || !movie || !user) {
+  if (!selectedShow || !selectedSeats || selectedSeats.length === 0) {
     return (
       <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-        <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>Invalid checkout session</div>
+        <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>No booking data found</div>
         <button onClick={() => navigate('/movies')} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 16px', borderRadius: '6px', border: 'none' }}>
           Back to Movies
         </button>
@@ -84,244 +68,127 @@ export default function Checkout() {
   }
 
   return (
-    <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ maxWidth: '900px', width: '100%', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
+    <div style={{ minHeight: '70vh', padding: '24px' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', background: '#0f1417', color: '#f4f6f8', padding: '28px', borderRadius: '10px', boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
         
-        {/* Header */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: '32px' }}>
           <button 
             onClick={() => navigate(-1)} 
-            style={{ background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 12px', borderRadius: 6, marginBottom: 16 }}
+            style={{ background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 12px', borderRadius: '6px', marginBottom: '16px' }}
           >
-            ← Back to Seat Selection
+            ← Back
           </button>
-          <h1 style={{ margin: 0, color: '#fff', marginBottom: 8 }}>Checkout</h1>
-          <p style={{ color: '#cbd5da', margin: 0 }}>Complete your booking for {movie.title}</p>
+          <h1 style={{ margin: '0 0 8px 0', color: '#fff' }}>Checkout</h1>
+          <p style={{ color: '#cbd5da', margin: 0 }}>Complete your booking details</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 32 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '32px' }}>
           
-          {/* Payment Form */}
+          {/* Customer Form */}
           <div>
-            <div style={{ background: '#0b0d0f', padding: 24, borderRadius: 8, marginBottom: 24 }}>
-              <h3 style={{ margin: '0 0 20px 0', color: '#fff' }}>Payment Information</h3>
+            <div style={{ background: '#0b0d0f', padding: '24px', borderRadius: '8px' }}>
+              <h3 style={{ margin: '0 0 20px 0', color: '#fff' }}>Customer Information</h3>
               
-              {/* Payment Method Selection */}
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 8 }}>Payment Method</label>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <button
-                    onClick={() => setPaymentMethod('card')}
-                    style={{
-                      padding: '12px 20px',
-                      borderRadius: 6,
-                      border: '1px solid #222',
-                      background: paymentMethod === 'card' ? '#7a1f1f' : 'transparent',
-                      color: paymentMethod === 'card' ? '#fff' : '#cbd5da',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Credit/Debit Card
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod('paypal')}
-                    style={{
-                      padding: '12px 20px',
-                      borderRadius: 6,
-                      border: '1px solid #222',
-                      background: paymentMethod === 'paypal' ? '#7a1f1f' : 'transparent',
-                      color: paymentMethod === 'paypal' ? '#fff' : '#cbd5da',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    PayPal
-                  </button>
-                </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: '#cbd5da', fontSize: '14px', display: 'block', marginBottom: '8px' }}>Name *</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px', 
+                    background: '#1a1d21', 
+                    border: '1px solid #222', 
+                    borderRadius: '6px', 
+                    color: '#fff',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                {errors.name && <div style={{ color: '#ff6b6b', fontSize: '12px', marginTop: '4px' }}>{errors.name}</div>}
               </div>
 
-              {/* Card Details Form */}
-              {paymentMethod === 'card' && (
-                <div style={{ display: 'grid', gap: 16 }}>
-                  <div>
-                    <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 6 }}>
-                      Cardholder Name
-                    </label>
-                    <input
-                      type="text"
-                      value={cardDetails.name}
-                      onChange={(e) => setCardDetails({...cardDetails, name: e.target.value})}
-                      placeholder="John Doe"
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: 6,
-                        background: '#1a1d21',
-                        color: '#fff',
-                        border: '1px solid #222',
-                        fontSize: 14
-                      }}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 6 }}>
-                      Card Number
-                    </label>
-                    <input
-                      type="text"
-                      value={cardDetails.number}
-                      onChange={(e) => setCardDetails({...cardDetails, number: e.target.value})}
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: 6,
-                        background: '#1a1d21',
-                        color: '#fff',
-                        border: '1px solid #222',
-                        fontSize: 14
-                      }}
-                    />
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div>
-                      <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 6 }}>
-                        Expiry Date
-                      </label>
-                      <input
-                        type="text"
-                        value={cardDetails.expiry}
-                        onChange={(e) => setCardDetails({...cardDetails, expiry: e.target.value})}
-                        placeholder="MM/YY"
-                        maxLength={5}
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: 6,
-                          background: '#1a1d21',
-                          color: '#fff',
-                          border: '1px solid #222',
-                          fontSize: 14
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ color: '#cbd5da', fontSize: 14, display: 'block', marginBottom: 6 }}>
-                        CVV
-                      </label>
-                      <input
-                        type="text"
-                        value={cardDetails.cvv}
-                        onChange={(e) => setCardDetails({...cardDetails, cvv: e.target.value})}
-                        placeholder="123"
-                        maxLength={4}
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: 6,
-                          background: '#1a1d21',
-                          color: '#fff',
-                          border: '1px solid #222',
-                          fontSize: 14
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: '#cbd5da', fontSize: '14px', display: 'block', marginBottom: '8px' }}>Email *</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px', 
+                    background: '#1a1d21', 
+                    border: '1px solid #222', 
+                    borderRadius: '6px', 
+                    color: '#fff',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                {errors.email && <div style={{ color: '#ff6b6b', fontSize: '12px', marginTop: '4px' }}>{errors.email}</div>}
+              </div>
 
-              {paymentMethod === 'paypal' && (
-                <div style={{ textAlign: 'center', padding: '40px 20px', border: '2px dashed #222', borderRadius: 8 }}>
-                  <div style={{ color: '#cbd5da', marginBottom: 12 }}>You will be redirected to PayPal to complete payment</div>
-                  <div style={{ fontSize: 14, color: '#888' }}>PayPal integration coming soon</div>
-                </div>
-              )}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: '#cbd5da', fontSize: '14px', display: 'block', marginBottom: '8px' }}>Phone</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px', 
+                    background: '#1a1d21', 
+                    border: '1px solid #222', 
+                    borderRadius: '6px', 
+                    color: '#fff',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
 
-              {/* Process Payment Button */}
               <button
-                onClick={processPayment}
-                disabled={processing || (paymentMethod === 'paypal')}
+                onClick={submit}
+                disabled={loading}
                 style={{
                   width: '100%',
                   padding: '16px',
-                  marginTop: 24,
-                  borderRadius: 8,
-                  border: 'none',
-                  background: processing ? '#444' : (paymentMethod === 'paypal' ? '#666' : '#51cf66'),
+                  background: loading ? '#555' : '#7a1f1f',
                   color: '#fff',
-                  fontSize: 16,
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
                   fontWeight: 'bold',
-                  cursor: processing || (paymentMethod === 'paypal') ? 'not-allowed' : 'pointer',
-                  opacity: processing || (paymentMethod === 'paypal') ? 0.6 : 1
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginTop: '16px'
                 }}
               >
-                {processing ? 'Processing Payment...' : `Pay $${bookingData.total?.toFixed(2)}`}
+                {loading ? 'Processing...' : 'Continue to Order Summary'}
               </button>
             </div>
           </div>
 
           {/* Order Summary */}
           <div>
-            <div style={{ background: '#0b0d0f', padding: 24, borderRadius: 8, position: 'sticky', top: 20 }}>
-              <h3 style={{ margin: '0 0 20px 0', color: '#fff' }}>Order Summary</h3>
+            <div style={{ background: '#0b0d0f', padding: '20px', borderRadius: '8px', marginBottom: '16px' }}>
+              <h3 style={{ margin: '0 0 16px 0', color: '#fff' }}>Booking Summary</h3>
               
-              {/* Movie Info */}
-              <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
-                <div style={{ fontWeight: 'bold', color: '#fff', marginBottom: 8 }}>{movie.title}</div>
-                <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 4 }}>
-                  {formatDateTime(bookingData.showTime)}
-                </div>
-                <div style={{ color: '#cbd5da', fontSize: 14 }}>
-                  {bookingData.auditoriumName}
-                </div>
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ color: '#cbd5da', fontSize: '14px' }}>Movie</div>
+                <div style={{ color: '#fff', fontWeight: 'bold' }}>{selectedShow?.movie_title || 'Unknown Movie'}</div>
               </div>
 
-              {/* Seats */}
-              <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
-                <div style={{ color: '#cbd5da', fontSize: 14, marginBottom: 8 }}>Selected Seats</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                  {selectedSeats && selectedSeats.map((seat, index) => (
-                    <div key={seat} style={{
-                      background: '#222',
-                      padding: '4px 8px',
-                      borderRadius: 4,
-                      fontSize: 14,
-                      color: '#fff'
-                    }}>
-                      {seat} ({ageCategories?.[seat] || 'Adult'})
-                    </div>
-                  ))}
-                </div>
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ color: '#cbd5da', fontSize: '14px' }}>Showtime</div>
+                <div style={{ color: '#fff' }}>{selectedShow?.start_time ? new Date(selectedShow.start_time).toLocaleString() : 'Unknown Time'}</div>
               </div>
 
-              {/* Pricing */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#cbd5da' }}>
-                  <span>Subtotal ({selectedSeats?.length || 0} tickets)</span>
-                  <span>${bookingData.subtotal?.toFixed(2) || '0.00'}</span>
-                </div>
-                {bookingData.discount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#51cf66' }}>
-                    <span>Discount</span>
-                    <span>-${bookingData.discount?.toFixed(2)}</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#cbd5da' }}>
-                  <span>Taxes & Fees</span>
-                  <span>$0.00</span>
-                </div>
-                <div style={{ borderTop: '1px solid #222', paddingTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 'bold', color: '#fff' }}>
-                  <span>Total</span>
-                  <span>${bookingData.total?.toFixed(2) || '0.00'}</span>
-                </div>
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ color: '#cbd5da', fontSize: '14px' }}>Seats</div>
+                <div style={{ color: '#fff' }}>{selectedSeats.map(s => s.seat_number || s.id).join(', ')}</div>
               </div>
 
-              {/* Booking Details */}
-              <div style={{ background: '#1a1d21', padding: 12, borderRadius: 6 }}>
-                <div style={{ color: '#cbd5da', fontSize: 12, marginBottom: 4 }}>Booking Number</div>
-                <div style={{ color: '#fff', fontSize: 14, fontFamily: 'monospace' }}>{bookingNumber}</div>
+              <div style={{ borderTop: '1px solid #222', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>
+                <span>Total</span>
+                <span>${subtotal.toFixed(2)}</span>
               </div>
             </div>
           </div>

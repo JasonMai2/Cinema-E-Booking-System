@@ -2,14 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import bookingApi from '../services/bookingApi.js';
 import { useBooking } from '../context/BookingContext.js';
+import { useAuth } from '../context/AuthContext';
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { orderDetails } = useBooking();
+
+  // Redirect to login if user is not authenticated
+  useEffect(() => {
+    if (user === null) {
+      navigate('/login');
+      return;
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     let mounted = true;

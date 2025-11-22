@@ -19,13 +19,18 @@ export default function EditProfile() {
     state: "",
     postalCode: "",
   });
+  const [homeAddress, setHomeAddress] = useState({
+    street: "",
+    city: "",
+    state: "",
+    postalCode: "",
+  });
   const [promotions, setPromotions] = useState(true);
   const [password, setPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [pmBrand, setPmBrand] = useState("");
   const [pmNumber, setPmNumber] = useState("");
@@ -38,8 +43,7 @@ export default function EditProfile() {
     postalCode: "",
   });
   const [pmCvv, setPmCvv] = useState("");
-  const [pmExpMonth, setPmExpMonth] = useState("");
-  const [pmExpYear, setPmExpYear] = useState("");
+  const [pmExpiration, setPmExpiration] = useState(""); // MM/YY format
   const [pmLoading, setPmLoading] = useState(false);
   const [pmError, setPmError] = useState(null);
   const [pmFieldErrors, setPmFieldErrors] = useState({});
@@ -49,15 +53,94 @@ export default function EditProfile() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentFormMode, setPaymentFormMode] = useState("add"); // "add" or "edit"
   const [editingPaymentId, setEditingPaymentId] = useState(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
 
   const promotionsId = useId();
+
+  // Redirect to login if user is not authenticated
+  useEffect(() => {
+    if (user === null) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
 
   const togglePromotions = useCallback(() => {
     setPromotions((prev) => !prev);
   }, []);
 
+  const handleRemoveAddress = useCallback(async () => {
+    setLoading(true);
+    try {
+      const payload = {
+        id: user?.id,
+        first_name: user?.first_name,
+        last_name: user?.last_name,
+        email: user?.email,
+        phone: user?.phone,
+        home_address: {
+          street: "",
+          city: "",
+          state: "",
+          postalCode: "",
+        },
+        shipping_address: {
+          street: "",
+          city: "",
+          state: "",
+          postalCode: "",
+        },
+        promotions: user?.promotions,
+      };
+      
+      const res = await api.put("/auth/profile", payload);
+      
+      if (res?.data?.ok && res?.data?.user) {
+        // Update context with new user data
+        login(res.data.user);
+        
+        // Clear form states
+        setHomeAddress({ street: "", city: "", state: "", postalCode: "" });
+        setShippingAddress({ street: "", city: "", state: "", postalCode: "" });
+        
+        // Update initial user state to reflect removal
+        setInitialUser({
+          ...initialUser,
+          home_address: { street: "", city: "", state: "", postalCode: "" },
+          shipping_address: { street: "", city: "", state: "", postalCode: "" },
+        });
+        
+        // Show form after removal so user can add new address
+        setShowAddressForm(true);
+        setMessage({ type: "success", text: "Address removed successfully!" });
+      } else {
+        setMessage({ type: "error", text: res?.data?.message || "Failed to remove address" });
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: err?.response?.data?.message || "Failed to remove address" });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, login, initialUser]);
+
+  const handleEditAddress = useCallback(() => {
+    // Use home address if available, otherwise use shipping address
+    const addressSource = user?.home_address || user?.shipping_address;
+    if (addressSource) {
+      const newAddress = {
+        street: addressSource.street || "",
+        city: addressSource.city || "",
+        state: addressSource.state || "",
+        postalCode: addressSource.postalCode || "",
+      };
+      setHomeAddress(newAddress);
+      setShippingAddress(newAddress);
+      setShowAddressForm(true); // Show form when editing
+    }
+  }, [user]);
+
   useEffect(() => {
     if (user) {
+      
       setFirstName(user.first_name || "");
       setLastName(user.last_name || "");
       setEmail(user.email || "");
@@ -68,7 +151,19 @@ export default function EditProfile() {
         state: user.shipping_address?.state || "",
         postalCode: user.shipping_address?.postalCode || "",
       });
+      setHomeAddress({
+        street: user.home_address?.street || "",
+        city: user.home_address?.city || "",
+        state: user.home_address?.state || "",
+        postalCode: user.home_address?.postalCode || "",
+      });
       setPromotions(user.promotions !== undefined ? user.promotions : true);
+      
+      // Show address form if no saved address exists
+      const hasAddress = (user?.home_address && (user.home_address.street || user.home_address.city)) ||
+                        (user?.shipping_address && (user.shipping_address.street || user.shipping_address.city));
+      setShowAddressForm(!hasAddress);
+      
       // remember original values to compute "dirty"
       setInitialUser({
         first_name: user.first_name || "",
@@ -80,6 +175,12 @@ export default function EditProfile() {
           city: user.shipping_address?.city || "",
           state: user.shipping_address?.state || "",
           postalCode: user.shipping_address?.postalCode || "",
+        },
+        home_address: {
+          street: user.home_address?.street || "",
+          city: user.home_address?.city || "",
+          state: user.home_address?.state || "",
+          postalCode: user.home_address?.postalCode || "",
         },
         promotions: user.promotions !== undefined ? user.promotions : true,
       });
@@ -189,23 +290,28 @@ export default function EditProfile() {
           return "Enter a valid CVV (3-4 digits).";
         }
         break;
-      case "pmExpMonth":
+      case "pmExpiration":
         if (!value) {
-          return "Expiration month is required.";
+          return "Expiration date is required.";
         }
-        const month = parseInt(value, 10);
-        if (isNaN(month) || month < 1 || month > 12) {
-          return "Enter a valid month (1-12).";
+        if (!/^\d{2}\/\d{2}$/.test(value)) {
+          return "Enter expiration as MM/YY.";
         }
-        break;
-      case "pmExpYear":
-        if (!value) {
-          return "Expiration year is required.";
-        }
-        const year = parseInt(value, 10);
+        const [monthStr, yearStr] = value.split('/');
+        const month = parseInt(monthStr, 10);
+        const year = parseInt('20' + yearStr, 10); // Convert YY to 20YY
         const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+        
+        if (isNaN(month) || month < 1 || month > 12) {
+          return "Enter a valid month (01-12).";
+        }
         if (isNaN(year) || year < currentYear || year > currentYear + 20) {
-          return `Enter a valid year (${currentYear}-${currentYear + 20}).`;
+          return `Enter a valid year (${String(currentYear).slice(-2)}-${String(currentYear + 20).slice(-2)}).`;
+        }
+        // Check if card is already expired
+        if (year === currentYear && month < currentMonth) {
+          return "Card has already expired.";
         }
         break;
       case "pmStreet":
@@ -242,11 +348,8 @@ export default function EditProfile() {
         if (fieldName === "pmNumber") {
           delete newErrors.number;
         }
-        if (fieldName === "pmExpMonth") {
-          delete newErrors.expmonth;
-        }
-        if (fieldName === "pmExpYear") {
-          delete newErrors.expyear;
+        if (fieldName === "pmExpiration") {
+          delete newErrors.expiration;
         }
         return newErrors;
       }
@@ -312,6 +415,12 @@ export default function EditProfile() {
           state: shippingAddress.state,
           postalCode: shippingAddress.postalCode,
         },
+        home_address: {
+          street: homeAddress.street,
+          city: homeAddress.city,
+          state: homeAddress.state,
+          postalCode: homeAddress.postalCode,
+        },
         promotions,
       };
 
@@ -331,6 +440,12 @@ export default function EditProfile() {
             city: res.data.user.shipping_address?.city || "",
             state: res.data.user.shipping_address?.state || "",
             postalCode: res.data.user.shipping_address?.postalCode || "",
+          },
+          home_address: {
+            street: res.data.user.home_address?.street || "",
+            city: res.data.user.home_address?.city || "",
+            state: res.data.user.home_address?.state || "",
+            postalCode: res.data.user.home_address?.postalCode || "",
           },
           promotions:
             res.data.user.promotions !== undefined
@@ -413,6 +528,12 @@ export default function EditProfile() {
         state: user.shipping_address?.state || "",
         postalCode: user.shipping_address?.postalCode || "",
       });
+      setHomeAddress({
+        street: user.home_address?.street || "",
+        city: user.home_address?.city || "",
+        state: user.home_address?.state || "",
+        postalCode: user.home_address?.postalCode || "",
+      });
       setPromotions(user.promotions !== undefined ? user.promotions : true);
       setPassword("");
       setCurrentPassword("");
@@ -448,6 +569,11 @@ export default function EditProfile() {
       initialUser.shipping_address?.state !== (shippingAddress.state || "") ||
       initialUser.shipping_address?.postalCode !==
         (shippingAddress.postalCode || "") ||
+      initialUser.home_address?.street !== (homeAddress.street || "") ||
+      initialUser.home_address?.city !== (homeAddress.city || "") ||
+      initialUser.home_address?.state !== (homeAddress.state || "") ||
+      initialUser.home_address?.postalCode !==
+        (homeAddress.postalCode || "") ||
       initialUser.promotions !== promotions
     );
   };
@@ -507,18 +633,24 @@ export default function EditProfile() {
     if (!pmCvv) e.cvv = "CVV is required.";
     else if (!/^\d{3,4}$/.test(pmCvv))
       e.cvv = "Enter a valid CVV (3-4 digits).";
-    if (!pmExpMonth) e.expmonth = "Expiration month is required.";
-    else {
-      const month = parseInt(pmExpMonth, 10);
-      if (isNaN(month) || month < 1 || month > 12)
-        e.expmonth = "Enter a valid month (1-12).";
-    }
-    if (!pmExpYear) e.expyear = "Expiration year is required.";
-    else {
-      const year = parseInt(pmExpYear, 10);
+    if (!pmExpiration) {
+      e.expiration = "Expiration date is required.";
+    } else if (!/^\d{2}\/\d{2}$/.test(pmExpiration)) {
+      e.expiration = "Enter expiration as MM/YY.";
+    } else {
+      const [monthStr, yearStr] = pmExpiration.split('/');
+      const month = parseInt(monthStr, 10);
+      const year = parseInt('20' + yearStr, 10);
       const currentYear = new Date().getFullYear();
-      if (isNaN(year) || year < currentYear || year > currentYear + 20)
-        e.expyear = `Enter a valid year (${currentYear}-${currentYear + 20}).`;
+      const currentMonth = new Date().getMonth() + 1;
+      
+      if (isNaN(month) || month < 1 || month > 12) {
+        e.expiration = "Enter a valid month (01-12).";
+      } else if (isNaN(year) || year < currentYear || year > currentYear + 20) {
+        e.expiration = `Enter a valid year (${String(currentYear).slice(-2)}-${String(currentYear + 20).slice(-2)}).`;
+      } else if (year === currentYear && month < currentMonth) {
+        e.expiration = "Card has already expired.";
+      }
     }
     if (!pmBillingAddress.street || pmBillingAddress.street.trim().length === 0)
       e.street = "Billing street is required.";
@@ -531,37 +663,6 @@ export default function EditProfile() {
   };
 
   const isPmValid = Object.keys(validatePmFields()).length === 0;
-
-  const onDeleteAccount = async () => {
-    if (!showDeleteConfirm) {
-      setShowDeleteConfirm(true);
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
-    try {
-      const res = await api.delete(`/auth/profile/${user?.id}`);
-      setLoading(false);
-      if (res?.data?.ok) {
-        logout();
-        navigate("/");
-      } else {
-        setMessage({
-          type: "error",
-          text: res?.data?.message || "Delete failed",
-        });
-        setShowDeleteConfirm(false);
-      }
-    } catch (err) {
-      setLoading(false);
-      setMessage({
-        type: "error",
-        text: err?.response?.data?.message || "Delete failed",
-      });
-      setShowDeleteConfirm(false);
-    }
-  };
 
   const handleEditPayment = (paymentMethod) => {
     // Parse billing address from stored JSON string or use empty object
@@ -581,7 +682,7 @@ export default function EditProfile() {
         };
         nameOnCard = parsed.nameOnCard || "";
       } catch (e) {
-        console.error("Failed to parse billing address:", e);
+        // Failed to parse billing address, use defaults
       }
     }
 
@@ -597,6 +698,14 @@ export default function EditProfile() {
       cvv = String(paymentMethod.last4);
     }
 
+    // Format expiration date as MM/YY
+    let expiration = "";
+    if (paymentMethod.exp_month && paymentMethod.exp_year) {
+      const month = String(paymentMethod.exp_month).padStart(2, '0');
+      const year = String(paymentMethod.exp_year).slice(-2);
+      expiration = `${month}/${year}`;
+    }
+
     setEditingPaymentId(paymentMethod.id);
     setPmName(nameOnCard || paymentMethod.cardholder_name || "");
     setPmBrand(paymentMethod.brand || "");
@@ -604,14 +713,38 @@ export default function EditProfile() {
     // The formatted number will be set by the useEffect hook
     setPmBillingAddress(billing);
     setPmCvv(cvv);
-    setPmExpMonth(
-      paymentMethod.exp_month ? String(paymentMethod.exp_month) : ""
-    );
-    setPmExpYear(paymentMethod.exp_year ? String(paymentMethod.exp_year) : "");
+    setPmExpiration(expiration);
 
     setPaymentFormMode("edit");
     setShowPaymentForm(true);
     setPmFieldErrors({});
+  };
+
+  const handleAddPaymentMethod = () => {
+    setPaymentFormMode("add");
+    setEditingPaymentId(null);
+    
+    // Default billing address to home address if it exists
+    if (homeAddress && (homeAddress.street || homeAddress.city)) {
+      setPmBillingAddress({
+        street: homeAddress.street || "",
+        city: homeAddress.city || "",
+        state: homeAddress.state || "",
+        postalCode: homeAddress.postalCode || ""
+      });
+    } else {
+      setPmBillingAddress({ street: "", city: "", state: "", postalCode: "" });
+    }
+    
+    // Reset other form fields
+    setPmBrand("");
+    setPmNumber("");
+    setPmNumberDigits("");
+    setPmName("");
+    setPmCvv("");
+    setPmExpiration("");
+    setPmFieldErrors({});
+    setShowPaymentForm(true);
   };
 
   const handleCancelPaymentForm = () => {
@@ -626,8 +759,7 @@ export default function EditProfile() {
     setPmName("");
     setPmBillingAddress({ street: "", city: "", state: "", postalCode: "" });
     setPmCvv("");
-    setPmExpMonth("");
-    setPmExpYear("");
+    setPmExpiration("");
     setPmFieldErrors({});
   };
 
@@ -648,12 +780,14 @@ export default function EditProfile() {
         postalCode: pmBillingAddress.postalCode,
         nameOnCard: pmName,
       });
+      // Parse combined expiration date
+      const [monthStr, yearStr] = pmExpiration.split('/');
       const payload = {
         billing_address: billingAddressStr,
         brand: pmBrand,
         provider_token: pmNumberDigits,
-        exp_month: parseInt(pmExpMonth, 10),
-        exp_year: parseInt(pmExpYear, 10),
+        exp_month: parseInt(monthStr, 10),
+        exp_year: parseInt('20' + yearStr, 10), // Convert YY to 20YY
         last4: pmCvv,
       };
 
@@ -809,6 +943,185 @@ export default function EditProfile() {
             )}
           </div>
 
+          {/* Home/Shipping Address Section */}
+          <div style={{ margin: "24px 0 12px 0" }}>
+            <h3 style={{ margin: "0 0 12px 0", fontSize: "1.1rem", color: "var(--text-primary)" }}>
+              Home/Shipping Address
+            </h3>
+            
+            {/* Show saved address if it exists */}
+            {((user?.home_address && (user.home_address.street || user.home_address.city)) || 
+              (user?.shipping_address && (user.shipping_address.street || user.shipping_address.city))) && (
+              <div style={{
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: "6px",
+                padding: "12px",
+                marginBottom: "16px"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontSize: "0.9rem", fontWeight: "500", color: "#fff", marginBottom: "4px" }}>
+                      Saved Address:
+                    </div>
+                    <div style={{ fontSize: "0.85rem", color: "rgba(255, 255, 255, 0.7)", lineHeight: "1.4" }}>
+                      {((user?.home_address?.street || user?.shipping_address?.street)) && 
+                        <div>{user?.home_address?.street || user?.shipping_address?.street}</div>}
+                      <div>
+                        {[
+                          user?.home_address?.city || user?.shipping_address?.city,
+                          user?.home_address?.state || user?.shipping_address?.state,
+                          user?.home_address?.postalCode || user?.shipping_address?.postalCode
+                        ].filter(Boolean).join(", ")}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={handleEditAddress}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#007bff";
+                        e.target.style.color = "white";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "transparent";
+                        e.target.style.color = "#007bff";
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid #007bff",
+                        color: "#007bff",
+                        padding: "4px 8px",
+                        fontSize: "0.8rem",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveAddress}
+                      disabled={loading}
+                      onMouseEnter={(e) => {
+                        if (!loading) {
+                          e.target.style.background = "#dc3545";
+                          e.target.style.color = "white";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!loading) {
+                          e.target.style.background = "transparent";
+                          e.target.style.color = "#dc3545";
+                        }
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid #dc3545",
+                        color: "#dc3545",
+                        padding: "4px 8px",
+                        fontSize: "0.8rem",
+                        borderRadius: "4px",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        opacity: loading ? 0.6 : 1,
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {loading ? "Removing..." : "Remove"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Address input form - only show if no saved address or user is editing */}
+            {showAddressForm && (
+            <>
+            <div className={styles.twoCol}>
+              <div>
+                <label className={styles.profileLabel}>Street</label>
+                <input
+                  type="text"
+                  value={homeAddress.street}
+                  onChange={(e) => {
+                    const newAddress = {
+                      ...homeAddress,
+                      street: e.target.value
+                    };
+                    setHomeAddress(newAddress);
+                    setShippingAddress(newAddress);
+                  }}
+                  placeholder="Street address"
+                  className={styles.profileInput}
+                />
+              </div>
+              
+              <div>
+                <label className={styles.profileLabel}>City</label>
+                <input
+                  type="text"
+                  value={homeAddress.city}
+                  onChange={(e) => {
+                    const newAddress = {
+                      ...homeAddress,
+                      city: e.target.value
+                    };
+                    setHomeAddress(newAddress);
+                    setShippingAddress(newAddress);
+                  }}
+                  placeholder="City"
+                  className={styles.profileInput}
+                />
+              </div>
+            </div>
+            
+            <div className={styles.twoCol}>
+              <div>
+                <label className={styles.profileLabel}>State</label>
+                <input
+                  type="text"
+                  value={homeAddress.state}
+                  onChange={(e) => {
+                    const newAddress = {
+                      ...homeAddress,
+                      state: e.target.value
+                    };
+                    setHomeAddress(newAddress);
+                    setShippingAddress(newAddress);
+                  }}
+                  placeholder="State"
+                  className={styles.profileInput}
+                />
+              </div>
+              
+              <div>
+                <label className={styles.profileLabel}>Postal Code</label>
+                <input
+                  type="text"
+                  value={homeAddress.postalCode}
+                  onChange={(e) => {
+                    const newAddress = {
+                      ...homeAddress,
+                      postalCode: e.target.value
+                    };
+                    setHomeAddress(newAddress);
+                    setShippingAddress(newAddress);
+                  }}
+                  placeholder="Postal code"
+                  className={styles.profileInput}
+                />
+              </div>
+            </div>
+            
+            <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "8px" }}>
+              This address will be used for both your home address and shipping address.
+            </div>
+            </>
+            )}
+          </div>
+
           <PromotionsToggle
             id={promotionsId}
             checked={!!promotions}
@@ -828,7 +1141,7 @@ export default function EditProfile() {
                   <span className={styles.spinner} aria-hidden /> Saving…
                 </>
               ) : (
-                "Save Profile"
+                "Save changes"
               )}
             </button>
 
@@ -841,15 +1154,17 @@ export default function EditProfile() {
                   <span className={styles.dirtyDot} aria-hidden /> Unsaved
                 </div>
               )}
-              <button
-                type="button"
-                className={styles.btnCancel}
-                onClick={onCancel}
-                disabled={loading || !user}
-                aria-disabled={loading || !user}
-              >
-                Cancel
-              </button>
+              {isDirty() && (
+                <button
+                  type="button"
+                  className={styles.btnCancel}
+                  onClick={onCancel}
+                  disabled={loading || !user}
+                  aria-disabled={loading || !user}
+                >
+                  Discard changes
+                </button>
+              )}
             </div>
           </div>
         </form>
@@ -972,7 +1287,7 @@ export default function EditProfile() {
                             displayName = parsed.nameOnCard;
                           }
                         } catch (e) {
-                          console.error("Failed to parse billing address:", e);
+                          // Failed to parse billing address
                         }
                       }
                       return displayName ? (
@@ -1045,12 +1360,12 @@ export default function EditProfile() {
               {paymentMethods.length < 3 && !showPaymentForm && (
                 <div
                   className={styles.addCardSkeleton}
-                  onClick={() => setShowPaymentForm(true)}
+                  onClick={handleAddPaymentMethod}
                   role="button"
                   tabIndex={0}
                   onKeyUp={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      setShowPaymentForm(true);
+                      handleAddPaymentMethod();
                     }
                   }}
                 >
@@ -1291,109 +1606,76 @@ export default function EditProfile() {
                     )}
                   </div>
 
-                  {/* Expiration Date - editable in both modes */}
+                  {/* Expiration Date and CVV - on same row */}
                   <div className={styles.twoCol}>
                     <div>
                       <label className={styles.profileLabel}>
-                        Expiration Month
+                        Expiration Date
                       </label>
                       <input
                         type="text"
-                        placeholder="MM (1-12)"
-                        value={pmExpMonth}
+                        placeholder="MM/YY"
+                        value={pmExpiration}
                         onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, "");
-                          setPmExpMonth(digits.slice(0, 2));
-                          if (pmFieldErrors.expmonth) {
+                          let value = e.target.value.replace(/\D/g, ""); // Remove non-digits
+                          if (value.length >= 2) {
+                            value = value.slice(0, 2) + "/" + value.slice(2, 4);
+                          }
+                          setPmExpiration(value);
+                          if (pmFieldErrors.expiration) {
                             const copy = { ...pmFieldErrors };
-                            delete copy.expmonth;
+                            delete copy.expiration;
                             setPmFieldErrors(copy);
                           }
                         }}
                         onBlur={(e) =>
-                          handlePmBlur("pmExpMonth", e.target.value)
+                          handlePmBlur("pmExpiration", e.target.value)
                         }
-                        maxLength={2}
+                        maxLength={5}
                         inputMode="numeric"
-                        className={pmInputClass("expmonth")}
-                        aria-invalid={!!pmFieldErrors.expmonth}
+                        className={pmInputClass("expiration")}
+                        aria-invalid={!!pmFieldErrors.expiration}
                         aria-describedby={
-                          pmFieldErrors.expmonth ? "err-pm-expmonth" : undefined
+                          pmFieldErrors.expiration ? "err-pm-expiration" : undefined
                         }
                       />
-                      {pmFieldErrors.expmonth && (
-                        <div id="err-pm-expmonth" className={styles.fieldError}>
-                          {pmFieldErrors.expmonth}
+                      {pmFieldErrors.expiration && (
+                        <div id="err-pm-expiration" className={styles.fieldError}>
+                          {pmFieldErrors.expiration}
                         </div>
                       )}
                     </div>
 
                     <div>
-                      <label className={styles.profileLabel}>
-                        Expiration Year
-                      </label>
+                      <label className={styles.profileLabel}>CVV</label>
                       <input
                         type="text"
-                        placeholder="YYYY"
-                        value={pmExpYear}
+                        placeholder="CVV"
+                        value={pmCvv}
                         onChange={(e) => {
                           const digits = e.target.value.replace(/\D/g, "");
-                          setPmExpYear(digits.slice(0, 4));
-                          if (pmFieldErrors.expyear) {
+                          setPmCvv(digits.slice(0, 4));
+                          if (pmFieldErrors.cvv) {
                             const copy = { ...pmFieldErrors };
-                            delete copy.expyear;
+                            delete copy.cvv;
                             setPmFieldErrors(copy);
                           }
                         }}
-                        onBlur={(e) =>
-                          handlePmBlur("pmExpYear", e.target.value)
-                        }
+                        onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
                         maxLength={4}
                         inputMode="numeric"
-                        className={pmInputClass("expyear")}
-                        aria-invalid={!!pmFieldErrors.expyear}
+                        className={pmInputClass("cvv")}
+                        aria-invalid={!!pmFieldErrors.cvv}
                         aria-describedby={
-                          pmFieldErrors.expyear ? "err-pm-expyear" : undefined
+                          pmFieldErrors.cvv ? "err-pm-cvv" : undefined
                         }
                       />
-                      {pmFieldErrors.expyear && (
-                        <div id="err-pm-expyear" className={styles.fieldError}>
-                          {pmFieldErrors.expyear}
+                      {pmFieldErrors.cvv && (
+                        <div id="err-pm-cvv" className={styles.fieldError}>
+                          {pmFieldErrors.cvv}
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* CVV - editable in both modes */}
-                  <div>
-                    <label className={styles.profileLabel}>CVV</label>
-                    <input
-                      type="text"
-                      placeholder="CVV"
-                      value={pmCvv}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        setPmCvv(digits.slice(0, 4));
-                        if (pmFieldErrors.cvv) {
-                          const copy = { ...pmFieldErrors };
-                          delete copy.cvv;
-                          setPmFieldErrors(copy);
-                        }
-                      }}
-                      onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
-                      maxLength={4}
-                      inputMode="numeric"
-                      className={pmInputClass("cvv")}
-                      aria-invalid={!!pmFieldErrors.cvv}
-                      aria-describedby={
-                        pmFieldErrors.cvv ? "err-pm-cvv" : undefined
-                      }
-                    />
-                    {pmFieldErrors.cvv && (
-                      <div id="err-pm-cvv" className={styles.fieldError}>
-                        {pmFieldErrors.cvv}
-                      </div>
-                    )}
                   </div>
 
                   <div className={styles.paymentFormActions}>
@@ -1414,6 +1696,8 @@ export default function EditProfile() {
                             }
 
                             const tempId = `temp-${Date.now()}`;
+                            // Parse combined expiration date for optimistic update
+                            const [monthStr, yearStr] = pmExpiration.split('/');
                             const optimistic = {
                               id: tempId,
                               brand: pmBrand || "Card",
@@ -1426,8 +1710,8 @@ export default function EditProfile() {
                                 postalCode: pmBillingAddress.postalCode,
                                 nameOnCard: pmName,
                               }),
-                              exp_month: pmExpMonth,
-                              exp_year: pmExpYear,
+                              exp_month: monthStr,
+                              exp_year: '20' + yearStr, // Convert YY to 20YY
                               provider_token: pmNumberDigits,
                             };
                             setPaymentMethods((prev) => [...prev, optimistic]);
@@ -1446,17 +1730,21 @@ export default function EditProfile() {
                               provider_token: pmNumberDigits,
                               brand: pmBrand,
                               last4: pmCvv,
-                              exp_month: parseInt(pmExpMonth, 10),
-                              exp_year: parseInt(pmExpYear, 10),
+                              exp_month: parseInt(monthStr, 10),
+                              exp_year: parseInt('20' + yearStr, 10), // Convert YY to 20YY
                               billing_address: billingAddressStr,
                             };
 
                             try {
+                              setPmLoading(true);
+                              
                               const res = await api.post(
                                 "/payment-methods",
                                 payload
                               );
+                              
                               if (res?.data?.ok) {
+                                
                                 const refreshRes = await api.get(
                                   `/payment-methods?userId=${user.id}`
                                 );
@@ -1478,13 +1766,12 @@ export default function EditProfile() {
                                   postalCode: "",
                                 });
                                 setPmCvv("");
-                                setPmExpMonth("");
-                                setPmExpYear("");
+                                setPmExpiration("");
                                 setPmFieldErrors({});
                                 setShowPaymentForm(false);
                                 setMessage({
                                   type: "success",
-                                  text: "Payment method saved",
+                                  text: "Payment method saved successfully!",
                                 });
                                 setTimeout(() => setMessage(null), 2500);
                               } else {
@@ -1493,7 +1780,7 @@ export default function EditProfile() {
                                 );
                                 setMessage({
                                   type: "error",
-                                  text: res?.data?.message || "Save failed",
+                                  text: res?.data?.message || "Failed to save payment method",
                                 });
                                 setTimeout(() => setMessage(null), 2500);
                               }
@@ -1504,9 +1791,11 @@ export default function EditProfile() {
                               const serverMsg =
                                 e?.response?.data?.message ||
                                 e?.message ||
-                                "Save failed";
+                                "Failed to save payment method";
                               setMessage({ type: "error", text: serverMsg });
                               setTimeout(() => setMessage(null), 2500);
+                            } finally {
+                              setPmLoading(false);
                             }
                           })();
                         }

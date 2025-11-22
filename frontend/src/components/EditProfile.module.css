@@ -67,6 +67,12 @@
   border-radius: 6px;
   cursor: pointer;
   opacity: 0.95;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.btnSave:hover:not(:disabled) {
+  opacity: 1;
+  background: #c82333;
 }
 
 .btnCancel {
@@ -76,6 +82,12 @@
   border: 1px solid #2b2f35;
   border-radius: 6px;
   cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.btnCancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #4a5058;
 }
 
 /* visually indicate disabled state */

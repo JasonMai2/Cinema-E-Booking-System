@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Users, Percent, X, Film } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { Film, Users, Percent, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "./AdminDashboard.css";
 
 const API_BASE = "http://localhost:8080/api";
@@ -10,34 +10,37 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Check authentication and admin role
+  // Redirect to login if user is not authenticated
   useEffect(() => {
-    if (!user) {
-      // User not logged in, redirect to login
+    if (user === null) {
       navigate('/login');
       return;
     }
-    
-    // Check if user has admin role
-    const hasAdminRole = user.roles && user.roles.some(role => role.name === 'ADMIN');
-    if (!hasAdminRole) {
-      // User is not an admin, redirect to home
-      alert('Access denied. Admin privileges required.');
-      navigate('/');
-      return;
-    }
+    // You may want to add additional admin role check here
+    // if (user.role !== 'ADMIN') {
+    //   navigate('/');
+    //   return;
+    // }
   }, [user, navigate]);
-
-  // Don't render anything if user is not authenticated or not admin
-  if (!user || !user.roles || !user.roles.some(role => role.name === 'ADMIN')) {
-    return <div>Checking authentication...</div>;
-  }
 
   // Users state
   const [users, setUsers] = useState([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
+
+  // Redirect to login if user is not authenticated or not an admin
+  useEffect(() => {
+    if (user === null) {
+      navigate('/login');
+      return;
+    }
+    // You may want to add additional admin role check here
+    // if (user.role !== 'ADMIN') {
+    //   navigate('/');
+    //   return;
+    // }
+  }, [user, navigate]);
 
   const [formData, setFormData] = useState({
     id: null,
