@@ -44,6 +44,29 @@ export default function SeatSelection() {
     }
   }, [movie?.id, showtime?.id, user?.id]); // Use IDs instead of objects to prevent infinite loops
 
+  // Cleanup effect to refresh seats when returning to page (e.g., from checkout)
+  useEffect(() => {
+    return () => {
+      // When leaving this component, no special cleanup needed
+      // Seat refreshing happens automatically when component mounts
+    };
+  }, []);
+
+  // Refresh seats when component becomes visible again (e.g., returning from checkout)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && movie && showtime && user && showtime.id) {
+        console.log('Page became visible, refreshing seats...');
+        loadSeats();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [movie?.id, showtime?.id, user?.id]);
+
   const loadSeats = async () => {
     try {
       setLoading(true);
