@@ -19,14 +19,13 @@ export default function ShowList({ movies = [] }) {
       state: {
         showtime: {
           id: show.id,
-          show_time: show.startTime,
-          price: show.price || 12.50,
-          theater_name: show.auditorium || show.theater_name
+          start_time: show.startTime,
+          auditorium_name: show.auditorium || show.theater_name
         },
         movie: {
           id: movie.id,
           title: movie.title,
-          description: movie.synopsis,
+          synopsis: movie.synopsis,
           poster_url: movie.poster_url || movie.trailer_image_url
         }
       }

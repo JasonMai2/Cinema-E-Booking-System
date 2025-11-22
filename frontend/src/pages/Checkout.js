@@ -6,6 +6,12 @@ import { useAuth } from '../context/AuthContext';
 export default function Checkout() {
   const { selectedShow, selectedSeats, setCustomer, createOrderDraft, customer } = useBooking();
   const { user } = useAuth();
+  
+  // Debug logging
+  console.log('Checkout - selectedShow:', selectedShow);
+  console.log('Checkout - selectedSeats:', selectedSeats);
+  console.log('Checkout - selectedSeats length:', selectedSeats?.length);
+  
   const [name, setName] = useState(customer?.name || '');
   const [email, setEmail] = useState(customer?.email || '');
   const [phone, setPhone] = useState(customer?.phone || '');
