@@ -47,6 +47,19 @@ export default function Header() {
             color: "#fff",
             fontSize: "1.2rem",
             fontWeight: "bold",
+            padding: "8px 12px",
+            borderRadius: "8px",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = "scale(1.02)";
+            e.target.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+            e.target.style.backgroundColor = "rgba(255, 255, 255, 0.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = "scale(1)";
+            e.target.style.boxShadow = "none";
+            e.target.style.backgroundColor = "transparent";
           }}
         >
           <Home size={22} style={{ marginRight: "8px" }} />
