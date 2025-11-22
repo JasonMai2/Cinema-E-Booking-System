@@ -111,6 +111,15 @@ export default function Header() {
                 color: "#fff",
                 fontWeight: "500",
                 cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = "#1a1f2a";
+                e.target.style.transform = "scale(1.02)";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = "#12151c";
+                e.target.style.transform = "scale(1)";
               }}
               onClick={() => { navigate('/profile/edit'); }}
             >
@@ -120,8 +129,25 @@ export default function Header() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                logout();
-                navigate('/');
+                const confirmed = window.confirm("Are you sure you want to logout?");
+                if (confirmed) {
+                  logout();
+                  navigate('/');
+                }
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = "#ff1a1a";
+                e.target.style.color = "#fff";
+                e.target.style.borderColor = "#ff1a1a";
+                e.target.style.transform = "scale(1.05)";
+                e.target.style.boxShadow = "0 0 15px rgba(255, 26, 26, 0.5)";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = "transparent";
+                e.target.style.color = "#12151c";
+                e.target.style.borderColor = "#12151c";
+                e.target.style.transform = "scale(1)";
+                e.target.style.boxShadow = "none";
               }}
               style={{
                 backgroundColor: "transparent",
@@ -131,6 +157,7 @@ export default function Header() {
                 borderRadius: "8px",
                 cursor: "pointer",
                 fontWeight: 500,
+                transition: "all 0.2s ease",
               }}
             >
               Logout
