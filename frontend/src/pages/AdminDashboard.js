@@ -1,15 +1,33 @@
 import React, { useEffect, useState } from "react";
 import { Film, Users, Percent, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "./AdminDashboard.css";
 
 const API_BASE = "http://localhost:8080/api";
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
   // Users state
   const [users, setUsers] = useState([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
+
+  // Redirect to login if user is not authenticated or not an admin
+  useEffect(() => {
+    if (user === null) {
+      navigate('/login');
+      return;
+    }
+    // You may want to add additional admin role check here
+    // if (user.role !== 'ADMIN') {
+    //   navigate('/');
+    //   return;
+    // }
+  }, [user, navigate]);
 
   const [formData, setFormData] = useState({
     id: null,

@@ -1,15 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext.js';
+import { useAuth } from '../context/AuthContext';
 
 export default function Checkout() {
   const { selectedShow, selectedSeats, setCustomer, createOrderDraft, customer } = useBooking();
+  const { user } = useAuth();
   const [name, setName] = useState(customer?.name || '');
   const [email, setEmail] = useState(customer?.email || '');
   const [phone, setPhone] = useState(customer?.phone || '');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
+
+  // Redirect to login if user is not authenticated
+  useEffect(() => {
+    if (user === null) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     if (customer) {
