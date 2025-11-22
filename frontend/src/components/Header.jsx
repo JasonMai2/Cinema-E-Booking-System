@@ -4,14 +4,26 @@ import React, { useState } from "react";
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useSearch } from "../context/SearchContext.js";
+import ConfirmationModal from './ConfirmationModal';
 
 export default function Header() {
   const [showFilters, setShowFilters] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const { query, setQuery } = useSearch();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const displayName = user ? `${user.first_name || user.email}${user.last_name ? ' ' + user.last_name : ''}` : '';
+
+  const handleLogoutConfirm = () => {
+    logout();
+    navigate('/');
+    setShowLogoutModal(false);
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutModal(false);
+  };
 
   return (
     <>
@@ -129,11 +141,7 @@ export default function Header() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const confirmed = window.confirm("Are you sure you want to logout?");
-                if (confirmed) {
-                  logout();
-                  navigate('/');
-                }
+                setShowLogoutModal(true);
               }}
               onMouseEnter={(e) => {
                 e.target.style.backgroundColor = "#ff1a1a";
@@ -214,6 +222,17 @@ export default function Header() {
           </div>
         </div>
       )}
+      
+      <ConfirmationModal
+        isOpen={showLogoutModal}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+        title="Confirm Logout"
+        message="Are you sure you want to logout? You will need to sign in again to access your account."
+        confirmText="Logout"
+        cancelText="Cancel"
+        confirmStyle="danger"
+      />
     </>
   );
 }
