@@ -76,7 +76,7 @@ export default function Checkout() {
   };
 
   const handleAddPaymentMethod = () => {
-    navigate('/edit-profile#payment-methods');
+    navigate('/profile/edit#payment-methods');
   };
 
   async function submit() {

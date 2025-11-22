@@ -54,6 +54,7 @@ export default function EditProfile() {
   const [paymentFormMode, setPaymentFormMode] = useState("add"); // "add" or "edit"
   const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [cameFromCheckout, setCameFromCheckout] = useState(false);
 
   const promotionsId = useId();
 
@@ -63,6 +64,22 @@ export default function EditProfile() {
       navigate("/login");
     }
   }, [user, navigate]);
+
+  // Handle hash fragment navigation
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === '#payment-methods') {
+      setCameFromCheckout(true);
+      setShowPaymentForm(true);
+      // Scroll to payment methods section after a brief delay
+      setTimeout(() => {
+        const paymentSection = document.querySelector('[data-section="payment-methods"]');
+        if (paymentSection) {
+          paymentSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  }, []);
 
   const togglePromotions = useCallback(() => {
     setPromotions((prev) => !prev);
@@ -1252,7 +1269,7 @@ export default function EditProfile() {
 
         <div style={{ margin: "24px 0", borderTop: "1px solid #ddd" }}></div>
 
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 12 }} data-section="payment-methods">
           <h3 style={{ margin: "6px 0 12px 0" }}>Payment Methods</h3>
           {pmLoading ? (
             <div style={{ color: "#999" }}>Loading payment methods…</div>
@@ -1837,6 +1854,30 @@ export default function EditProfile() {
               }}
             >
               You have reached the maximum of 3 payment methods.
+            </div>
+          )}
+          
+          {/* Return to Checkout button - only show when came from checkout */}
+          {cameFromCheckout && (
+            <div style={{ marginTop: "20px", textAlign: "center" }}>
+              <button
+                onClick={() => navigate('/checkout')}
+                style={{
+                  background: '#28a745',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                ← Return to Checkout
+              </button>
             </div>
           )}
         </div>
