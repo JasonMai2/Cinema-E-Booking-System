@@ -31,7 +31,6 @@ export default function EditProfile() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [pmBrand, setPmBrand] = useState("");
   const [pmNumber, setPmNumber] = useState("");
@@ -44,8 +43,7 @@ export default function EditProfile() {
     postalCode: "",
   });
   const [pmCvv, setPmCvv] = useState("");
-  const [pmExpMonth, setPmExpMonth] = useState("");
-  const [pmExpYear, setPmExpYear] = useState("");
+  const [pmExpiration, setPmExpiration] = useState(""); // MM/YY format
   const [pmLoading, setPmLoading] = useState(false);
   const [pmError, setPmError] = useState(null);
   const [pmFieldErrors, setPmFieldErrors] = useState({});
@@ -87,9 +85,7 @@ export default function EditProfile() {
         promotions: user?.promotions,
       };
       
-      console.log("Removing address with payload:", payload);
       const res = await api.put("/auth/profile", payload);
-      console.log("Remove address response:", res?.data);
       
       if (res?.data?.ok && res?.data?.user) {
         // Update context with new user data
@@ -113,7 +109,6 @@ export default function EditProfile() {
         setMessage({ type: "error", text: res?.data?.message || "Failed to remove address" });
       }
     } catch (err) {
-      console.error("Remove address error:", err);
       setMessage({ type: "error", text: err?.response?.data?.message || "Failed to remove address" });
     } finally {
       setLoading(false);
@@ -133,15 +128,11 @@ export default function EditProfile() {
       setHomeAddress(newAddress);
       setShippingAddress(newAddress);
       setShowAddressForm(true); // Show form when editing
-      console.log("Editing address:", newAddress); // Debug log
     }
   }, [user]);
 
   useEffect(() => {
     if (user) {
-      console.log("Loading user data:", user); // Debug: see what data we have
-      console.log("User home address:", user.home_address); // Debug: check address data
-      console.log("User shipping address:", user.shipping_address); // Debug: check address data
       
       setFirstName(user.first_name || "");
       setLastName(user.last_name || "");
@@ -292,23 +283,28 @@ export default function EditProfile() {
           return "Enter a valid CVV (3-4 digits).";
         }
         break;
-      case "pmExpMonth":
+      case "pmExpiration":
         if (!value) {
-          return "Expiration month is required.";
+          return "Expiration date is required.";
         }
-        const month = parseInt(value, 10);
-        if (isNaN(month) || month < 1 || month > 12) {
-          return "Enter a valid month (1-12).";
+        if (!/^\d{2}\/\d{2}$/.test(value)) {
+          return "Enter expiration as MM/YY.";
         }
-        break;
-      case "pmExpYear":
-        if (!value) {
-          return "Expiration year is required.";
-        }
-        const year = parseInt(value, 10);
+        const [monthStr, yearStr] = value.split('/');
+        const month = parseInt(monthStr, 10);
+        const year = parseInt('20' + yearStr, 10); // Convert YY to 20YY
         const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+        
+        if (isNaN(month) || month < 1 || month > 12) {
+          return "Enter a valid month (01-12).";
+        }
         if (isNaN(year) || year < currentYear || year > currentYear + 20) {
-          return `Enter a valid year (${currentYear}-${currentYear + 20}).`;
+          return `Enter a valid year (${String(currentYear).slice(-2)}-${String(currentYear + 20).slice(-2)}).`;
+        }
+        // Check if card is already expired
+        if (year === currentYear && month < currentMonth) {
+          return "Card has already expired.";
         }
         break;
       case "pmStreet":
@@ -345,11 +341,8 @@ export default function EditProfile() {
         if (fieldName === "pmNumber") {
           delete newErrors.number;
         }
-        if (fieldName === "pmExpMonth") {
-          delete newErrors.expmonth;
-        }
-        if (fieldName === "pmExpYear") {
-          delete newErrors.expyear;
+        if (fieldName === "pmExpiration") {
+          delete newErrors.expiration;
         }
         return newErrors;
       }
@@ -633,18 +626,24 @@ export default function EditProfile() {
     if (!pmCvv) e.cvv = "CVV is required.";
     else if (!/^\d{3,4}$/.test(pmCvv))
       e.cvv = "Enter a valid CVV (3-4 digits).";
-    if (!pmExpMonth) e.expmonth = "Expiration month is required.";
-    else {
-      const month = parseInt(pmExpMonth, 10);
-      if (isNaN(month) || month < 1 || month > 12)
-        e.expmonth = "Enter a valid month (1-12).";
-    }
-    if (!pmExpYear) e.expyear = "Expiration year is required.";
-    else {
-      const year = parseInt(pmExpYear, 10);
+    if (!pmExpiration) {
+      e.expiration = "Expiration date is required.";
+    } else if (!/^\d{2}\/\d{2}$/.test(pmExpiration)) {
+      e.expiration = "Enter expiration as MM/YY.";
+    } else {
+      const [monthStr, yearStr] = pmExpiration.split('/');
+      const month = parseInt(monthStr, 10);
+      const year = parseInt('20' + yearStr, 10);
       const currentYear = new Date().getFullYear();
-      if (isNaN(year) || year < currentYear || year > currentYear + 20)
-        e.expyear = `Enter a valid year (${currentYear}-${currentYear + 20}).`;
+      const currentMonth = new Date().getMonth() + 1;
+      
+      if (isNaN(month) || month < 1 || month > 12) {
+        e.expiration = "Enter a valid month (01-12).";
+      } else if (isNaN(year) || year < currentYear || year > currentYear + 20) {
+        e.expiration = `Enter a valid year (${String(currentYear).slice(-2)}-${String(currentYear + 20).slice(-2)}).`;
+      } else if (year === currentYear && month < currentMonth) {
+        e.expiration = "Card has already expired.";
+      }
     }
     if (!pmBillingAddress.street || pmBillingAddress.street.trim().length === 0)
       e.street = "Billing street is required.";
@@ -657,37 +656,6 @@ export default function EditProfile() {
   };
 
   const isPmValid = Object.keys(validatePmFields()).length === 0;
-
-  const onDeleteAccount = async () => {
-    if (!showDeleteConfirm) {
-      setShowDeleteConfirm(true);
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
-    try {
-      const res = await api.delete(`/auth/profile/${user?.id}`);
-      setLoading(false);
-      if (res?.data?.ok) {
-        logout();
-        navigate("/");
-      } else {
-        setMessage({
-          type: "error",
-          text: res?.data?.message || "Delete failed",
-        });
-        setShowDeleteConfirm(false);
-      }
-    } catch (err) {
-      setLoading(false);
-      setMessage({
-        type: "error",
-        text: err?.response?.data?.message || "Delete failed",
-      });
-      setShowDeleteConfirm(false);
-    }
-  };
 
   const handleEditPayment = (paymentMethod) => {
     // Parse billing address from stored JSON string or use empty object
@@ -707,7 +675,7 @@ export default function EditProfile() {
         };
         nameOnCard = parsed.nameOnCard || "";
       } catch (e) {
-        console.error("Failed to parse billing address:", e);
+        // Failed to parse billing address, use defaults
       }
     }
 
@@ -723,6 +691,14 @@ export default function EditProfile() {
       cvv = String(paymentMethod.last4);
     }
 
+    // Format expiration date as MM/YY
+    let expiration = "";
+    if (paymentMethod.exp_month && paymentMethod.exp_year) {
+      const month = String(paymentMethod.exp_month).padStart(2, '0');
+      const year = String(paymentMethod.exp_year).slice(-2);
+      expiration = `${month}/${year}`;
+    }
+
     setEditingPaymentId(paymentMethod.id);
     setPmName(nameOnCard || paymentMethod.cardholder_name || "");
     setPmBrand(paymentMethod.brand || "");
@@ -730,14 +706,38 @@ export default function EditProfile() {
     // The formatted number will be set by the useEffect hook
     setPmBillingAddress(billing);
     setPmCvv(cvv);
-    setPmExpMonth(
-      paymentMethod.exp_month ? String(paymentMethod.exp_month) : ""
-    );
-    setPmExpYear(paymentMethod.exp_year ? String(paymentMethod.exp_year) : "");
+    setPmExpiration(expiration);
 
     setPaymentFormMode("edit");
     setShowPaymentForm(true);
     setPmFieldErrors({});
+  };
+
+  const handleAddPaymentMethod = () => {
+    setPaymentFormMode("add");
+    setEditingPaymentId(null);
+    
+    // Default billing address to home address if it exists
+    if (homeAddress && (homeAddress.street || homeAddress.city)) {
+      setPmBillingAddress({
+        street: homeAddress.street || "",
+        city: homeAddress.city || "",
+        state: homeAddress.state || "",
+        postalCode: homeAddress.postalCode || ""
+      });
+    } else {
+      setPmBillingAddress({ street: "", city: "", state: "", postalCode: "" });
+    }
+    
+    // Reset other form fields
+    setPmBrand("");
+    setPmNumber("");
+    setPmNumberDigits("");
+    setPmName("");
+    setPmCvv("");
+    setPmExpiration("");
+    setPmFieldErrors({});
+    setShowPaymentForm(true);
   };
 
   const handleCancelPaymentForm = () => {
@@ -752,8 +752,7 @@ export default function EditProfile() {
     setPmName("");
     setPmBillingAddress({ street: "", city: "", state: "", postalCode: "" });
     setPmCvv("");
-    setPmExpMonth("");
-    setPmExpYear("");
+    setPmExpiration("");
     setPmFieldErrors({});
   };
 
@@ -774,12 +773,14 @@ export default function EditProfile() {
         postalCode: pmBillingAddress.postalCode,
         nameOnCard: pmName,
       });
+      // Parse combined expiration date
+      const [monthStr, yearStr] = pmExpiration.split('/');
       const payload = {
         billing_address: billingAddressStr,
         brand: pmBrand,
         provider_token: pmNumberDigits,
-        exp_month: parseInt(pmExpMonth, 10),
-        exp_year: parseInt(pmExpYear, 10),
+        exp_month: parseInt(monthStr, 10),
+        exp_year: parseInt('20' + yearStr, 10), // Convert YY to 20YY
         last4: pmCvv,
       };
 
@@ -1279,7 +1280,7 @@ export default function EditProfile() {
                             displayName = parsed.nameOnCard;
                           }
                         } catch (e) {
-                          console.error("Failed to parse billing address:", e);
+                          // Failed to parse billing address
                         }
                       }
                       return displayName ? (
@@ -1352,12 +1353,12 @@ export default function EditProfile() {
               {paymentMethods.length < 3 && !showPaymentForm && (
                 <div
                   className={styles.addCardSkeleton}
-                  onClick={() => setShowPaymentForm(true)}
+                  onClick={handleAddPaymentMethod}
                   role="button"
                   tabIndex={0}
                   onKeyUp={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      setShowPaymentForm(true);
+                      handleAddPaymentMethod();
                     }
                   }}
                 >
@@ -1598,109 +1599,76 @@ export default function EditProfile() {
                     )}
                   </div>
 
-                  {/* Expiration Date - editable in both modes */}
+                  {/* Expiration Date and CVV - on same row */}
                   <div className={styles.twoCol}>
                     <div>
                       <label className={styles.profileLabel}>
-                        Expiration Month
+                        Expiration Date
                       </label>
                       <input
                         type="text"
-                        placeholder="MM (1-12)"
-                        value={pmExpMonth}
+                        placeholder="MM/YY"
+                        value={pmExpiration}
                         onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, "");
-                          setPmExpMonth(digits.slice(0, 2));
-                          if (pmFieldErrors.expmonth) {
+                          let value = e.target.value.replace(/\D/g, ""); // Remove non-digits
+                          if (value.length >= 2) {
+                            value = value.slice(0, 2) + "/" + value.slice(2, 4);
+                          }
+                          setPmExpiration(value);
+                          if (pmFieldErrors.expiration) {
                             const copy = { ...pmFieldErrors };
-                            delete copy.expmonth;
+                            delete copy.expiration;
                             setPmFieldErrors(copy);
                           }
                         }}
                         onBlur={(e) =>
-                          handlePmBlur("pmExpMonth", e.target.value)
+                          handlePmBlur("pmExpiration", e.target.value)
                         }
-                        maxLength={2}
+                        maxLength={5}
                         inputMode="numeric"
-                        className={pmInputClass("expmonth")}
-                        aria-invalid={!!pmFieldErrors.expmonth}
+                        className={pmInputClass("expiration")}
+                        aria-invalid={!!pmFieldErrors.expiration}
                         aria-describedby={
-                          pmFieldErrors.expmonth ? "err-pm-expmonth" : undefined
+                          pmFieldErrors.expiration ? "err-pm-expiration" : undefined
                         }
                       />
-                      {pmFieldErrors.expmonth && (
-                        <div id="err-pm-expmonth" className={styles.fieldError}>
-                          {pmFieldErrors.expmonth}
+                      {pmFieldErrors.expiration && (
+                        <div id="err-pm-expiration" className={styles.fieldError}>
+                          {pmFieldErrors.expiration}
                         </div>
                       )}
                     </div>
 
                     <div>
-                      <label className={styles.profileLabel}>
-                        Expiration Year
-                      </label>
+                      <label className={styles.profileLabel}>CVV</label>
                       <input
                         type="text"
-                        placeholder="YYYY"
-                        value={pmExpYear}
+                        placeholder="CVV"
+                        value={pmCvv}
                         onChange={(e) => {
                           const digits = e.target.value.replace(/\D/g, "");
-                          setPmExpYear(digits.slice(0, 4));
-                          if (pmFieldErrors.expyear) {
+                          setPmCvv(digits.slice(0, 4));
+                          if (pmFieldErrors.cvv) {
                             const copy = { ...pmFieldErrors };
-                            delete copy.expyear;
+                            delete copy.cvv;
                             setPmFieldErrors(copy);
                           }
                         }}
-                        onBlur={(e) =>
-                          handlePmBlur("pmExpYear", e.target.value)
-                        }
+                        onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
                         maxLength={4}
                         inputMode="numeric"
-                        className={pmInputClass("expyear")}
-                        aria-invalid={!!pmFieldErrors.expyear}
+                        className={pmInputClass("cvv")}
+                        aria-invalid={!!pmFieldErrors.cvv}
                         aria-describedby={
-                          pmFieldErrors.expyear ? "err-pm-expyear" : undefined
+                          pmFieldErrors.cvv ? "err-pm-cvv" : undefined
                         }
                       />
-                      {pmFieldErrors.expyear && (
-                        <div id="err-pm-expyear" className={styles.fieldError}>
-                          {pmFieldErrors.expyear}
+                      {pmFieldErrors.cvv && (
+                        <div id="err-pm-cvv" className={styles.fieldError}>
+                          {pmFieldErrors.cvv}
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* CVV - editable in both modes */}
-                  <div>
-                    <label className={styles.profileLabel}>CVV</label>
-                    <input
-                      type="text"
-                      placeholder="CVV"
-                      value={pmCvv}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        setPmCvv(digits.slice(0, 4));
-                        if (pmFieldErrors.cvv) {
-                          const copy = { ...pmFieldErrors };
-                          delete copy.cvv;
-                          setPmFieldErrors(copy);
-                        }
-                      }}
-                      onBlur={(e) => handlePmBlur("pmCvv", e.target.value)}
-                      maxLength={4}
-                      inputMode="numeric"
-                      className={pmInputClass("cvv")}
-                      aria-invalid={!!pmFieldErrors.cvv}
-                      aria-describedby={
-                        pmFieldErrors.cvv ? "err-pm-cvv" : undefined
-                      }
-                    />
-                    {pmFieldErrors.cvv && (
-                      <div id="err-pm-cvv" className={styles.fieldError}>
-                        {pmFieldErrors.cvv}
-                      </div>
-                    )}
                   </div>
 
                   <div className={styles.paymentFormActions}>
@@ -1721,6 +1689,8 @@ export default function EditProfile() {
                             }
 
                             const tempId = `temp-${Date.now()}`;
+                            // Parse combined expiration date for optimistic update
+                            const [monthStr, yearStr] = pmExpiration.split('/');
                             const optimistic = {
                               id: tempId,
                               brand: pmBrand || "Card",
@@ -1733,8 +1703,8 @@ export default function EditProfile() {
                                 postalCode: pmBillingAddress.postalCode,
                                 nameOnCard: pmName,
                               }),
-                              exp_month: pmExpMonth,
-                              exp_year: pmExpYear,
+                              exp_month: monthStr,
+                              exp_year: '20' + yearStr, // Convert YY to 20YY
                               provider_token: pmNumberDigits,
                             };
                             setPaymentMethods((prev) => [...prev, optimistic]);
@@ -1753,17 +1723,21 @@ export default function EditProfile() {
                               provider_token: pmNumberDigits,
                               brand: pmBrand,
                               last4: pmCvv,
-                              exp_month: parseInt(pmExpMonth, 10),
-                              exp_year: parseInt(pmExpYear, 10),
+                              exp_month: parseInt(monthStr, 10),
+                              exp_year: parseInt('20' + yearStr, 10), // Convert YY to 20YY
                               billing_address: billingAddressStr,
                             };
 
                             try {
+                              setPmLoading(true);
+                              
                               const res = await api.post(
                                 "/payment-methods",
                                 payload
                               );
+                              
                               if (res?.data?.ok) {
+                                
                                 const refreshRes = await api.get(
                                   `/payment-methods?userId=${user.id}`
                                 );
@@ -1785,13 +1759,12 @@ export default function EditProfile() {
                                   postalCode: "",
                                 });
                                 setPmCvv("");
-                                setPmExpMonth("");
-                                setPmExpYear("");
+                                setPmExpiration("");
                                 setPmFieldErrors({});
                                 setShowPaymentForm(false);
                                 setMessage({
                                   type: "success",
-                                  text: "Payment method saved",
+                                  text: "Payment method saved successfully!",
                                 });
                                 setTimeout(() => setMessage(null), 2500);
                               } else {
@@ -1800,7 +1773,7 @@ export default function EditProfile() {
                                 );
                                 setMessage({
                                   type: "error",
-                                  text: res?.data?.message || "Save failed",
+                                  text: res?.data?.message || "Failed to save payment method",
                                 });
                                 setTimeout(() => setMessage(null), 2500);
                               }
@@ -1811,9 +1784,11 @@ export default function EditProfile() {
                               const serverMsg =
                                 e?.response?.data?.message ||
                                 e?.message ||
-                                "Save failed";
+                                "Failed to save payment method";
                               setMessage({ type: "error", text: serverMsg });
                               setTimeout(() => setMessage(null), 2500);
+                            } finally {
+                              setPmLoading(false);
                             }
                           })();
                         }
