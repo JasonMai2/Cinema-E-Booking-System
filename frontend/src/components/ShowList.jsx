@@ -20,7 +20,8 @@ export default function ShowList({ movies = [] }) {
         showtime: {
           id: show.id,
           start_time: show.startTime,
-          auditorium_name: show.auditorium || show.theater_name
+          auditorium_name: show.auditorium || show.theater_name,
+          price: show.price || 12.50 // Include price in showtime data
         },
         movie: {
           id: movie.id,

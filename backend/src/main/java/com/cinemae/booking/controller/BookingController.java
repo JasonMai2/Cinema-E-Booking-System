@@ -633,4 +633,50 @@ public class BookingController {
             return response;
         }
     }
+    
+    // Release temporarily held seats for a user
+    @PostMapping("/release-temp-seats")
+    public Map<String, Object> releaseTemporarySeats(@RequestBody Map<String, Object> payload) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            Long userId = ((Number) payload.get("userId")).longValue();
+            Long showtimeId = ((Number) payload.get("showtimeId")).longValue();
+            
+            // Delete any temporary booking tickets for this user and showtime
+            // Assuming temporary bookings have status 'TEMP' or 'PENDING'
+            String deleteTempTicketsSql = """
+                DELETE t FROM tickets t 
+                JOIN bookings b ON t.booking_id = b.id 
+                WHERE b.user_id = ? AND t.showtime_id = ? 
+                AND (b.status = 'TEMP' OR b.status = 'PENDING' OR b.status = 'DRAFT')
+                AND b.created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+            """;
+            
+            int deletedTickets = jdbc.update(deleteTempTicketsSql, userId, showtimeId);
+            
+            // Also delete the temporary bookings themselves if they have no tickets left
+            String deleteTempBookingsSql = """
+                DELETE FROM bookings 
+                WHERE user_id = ? 
+                AND (status = 'TEMP' OR status = 'PENDING' OR status = 'DRAFT')
+                AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                AND id NOT IN (SELECT DISTINCT booking_id FROM tickets WHERE booking_id IS NOT NULL)
+            """;
+            
+            int deletedBookings = jdbc.update(deleteTempBookingsSql, userId);
+            
+            response.put("ok", true);
+            response.put("message", "Temporary seats released successfully");
+            response.put("deletedTickets", deletedTickets);
+            response.put("deletedBookings", deletedBookings);
+            
+            return response;
+            
+        } catch (Exception e) {
+            response.put("ok", false);
+            response.put("message", "Failed to release temporary seats: " + e.getMessage());
+            return response;
+        }
+    }
 }

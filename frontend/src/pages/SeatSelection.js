@@ -32,7 +32,7 @@ export default function SeatSelection() {
           Movie: {movie ? '✓' : '✗'} | Showtime: {showtime ? '✓' : '✗'} | User: {user ? '✓' : '✗'}
         </div>
         <button onClick={() => navigate('/shows')} style={{ marginTop: '20px', padding: '10px 20px' }}>
-          Back to Movies
+          Back to Showtimes
         </button>
       </div>
     );
@@ -44,26 +44,42 @@ export default function SeatSelection() {
     }
   }, [movie?.id, showtime?.id, user?.id]); // Use IDs instead of objects to prevent infinite loops
 
-  // Cleanup effect to refresh seats when returning to page (e.g., from checkout)
+  // Cleanup effect to release seats when user leaves this component
   useEffect(() => {
     return () => {
-      // When leaving this component, no special cleanup needed
-      // Seat refreshing happens automatically when component mounts
+      // Release temporary seats when component unmounts
+      if (user?.id && showtime?.id) {
+        releaseTemporarySeats();
+      }
     };
-  }, []);
+  }, [user?.id, showtime?.id]);
 
   // Refresh seats when component becomes visible again (e.g., returning from checkout)
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (!document.hidden && movie && showtime && user && showtime.id) {
-        console.log('Page became visible, refreshing seats...');
-        loadSeats();
+        console.log('Page became visible, releasing temp seats and refreshing...');
+        await releaseTemporarySeats();
+        await loadSeats();
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      // Release temporary seats when user closes browser or navigates away
+      if (user?.id && showtime?.id) {
+        navigator.sendBeacon('/api/bookings/release-temp-seats', JSON.stringify({
+          userId: user.id,
+          showtimeId: showtime.id
+        }));
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [movie?.id, showtime?.id, user?.id]);
 
@@ -94,6 +110,21 @@ export default function SeatSelection() {
       setShowtimeDetails(showtime);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Release temporarily held seats for this user
+  const releaseTemporarySeats = async () => {
+    try {
+      console.log('Releasing temporary seats for user:', user.id);
+      await api.post('/bookings/release-temp-seats', {
+        userId: user.id,
+        showtimeId: showtime.id
+      });
+      console.log('Temporary seats released successfully');
+    } catch (err) {
+      console.error('Error releasing temporary seats:', err);
+      // Don't throw error, just log it
     }
   };
 
@@ -128,7 +159,9 @@ export default function SeatSelection() {
     let total = 0;
     selectedSeats.forEach(seatNumber => {
       const ageCategory = ageCategories[seatNumber] || 'ADULT';
-      let price = parseFloat(showtime.price);
+      // Get price from multiple possible sources
+      let basePrice = parseFloat(showtime.price || showtime.ticketPrice || showtimeDetails?.price || 12.50);
+      let price = basePrice;
       if (ageCategory === 'CHILD') {
         price *= 0.75; // 25% discount for children
       } else if (ageCategory === 'SENIOR') {
@@ -146,14 +179,34 @@ export default function SeatSelection() {
     }
 
     // Always set booking context data first
+    console.log('Showtime data for pricing:', showtime);
+    console.log('Selected seats before pricing:', selectedSeats);
+    console.log('Age categories:', ageCategories);
+    
     const seatsWithPrices = selectedSeats.map(seatNumber => {
-      const seatData = seats.find(s => s.seat_number === seatNumber);
-      return {
+      const ageCategory = ageCategories[seatNumber] || 'ADULT';
+      // Get price from multiple possible sources
+      let basePrice = parseFloat(showtime.price || showtime.ticketPrice || showtimeDetails?.price || 12.50);
+      
+      console.log(`Processing seat ${seatNumber}: basePrice=${basePrice}, ageCategory=${ageCategory}`);
+      
+      // Apply age discounts
+      let finalPrice = basePrice;
+      if (ageCategory === 'CHILD') {
+        finalPrice = basePrice * 0.75; // 25% discount for children
+      } else if (ageCategory === 'SENIOR') {
+        finalPrice = basePrice * 0.80; // 20% discount for seniors
+      }
+      
+      const seatData = {
         id: seatNumber,
         seat_number: seatNumber,
-        price: seatData?.price || 12.00, // Default price if not found
-        age_category: ageCategories[seatNumber] || 'ADULT'
+        price: finalPrice,
+        age_category: ageCategory
       };
+      
+      console.log(`Seat ${seatNumber} final data:`, seatData);
+      return seatData;
     });
     
     // Clear existing selections and add new data
@@ -258,14 +311,14 @@ export default function SeatSelection() {
       <div style={{ width: '820px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
         <header style={{ marginBottom: 20 }}>
           <button 
-            onClick={() => navigate('/movies')} 
+            onClick={() => navigate('/shows')} 
             style={{ background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 12px', borderRadius: 6, marginBottom: 16 }}
           >
-            ← Back to Movies
+            ← Back to Showtimes
           </button>
           <h1 style={{ margin: 0, color: '#fff' }}>{movie.title}</h1>
           <div style={{ color: '#cbd5da', marginTop: 6, fontWeight: 500 }}>
-            {formatDateTime(showtime.show_time || showtimeDetails?.starts_at)} • {showtimeDetails?.auditorium_name || showtime.theater_name} • ${showtime.price} per seat
+            {formatDateTime(showtime.show_time || showtimeDetails?.starts_at)} • {showtimeDetails?.auditorium_name || showtime.theater_name} • ${parseFloat(showtime.price || showtime.ticketPrice || showtimeDetails?.price || 12.50).toFixed(2)} per seat
           </div>
         </header>
 
@@ -377,9 +430,9 @@ export default function SeatSelection() {
                           fontSize: '12px'
                         }}
                       >
-                        <option value="CHILD">Child (${ (parseFloat(showtime.price) * 0.75).toFixed(2) })</option>
-                        <option value="ADULT">Adult (${ parseFloat(showtime.price).toFixed(2) })</option>
-                        <option value="SENIOR">Senior (${ (parseFloat(showtime.price) * 0.80).toFixed(2) })</option>
+                        <option value="CHILD">Child (${ (parseFloat(showtime.price || showtime.ticketPrice || showtimeDetails?.price || 12.50) * 0.75).toFixed(2) })</option>
+                        <option value="ADULT">Adult (${ parseFloat(showtime.price || showtime.ticketPrice || showtimeDetails?.price || 12.50).toFixed(2) })</option>
+                        <option value="SENIOR">Senior (${ (parseFloat(showtime.price || showtime.ticketPrice || showtimeDetails?.price || 12.50) * 0.80).toFixed(2) })</option>
                       </select>
                     </div>
                   ))}
@@ -411,7 +464,7 @@ export default function SeatSelection() {
                   <>
                     {selectedSeats.sort().map(seatNumber => {
                       const ageCategory = ageCategories[seatNumber] || 'ADULT';
-                      let price = parseFloat(showtime.price);
+                      let price = parseFloat(showtime.price || showtime.ticketPrice || showtimeDetails?.price || 12.50);
                       if (ageCategory === 'CHILD') price *= 0.75;
                       else if (ageCategory === 'SENIOR') price *= 0.80;
                       return (
