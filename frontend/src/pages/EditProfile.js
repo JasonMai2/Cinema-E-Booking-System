@@ -57,6 +57,13 @@ export default function EditProfile() {
 
   const promotionsId = useId();
 
+  // Redirect to login if user is not authenticated
+  useEffect(() => {
+    if (user === null) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
+
   const togglePromotions = useCallback(() => {
     setPromotions((prev) => !prev);
   }, []);
