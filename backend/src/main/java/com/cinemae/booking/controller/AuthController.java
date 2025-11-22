@@ -518,6 +518,19 @@ public class AuthController {
                             shipAddrObj.put("postalCode", shipAddr.get("postal_code"));
                             user.put("shipping_address", shipAddrObj);
                         }
+
+                        List<Map<String, Object>> homeAddresses = jdbc.queryForList(
+                                "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'HOME' LIMIT 1",
+                                userId);
+                        if (!homeAddresses.isEmpty()) {
+                            Map<String, Object> homeAddr = homeAddresses.get(0);
+                            Map<String, Object> homeAddrObj = new HashMap<>();
+                            homeAddrObj.put("street", homeAddr.get("street"));
+                            homeAddrObj.put("city", homeAddr.get("city"));
+                            homeAddrObj.put("state", homeAddr.get("state"));
+                            homeAddrObj.put("postalCode", homeAddr.get("postal_code"));
+                            user.put("home_address", homeAddrObj);
+                        }
                     }
                 } catch (Exception ex) {
                     // Addresses are optional, continue without them
@@ -723,6 +736,30 @@ public class AuthController {
                     }
                 }
 
+                @SuppressWarnings("unchecked")
+                Map<String, Object> homeAddress = (Map<String, Object>) payload.get("home_address");
+
+                if (homeAddress != null) {
+                    String street = (String) homeAddress.get("street");
+                    String city = (String) homeAddress.get("city");
+                    String state = (String) homeAddress.get("state");
+                    String postalCode = (String) homeAddress.get("postalCode");
+
+                    Integer homeCount = jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM addresses WHERE user_id = ? AND type = 'HOME'",
+                            Integer.class, userId);
+                    
+                    if (homeCount != null && homeCount > 0) {
+                        jdbc.update(
+                                "UPDATE addresses SET street = ?, city = ?, state = ?, postal_code = ? WHERE user_id = ? AND type = 'HOME'",
+                                street, city, state, postalCode, userId);
+                    } else {
+                        jdbc.update(
+                                "INSERT INTO addresses (user_id, type, street, city, state, postal_code) VALUES (?, 'HOME', ?, ?, ?, ?)",
+                                userId, street, city, state, postalCode);
+                    }
+                }
+
                 List<Map<String, Object>> shippingAddresses = jdbc.queryForList(
                         "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'SHIPPING' LIMIT 1",
                         userId);
@@ -734,6 +771,19 @@ public class AuthController {
                     shipAddrObj.put("state", shipAddr.get("state"));
                     shipAddrObj.put("postalCode", shipAddr.get("postal_code"));
                     user.put("shipping_address", shipAddrObj);
+                }
+
+                List<Map<String, Object>> homeAddresses = jdbc.queryForList(
+                        "SELECT street, city, state, postal_code FROM addresses WHERE user_id = ? AND type = 'HOME' LIMIT 1",
+                        userId);
+                if (!homeAddresses.isEmpty()) {
+                    Map<String, Object> homeAddr = homeAddresses.get(0);
+                    Map<String, Object> homeAddrObj = new HashMap<>();
+                    homeAddrObj.put("street", homeAddr.get("street"));
+                    homeAddrObj.put("city", homeAddr.get("city"));
+                    homeAddrObj.put("state", homeAddr.get("state"));
+                    homeAddrObj.put("postalCode", homeAddr.get("postal_code"));
+                    user.put("home_address", homeAddrObj);
                 }
             }
 

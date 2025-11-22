@@ -19,6 +19,12 @@ export default function EditProfile() {
     state: "",
     postalCode: "",
   });
+  const [homeAddress, setHomeAddress] = useState({
+    street: "",
+    city: "",
+    state: "",
+    postalCode: "",
+  });
   const [promotions, setPromotions] = useState(true);
   const [password, setPassword] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -49,6 +55,7 @@ export default function EditProfile() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentFormMode, setPaymentFormMode] = useState("add"); // "add" or "edit"
   const [editingPaymentId, setEditingPaymentId] = useState(null);
+  const [showAddressForm, setShowAddressForm] = useState(false);
 
   const promotionsId = useId();
 
@@ -56,8 +63,86 @@ export default function EditProfile() {
     setPromotions((prev) => !prev);
   }, []);
 
+  const handleRemoveAddress = useCallback(async () => {
+    setLoading(true);
+    try {
+      const payload = {
+        id: user?.id,
+        first_name: user?.first_name,
+        last_name: user?.last_name,
+        email: user?.email,
+        phone: user?.phone,
+        home_address: {
+          street: "",
+          city: "",
+          state: "",
+          postalCode: "",
+        },
+        shipping_address: {
+          street: "",
+          city: "",
+          state: "",
+          postalCode: "",
+        },
+        promotions: user?.promotions,
+      };
+      
+      console.log("Removing address with payload:", payload);
+      const res = await api.put("/auth/profile", payload);
+      console.log("Remove address response:", res?.data);
+      
+      if (res?.data?.ok && res?.data?.user) {
+        // Update context with new user data
+        login(res.data.user);
+        
+        // Clear form states
+        setHomeAddress({ street: "", city: "", state: "", postalCode: "" });
+        setShippingAddress({ street: "", city: "", state: "", postalCode: "" });
+        
+        // Update initial user state to reflect removal
+        setInitialUser({
+          ...initialUser,
+          home_address: { street: "", city: "", state: "", postalCode: "" },
+          shipping_address: { street: "", city: "", state: "", postalCode: "" },
+        });
+        
+        // Show form after removal so user can add new address
+        setShowAddressForm(true);
+        setMessage({ type: "success", text: "Address removed successfully!" });
+      } else {
+        setMessage({ type: "error", text: res?.data?.message || "Failed to remove address" });
+      }
+    } catch (err) {
+      console.error("Remove address error:", err);
+      setMessage({ type: "error", text: err?.response?.data?.message || "Failed to remove address" });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, login, initialUser]);
+
+  const handleEditAddress = useCallback(() => {
+    // Use home address if available, otherwise use shipping address
+    const addressSource = user?.home_address || user?.shipping_address;
+    if (addressSource) {
+      const newAddress = {
+        street: addressSource.street || "",
+        city: addressSource.city || "",
+        state: addressSource.state || "",
+        postalCode: addressSource.postalCode || "",
+      };
+      setHomeAddress(newAddress);
+      setShippingAddress(newAddress);
+      setShowAddressForm(true); // Show form when editing
+      console.log("Editing address:", newAddress); // Debug log
+    }
+  }, [user]);
+
   useEffect(() => {
     if (user) {
+      console.log("Loading user data:", user); // Debug: see what data we have
+      console.log("User home address:", user.home_address); // Debug: check address data
+      console.log("User shipping address:", user.shipping_address); // Debug: check address data
+      
       setFirstName(user.first_name || "");
       setLastName(user.last_name || "");
       setEmail(user.email || "");
@@ -68,7 +153,19 @@ export default function EditProfile() {
         state: user.shipping_address?.state || "",
         postalCode: user.shipping_address?.postalCode || "",
       });
+      setHomeAddress({
+        street: user.home_address?.street || "",
+        city: user.home_address?.city || "",
+        state: user.home_address?.state || "",
+        postalCode: user.home_address?.postalCode || "",
+      });
       setPromotions(user.promotions !== undefined ? user.promotions : true);
+      
+      // Show address form if no saved address exists
+      const hasAddress = (user?.home_address && (user.home_address.street || user.home_address.city)) ||
+                        (user?.shipping_address && (user.shipping_address.street || user.shipping_address.city));
+      setShowAddressForm(!hasAddress);
+      
       // remember original values to compute "dirty"
       setInitialUser({
         first_name: user.first_name || "",
@@ -80,6 +177,12 @@ export default function EditProfile() {
           city: user.shipping_address?.city || "",
           state: user.shipping_address?.state || "",
           postalCode: user.shipping_address?.postalCode || "",
+        },
+        home_address: {
+          street: user.home_address?.street || "",
+          city: user.home_address?.city || "",
+          state: user.home_address?.state || "",
+          postalCode: user.home_address?.postalCode || "",
         },
         promotions: user.promotions !== undefined ? user.promotions : true,
       });
@@ -312,6 +415,12 @@ export default function EditProfile() {
           state: shippingAddress.state,
           postalCode: shippingAddress.postalCode,
         },
+        home_address: {
+          street: homeAddress.street,
+          city: homeAddress.city,
+          state: homeAddress.state,
+          postalCode: homeAddress.postalCode,
+        },
         promotions,
       };
 
@@ -331,6 +440,12 @@ export default function EditProfile() {
             city: res.data.user.shipping_address?.city || "",
             state: res.data.user.shipping_address?.state || "",
             postalCode: res.data.user.shipping_address?.postalCode || "",
+          },
+          home_address: {
+            street: res.data.user.home_address?.street || "",
+            city: res.data.user.home_address?.city || "",
+            state: res.data.user.home_address?.state || "",
+            postalCode: res.data.user.home_address?.postalCode || "",
           },
           promotions:
             res.data.user.promotions !== undefined
@@ -413,6 +528,12 @@ export default function EditProfile() {
         state: user.shipping_address?.state || "",
         postalCode: user.shipping_address?.postalCode || "",
       });
+      setHomeAddress({
+        street: user.home_address?.street || "",
+        city: user.home_address?.city || "",
+        state: user.home_address?.state || "",
+        postalCode: user.home_address?.postalCode || "",
+      });
       setPromotions(user.promotions !== undefined ? user.promotions : true);
       setPassword("");
       setCurrentPassword("");
@@ -448,6 +569,11 @@ export default function EditProfile() {
       initialUser.shipping_address?.state !== (shippingAddress.state || "") ||
       initialUser.shipping_address?.postalCode !==
         (shippingAddress.postalCode || "") ||
+      initialUser.home_address?.street !== (homeAddress.street || "") ||
+      initialUser.home_address?.city !== (homeAddress.city || "") ||
+      initialUser.home_address?.state !== (homeAddress.state || "") ||
+      initialUser.home_address?.postalCode !==
+        (homeAddress.postalCode || "") ||
       initialUser.promotions !== promotions
     );
   };
@@ -809,6 +935,185 @@ export default function EditProfile() {
             )}
           </div>
 
+          {/* Home/Shipping Address Section */}
+          <div style={{ margin: "24px 0 12px 0" }}>
+            <h3 style={{ margin: "0 0 12px 0", fontSize: "1.1rem", color: "var(--text-primary)" }}>
+              Home/Shipping Address
+            </h3>
+            
+            {/* Show saved address if it exists */}
+            {((user?.home_address && (user.home_address.street || user.home_address.city)) || 
+              (user?.shipping_address && (user.shipping_address.street || user.shipping_address.city))) && (
+              <div style={{
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: "6px",
+                padding: "12px",
+                marginBottom: "16px"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontSize: "0.9rem", fontWeight: "500", color: "#fff", marginBottom: "4px" }}>
+                      Saved Address:
+                    </div>
+                    <div style={{ fontSize: "0.85rem", color: "rgba(255, 255, 255, 0.7)", lineHeight: "1.4" }}>
+                      {((user?.home_address?.street || user?.shipping_address?.street)) && 
+                        <div>{user?.home_address?.street || user?.shipping_address?.street}</div>}
+                      <div>
+                        {[
+                          user?.home_address?.city || user?.shipping_address?.city,
+                          user?.home_address?.state || user?.shipping_address?.state,
+                          user?.home_address?.postalCode || user?.shipping_address?.postalCode
+                        ].filter(Boolean).join(", ")}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={handleEditAddress}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#007bff";
+                        e.target.style.color = "white";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "transparent";
+                        e.target.style.color = "#007bff";
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid #007bff",
+                        color: "#007bff",
+                        padding: "4px 8px",
+                        fontSize: "0.8rem",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveAddress}
+                      disabled={loading}
+                      onMouseEnter={(e) => {
+                        if (!loading) {
+                          e.target.style.background = "#dc3545";
+                          e.target.style.color = "white";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!loading) {
+                          e.target.style.background = "transparent";
+                          e.target.style.color = "#dc3545";
+                        }
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid #dc3545",
+                        color: "#dc3545",
+                        padding: "4px 8px",
+                        fontSize: "0.8rem",
+                        borderRadius: "4px",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        opacity: loading ? 0.6 : 1,
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {loading ? "Removing..." : "Remove"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Address input form - only show if no saved address or user is editing */}
+            {showAddressForm && (
+            <>
+            <div className={styles.twoCol}>
+              <div>
+                <label className={styles.profileLabel}>Street</label>
+                <input
+                  type="text"
+                  value={homeAddress.street}
+                  onChange={(e) => {
+                    const newAddress = {
+                      ...homeAddress,
+                      street: e.target.value
+                    };
+                    setHomeAddress(newAddress);
+                    setShippingAddress(newAddress);
+                  }}
+                  placeholder="Street address"
+                  className={styles.profileInput}
+                />
+              </div>
+              
+              <div>
+                <label className={styles.profileLabel}>City</label>
+                <input
+                  type="text"
+                  value={homeAddress.city}
+                  onChange={(e) => {
+                    const newAddress = {
+                      ...homeAddress,
+                      city: e.target.value
+                    };
+                    setHomeAddress(newAddress);
+                    setShippingAddress(newAddress);
+                  }}
+                  placeholder="City"
+                  className={styles.profileInput}
+                />
+              </div>
+            </div>
+            
+            <div className={styles.twoCol}>
+              <div>
+                <label className={styles.profileLabel}>State</label>
+                <input
+                  type="text"
+                  value={homeAddress.state}
+                  onChange={(e) => {
+                    const newAddress = {
+                      ...homeAddress,
+                      state: e.target.value
+                    };
+                    setHomeAddress(newAddress);
+                    setShippingAddress(newAddress);
+                  }}
+                  placeholder="State"
+                  className={styles.profileInput}
+                />
+              </div>
+              
+              <div>
+                <label className={styles.profileLabel}>Postal Code</label>
+                <input
+                  type="text"
+                  value={homeAddress.postalCode}
+                  onChange={(e) => {
+                    const newAddress = {
+                      ...homeAddress,
+                      postalCode: e.target.value
+                    };
+                    setHomeAddress(newAddress);
+                    setShippingAddress(newAddress);
+                  }}
+                  placeholder="Postal code"
+                  className={styles.profileInput}
+                />
+              </div>
+            </div>
+            
+            <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "8px" }}>
+              This address will be used for both your home address and shipping address.
+            </div>
+            </>
+            )}
+          </div>
+
           <PromotionsToggle
             id={promotionsId}
             checked={!!promotions}
@@ -828,7 +1133,7 @@ export default function EditProfile() {
                   <span className={styles.spinner} aria-hidden /> Saving…
                 </>
               ) : (
-                "Save Profile"
+                "Save changes"
               )}
             </button>
 
@@ -841,15 +1146,17 @@ export default function EditProfile() {
                   <span className={styles.dirtyDot} aria-hidden /> Unsaved
                 </div>
               )}
-              <button
-                type="button"
-                className={styles.btnCancel}
-                onClick={onCancel}
-                disabled={loading || !user}
-                aria-disabled={loading || !user}
-              >
-                Cancel
-              </button>
+              {isDirty() && (
+                <button
+                  type="button"
+                  className={styles.btnCancel}
+                  onClick={onCancel}
+                  disabled={loading || !user}
+                  aria-disabled={loading || !user}
+                >
+                  Discard changes
+                </button>
+              )}
             </div>
           </div>
         </form>
