@@ -14,12 +14,19 @@ export default function Checkout() {
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
-  // Redirect to login if user is not authenticated
+  // Redirect to home if user is not authenticated
   useEffect(() => {
     if (user === null) {
-      navigate('/login');
+      navigate('/');
     }
   }, [user, navigate]);
+
+  // Redirect to home if no selected show or seats
+  useEffect(() => {
+    if (user && (!selectedShow || !selectedSeats || selectedSeats.length === 0)) {
+      navigate('/');
+    }
+  }, [user, selectedShow, selectedSeats, navigate]);
 
   // Load payment methods
   useEffect(() => {
@@ -72,7 +79,14 @@ export default function Checkout() {
   };
 
   const handleBackToSeats = () => {
-    navigate(-1);
+    // Navigate directly to seat selection instead of using navigate(-1)
+    // to avoid going back to edit profile page if user came from there
+    navigate('/seat-selection', { 
+      state: { 
+        movie: { title: selectedShow?.movie_title },
+        showtime: selectedShow 
+      } 
+    });
   };
 
   const handleAddPaymentMethod = () => {

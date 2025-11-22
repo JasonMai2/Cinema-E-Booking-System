@@ -9,12 +9,19 @@ export default function OrderSummary() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Redirect to login if user is not authenticated
+  // Redirect to home if user is not authenticated
   useEffect(() => {
     if (user === null) {
-      navigate('/login');
+      navigate('/');
     }
   }, [user, navigate]);
+
+  // Redirect to home if no selected show or seats
+  useEffect(() => {
+    if (user && (!selectedShow || !selectedSeats || selectedSeats.length === 0)) {
+      navigate('/');
+    }
+  }, [user, selectedShow, selectedSeats, navigate]);
 
   async function onConfirm() {
     setLoading(true);

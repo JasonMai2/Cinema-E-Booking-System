@@ -13,10 +13,10 @@ export default function OrderConfirmation() {
   const [error, setError] = useState(null);
   const { orderDetails } = useBooking();
 
-  // Redirect to login if user is not authenticated
+  // Redirect to home if user is not authenticated
   useEffect(() => {
     if (user === null) {
-      navigate('/login');
+      navigate('/');
       return;
     }
   }, [user, navigate]);

@@ -21,19 +21,20 @@ export default function SeatSelection() {
   const [promoCode, setPromoCode] = useState('');
   const [bookingInProgress, setBookingInProgress] = useState(false);
 
-  // Check for required data
+  // Redirect to home if missing required data
+  useEffect(() => {
+    if (!movie || !showtime || !user) {
+      console.log('Missing data:', { movie, showtime, user: user ? 'present' : 'missing' });
+      navigate('/');
+    }
+  }, [movie, showtime, user, navigate]);
+
+  // Check for required data - show loading state if redirecting
   if (!movie || !showtime || !user) {
-    console.log('Missing data:', { movie, showtime, user: user ? 'present' : 'missing' });
     return (
       <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-        <h2>Booking Error</h2>
-        <p>Missing required booking information. Please return to movie selection and try again.</p>
-        <div style={{ color: '#666', fontSize: '12px', marginTop: '10px' }}>
-          Movie: {movie ? '✓' : '✗'} | Showtime: {showtime ? '✓' : '✗'} | User: {user ? '✓' : '✗'}
-        </div>
-        <button onClick={() => navigate('/shows')} style={{ marginTop: '20px', padding: '10px 20px' }}>
-          Back to Showtimes
-        </button>
+        <h2>Redirecting...</h2>
+        <p>Taking you back to the home page...</p>
       </div>
     );
   }
