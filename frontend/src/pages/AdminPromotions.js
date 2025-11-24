@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import PromotionModal from "./PromotionModal";
+import { useNavigate } from 'react-router-dom';
 
 const API_BASE = "http://localhost:8080/api";
 
 export default function AdminPromotions({ onBack }) {
+  const navigate = useNavigate();
   const [promotions, setPromotions] = useState([]);
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [selectedPromotion, setSelectedPromotion] = useState(null);
@@ -169,71 +171,71 @@ export default function AdminPromotions({ onBack }) {
   };
 
   return (
-    <>
-      <button className="backButton" onClick={onBack}>
-        ← Back to Dashboard
-      </button>
-      <div className="managementHeader">
-        <h2 className="headerTitle">Manage Promotions</h2>
-        <button
-          className="btnSave"
-          onClick={() => {
-            setSelectedPromotion(null);
-            setPromoFormData({
-              title: "",
-              description: "",
-              discountType: "PERCENT",
-              discount: "",
-              startDate: "",
-              endDate: "",
-            });
-            setShowPromoModal(true);
-          }}
-        >
-          + Add Promotion
+    <div className="container">
+        <button className="backButton" onClick={() => navigate('/admin') }>
+          ← Back to Dashboard
         </button>
-      </div>
-      {promotions.length === 0 ? (
-        <p>No promotions found.</p>
-      ) : (
-        promotions.map((p) => (
-          <div key={p.id} className="itemCardDetailed">
-            <div>
-              <h3 className="itemInfoTitle">{p.title}</h3>
-              <p className="itemInfoSubtitle">
-                Description: {p.description} • Discount:{" "}
-                {p.discountType === "PERCENT"
-                  ? `${p.discount}%`
-                  : `$${p.discount}`}{" "}
-                • Start: {p.startDate} • End: {p.endDate}
-              </p>
-            </div>
-            <div className="itemActions">
-              <button
-                className="btnManage"
-                onClick={() => openManagePromotion(p)}
-              >
-                Manage
-              </button>
-              <button className="btnManage" onClick={() => sendPromotion(p)}>
-                Send Promotion
-              </button>
-              <button className="btnDelete" onClick={() => deletePromotion(p.id)}>
-                Delete
-              </button>
-            </div>
-          </div>
-        ))
-      )}
 
-      {showPromoModal && (
-        <PromotionModal
-          promoFormData={promoFormData}
-          handleInputChange={handlePromoInputChange}
-          handleSave={handleSavePromotion}
-          close={() => setShowPromoModal(false)}
-        />
-      )}
-    </>
+        <div className="managementHeader">
+          <h2 className="headerTitle">Manage Promotions</h2>
+          <button
+            className="btnSave"
+            onClick={() => {
+              setSelectedPromotion(null);
+              setPromoFormData({
+                title: "",
+                description: "",
+                discountType: "PERCENT",
+                discount: "",
+                startDate: "",
+                endDate: "",
+              });
+              setShowPromoModal(true);
+            }}
+          >
+            + Add Promotion
+          </button>
+        </div>
+
+        {promotions.length === 0 ? (
+          <p>No promotions found.</p>
+        ) : (
+          promotions.map((p) => (
+            <div key={p.id} className="itemCardDetailed">
+              <div>
+                <h3 className="itemInfoTitle">{p.title}</h3>
+                <p className="itemInfoSubtitle">
+                  Description: {p.description} • Discount:{" "}
+                  {p.discountType === "PERCENT"
+                    ? `${p.discount}%`
+                    : `$${p.discount}`}{" "}
+                  • Start: {p.startDate} • End: {p.endDate}
+                </p>
+              </div>
+
+              <div className="itemActions">
+                <button className="btnManage" onClick={() => openManagePromotion(p)}>
+                  Manage
+                </button>
+                <button className="btnManage" onClick={() => sendPromotion(p)}>
+                  Send Promotion
+                </button>
+                <button className="btnDelete" onClick={() => deletePromotion(p.id)}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+
+        {showPromoModal && (
+          <PromotionModal
+            promoFormData={promoFormData}
+            handleInputChange={handlePromoInputChange}
+            handleSave={handleSavePromotion}
+            close={() => setShowPromoModal(false)}
+          />
+        )}
+    </div>
   );
 }

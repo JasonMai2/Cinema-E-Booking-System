@@ -1,26 +1,23 @@
 import React from "react";
 import { X } from "lucide-react";
 
-export default function UserModal({
-  formData,
-  handleInputChange,
-  handleSubmit,
-  loading,
-  close,
-}) {
+export default function UserModal({ formData, handleInputChange, handleSubmit, loading, close }) {
+  const isEdit = !!formData.id;
+
   return (
     <div className="modalOverlay" onClick={close}>
       <div className="modalContent" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
-          <h2 className="modalTitle">Manage User</h2>
+          <h2 className="modalTitle">{isEdit ? "Manage User" : "Add User"}</h2>
           <button className="closeButton" onClick={close}>
             <X size={24} />
           </button>
         </div>
+
         <div>
           <div className="formRow">
             <div className="formGroup">
-              <label className="label">First Name</label>
+              <label className="label">First Name *</label>
               <input
                 className="input"
                 type="text"
@@ -42,26 +39,30 @@ export default function UserModal({
               />
             </div>
           </div>
+
           <div className="formGroup">
-            <label className="label">Email</label>
+            <label className="label">Email *</label>
             <input
               className="input"
               type="email"
               name="email"
               value={formData.email}
-              readOnly
+              onChange={handleInputChange}
+              placeholder="Email"
+              readOnly={isEdit}
             />
           </div>
+
           <div className="formGroup">
-            <label className="label">New Password</label>
+            <label className="label">{isEdit ? "New Password" : "Password *"}</label>
             <input
               className="input"
               type="password"
               name="password"
               value={formData.password}
               onChange={handleInputChange}
+              placeholder={isEdit ? "New password" : "Password"}
               style={{ marginBottom: "10px" }}
-              placeholder="New password"
             />
             <input
               className="input"
@@ -69,9 +70,10 @@ export default function UserModal({
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleInputChange}
-              placeholder="Confirm new password"
+              placeholder={isEdit ? "Confirm new password" : "Confirm password"}
             />
           </div>
+
           <div className="formGroup">
             <label className="label">Phone Number</label>
             <input
@@ -83,6 +85,7 @@ export default function UserModal({
               placeholder="Phone Number"
             />
           </div>
+
           <div className="formGroup">
             <label className="label">Role</label>
             <select
@@ -95,6 +98,7 @@ export default function UserModal({
               <option value="ADMIN">Admin</option>
             </select>
           </div>
+
           <div className="formGroup">
             <label className="label">
               <input
@@ -106,8 +110,9 @@ export default function UserModal({
               Suspended
             </label>
           </div>
+
           <button className="btnSave" onClick={handleSubmit} disabled={loading}>
-            {loading ? "Saving..." : "Save"}
+            {loading ? "Saving..." : isEdit ? "Save Changes" : "Add User"}
           </button>
         </div>
       </div>

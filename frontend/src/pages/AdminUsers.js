@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import UserModal from "./UserModal";
+import { useNavigate } from 'react-router-dom';
 
 const API_BASE = "http://localhost:8080/api";
 
 export default function AdminUsers({ onBack }) {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -18,7 +20,6 @@ export default function AdminUsers({ onBack }) {
     phone: "",
     role: "REGISTERED",
     is_suspended: false,
-    payment_cards: [],
   });
 
   useEffect(() => {
@@ -38,16 +39,14 @@ export default function AdminUsers({ onBack }) {
   };
 
   const deleteUser = async (id) => {
-    console.log("deleteUser called with id:", id);
-    console.log("Confirmed deletion");
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
       const res = await fetch(`${API_BASE}/users/${id}`, { method: "DELETE" });
-      console.log("Response:", res);
       if (!res.ok) throw new Error("Failed to delete user");
       alert("User deleted successfully");
       loadUsers();
     } catch (err) {
-      console.error("Error deleting user:", err);
+      console.error(err);
       alert(err.message);
     }
   };
@@ -64,7 +63,22 @@ export default function AdminUsers({ onBack }) {
       phone: user.phone || "",
       role: user.role || "REGISTERED",
       is_suspended: user.is_suspended || false,
-      payment_cards: user.payment_cards || [],
+    });
+    setShowUserModal(true);
+  };
+
+  const openAddUser = () => {
+    setSelectedUser(null);
+    setFormData({
+      id: null,
+      email: "",
+      password: "",
+      confirmPassword: "",
+      first_name: "",
+      last_name: "",
+      phone: "",
+      role: "REGISTERED",
+      is_suspended: false,
     });
     setShowUserModal(true);
   };
@@ -78,42 +92,72 @@ export default function AdminUsers({ onBack }) {
   };
 
   const handleUserSubmit = async () => {
+    // Validate fields (adapted from Login.js registration)
+    if (!formData.first_name || !formData.first_name.trim()) {
+      alert("First name is required");
+      return;
+    }
     if (!formData.email || formData.email.trim() === "") {
       alert("Email is required");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      alert("Please enter a valid email address");
       return;
     }
 
     const pw = formData.password?.trim() || "";
     const cpw = formData.confirmPassword?.trim() || "";
-    if ((pw !== "" || cpw !== "") && (pw !== cpw || pw.length < 6)) {
-      alert("Passwords must match and be at least 6 characters");
-      return;
+
+    if (!selectedUser) { // New user
+      if (pw.length < 6) {
+        alert("Password must be at least 6 characters");
+        return;
+      }
+      if (pw !== cpw) {
+        alert("Passwords do not match");
+        return;
+      }
+    } else { // Existing user
+      if ((pw || cpw) && (pw !== cpw || pw.length < 6)) {
+        alert("Passwords must match and be at least 6 characters");
+        return;
+      }
     }
 
     setLoadingSubmit(true);
     try {
       const payload = {
-        id: formData.id,
-        email: formData.email,
         first_name: formData.first_name,
         last_name: formData.last_name,
-        phone: formData.phone,
+        email: formData.email,
         role: formData.role,
         is_suspended: formData.is_suspended,
       };
       if (pw) payload.password = pw;
 
-      const res = await fetch(`${API_BASE}/users/${formData.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let res;
+      if (selectedUser) {
+        payload.id = formData.id;
+        res = await fetch(`${API_BASE}/users/${formData.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch(`${API_BASE}/users`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
 
       const result = await res.json();
-      if (!res.ok) throw new Error(result.message || "Failed to update user");
+      if (!res.ok) throw new Error(result.message || `Failed to ${selectedUser ? "update" : "create"} user`);
 
       await loadUsers();
-      alert("User updated successfully");
+      alert(`User ${selectedUser ? "updated" : "created"} successfully`);
       setShowUserModal(false);
       setSelectedUser(null);
     } catch (err) {
@@ -125,11 +169,18 @@ export default function AdminUsers({ onBack }) {
   };
 
   return (
-    <>
-      <button className="backButton" onClick={onBack}>
+    <div className="container">
+      <button className="backButton" onClick={() => navigate('/admin')}>
         ← Back to Dashboard
       </button>
-      <h2 className="headerTitle">Manage Users</h2>
+
+      <div className="managementHeader">
+        <h2 className="headerTitle">Manage Users</h2>
+        <button className="btnSave" onClick={openAddUser}>
+          + Add User
+        </button>
+      </div>
+
       {users.length === 0 ? (
         <p>No users found.</p>
       ) : (
@@ -145,6 +196,7 @@ export default function AdminUsers({ onBack }) {
                 {new Date(u.created_at).toLocaleDateString()}
               </p>
             </div>
+
             <div className="itemActions">
               <button className="btnManage" onClick={() => openManageUser(u)}>
                 Manage
@@ -166,6 +218,6 @@ export default function AdminUsers({ onBack }) {
           close={() => setShowUserModal(false)}
         />
       )}
-    </>
+    </div>
   );
 }
