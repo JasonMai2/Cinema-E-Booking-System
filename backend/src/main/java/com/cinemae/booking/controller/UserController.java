@@ -3,6 +3,7 @@ package com.cinemae.booking.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -12,6 +13,7 @@ import java.util.*;
 public class UserController {
 
     private final JdbcTemplate jdbc;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Autowired
     public UserController(JdbcTemplate jdbc) {
@@ -62,6 +64,44 @@ public class UserController {
         } catch (EmptyResultDataAccessException e) {
             return Map.of("error", "User not found");
         }
+    }
+
+    // Create new user (Admin)
+    @PostMapping
+    public Map<String, Object> createUser(@RequestBody Map<String, Object> payload) {
+        String firstName = (String) payload.get("first_name");
+        String lastName = (String) payload.get("last_name");
+        String email = (String) payload.get("email");
+        String phone = (String) payload.get("phone");
+        String password = (String) payload.get("password");
+        Boolean isSuspended = (Boolean) payload.getOrDefault("is_suspended", false);
+        String role = (String) payload.getOrDefault("role", "registered");
+
+        if (firstName == null || lastName == null || email == null || password == null) {
+            return Map.of("error", "Missing required fields");
+        }
+
+        // Hash password
+        String hashedPassword = passwordEncoder.encode(password);
+
+        // Insert user
+        int inserted = jdbc.update("""
+            INSERT INTO users (first_name, last_name, email, phone, password_hash, is_suspended, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        """, firstName, lastName, email, phone, hashedPassword, isSuspended ? 1 : 0);
+
+        if (inserted == 0) {
+            return Map.of("error", "Failed to create user");
+        }
+
+        // Get the new user ID
+        Long userId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+
+        // Assign role
+        int roleId = role.equalsIgnoreCase("admin") ? 1 : 2;
+        jdbc.update("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)", userId, roleId);
+
+        return Map.of("status", "User created successfully", "user_id", userId);
     }
 
     // Update existing user
