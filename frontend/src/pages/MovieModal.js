@@ -79,6 +79,35 @@ export default function MovieModal({
             />
           </div>
 
+          <div className="formGroup">
+            <label className="label">
+              <input
+                type="checkbox"
+                name="is_now_playing"
+                checked={formData.is_now_playing}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, is_now_playing: e.target.checked }))
+                }
+              />
+              Now Playing
+            </label>
+          </div>
+
+          <div className="formGroup">
+            <label className="label">
+              <input
+                type="checkbox"
+                name="is_coming_soon"
+                checked={formData.is_coming_soon}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, is_coming_soon: e.target.checked }))
+                }
+              />
+              Coming Soon
+            </label>
+          </div>
+
+
           {/* Save Button */}
           <button className="btnSave" onClick={handleSave}>
             {isEdit ? "Save Changes" : "Add Movie"}

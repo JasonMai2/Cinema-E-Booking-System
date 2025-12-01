@@ -21,14 +21,15 @@ public class MovieController {
         this.jdbc = jdbc;
     }
 
+    // List movies
     @GetMapping
     public Map<String, Object> list(
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "50") int size
+            @RequestParam(name = "size", defaultValue = "100") int size
     ) {
         if (page < 0) page = 0;
-        if (size <= 0) size = 12;
+        if (size <= 0) size = 100;
 
         String where = "";
         List<Object> params = new ArrayList<>();
@@ -47,16 +48,17 @@ public class MovieController {
 
         // fetch page
         int offset = page * size;
-        String sql = "SELECT id, title, mpaa_rating, synopsis, trailer_video_url, trailer_image_url FROM movies"
-                + where + " ORDER BY id ASC LIMIT ? OFFSET ?";
+        String sql = """
+                SELECT id, title, mpaa_rating, synopsis, trailer_video_url,
+                       trailer_image_url, is_now_playing, is_coming_soon, created_at
+                FROM movies
+                """ + where + " ORDER BY id ASC LIMIT ? OFFSET ?";
 
-        // add pagination params
         params.add(size);
         params.add(offset);
 
         List<Map<String, Object>> rows = jdbc.queryForList(sql, params.toArray());
 
-        // build response
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("page", page);
         resp.put("size", size);
@@ -67,6 +69,7 @@ public class MovieController {
         return resp;
     }
 
+    // Get movie by ID
     @GetMapping("/{id}")
     public Map<String, Object> getById(@PathVariable("id") Integer id) {
         Map<String, Object> resp = new HashMap<>();
@@ -76,19 +79,82 @@ public class MovieController {
             return resp;
         }
 
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id, title, mpaa_rating, synopsis, trailer_video_url, trailer_image_url FROM movies WHERE id = ?",
-                id
-        );
+        List<Map<String, Object>> rows = jdbc.queryForList("""
+                SELECT id, title, mpaa_rating, synopsis, trailer_video_url,
+                       trailer_image_url, is_now_playing, is_coming_soon, created_at
+                FROM movies WHERE id = ?
+                """, id);
+
         if (rows.isEmpty()) {
             resp.put("ok", false);
             resp.put("message", "movie not found");
             return resp;
         }
 
-        Map<String, Object> movie = rows.get(0);
         resp.put("ok", true);
-        resp.put("movie", movie);
+        resp.put("movie", rows.get(0));
+        return resp;
+    }
+
+    // Create Movie
+    @PostMapping
+    public Map<String, Object> create(@RequestBody Map<String, Object> body) {
+        String sql = """
+                INSERT INTO movies (title, synopsis, mpaa_rating, trailer_video_url,
+                                    trailer_image_url, is_now_playing, is_coming_soon)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        jdbc.update(sql,
+                body.get("title"),
+                body.get("synopsis"),
+                body.get("mpaa_rating"),
+                body.get("trailer_video_url"),
+                body.get("trailer_image_url"),
+                body.get("is_now_playing"),
+                body.get("is_coming_soon")
+        );
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("ok", true);
+        resp.put("message", "movie created successfully");
+        return resp;
+    }
+
+    // Update Movie
+    @PutMapping("/{id}")
+    public Map<String, Object> update(@PathVariable("id") Long id, @RequestBody Map<String, Object> body) {
+        String sql = """
+                UPDATE movies SET title=?, synopsis=?, mpaa_rating=?, trailer_video_url=?,
+                                  trailer_image_url=?, is_now_playing=?, is_coming_soon=?
+                WHERE id=?
+                """;
+
+        jdbc.update(sql,
+                body.get("title"),
+                body.get("synopsis"),
+                body.get("mpaa_rating"),
+                body.get("trailer_video_url"),
+                body.get("trailer_image_url"),
+                body.get("is_now_playing"),
+                body.get("is_coming_soon"),
+                id
+        );
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("ok", true);
+        resp.put("message", "movie updated successfully");
+        return resp;
+    }
+
+    // Delete Movie
+    @DeleteMapping("/{id}")
+    public Map<String, Object> delete(@PathVariable("id") Long id) {
+        jdbc.update("DELETE FROM movies WHERE id = ?", id);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("ok", true);
+        resp.put("message", "movie deleted");
         return resp;
     }
 
@@ -99,96 +165,5 @@ public class MovieController {
         p.put("ok", true);
         p.put("time", new Date());
         return p;
-    }
-
-    /* ===============================
-       CREATE MOVIE (POST)
-    =============================== */
-    @PostMapping
-    public Map<String, Object> create(@RequestBody Map<String, Object> body) {
-        Map<String, Object> resp = new HashMap<>();
-
-        try {
-            String title = (String) body.get("title");
-            String mpaa = (String) body.get("mpaa_rating");
-            String synopsis = (String) body.get("synopsis");
-            String trailerVideo = (String) body.get("trailer_video_url");
-            String trailerImage = (String) body.get("trailer_image_url");
-
-            jdbc.update(
-                    "INSERT INTO movies (title, mpaa_rating, synopsis, trailer_video_url, trailer_image_url) VALUES (?, ?, ?, ?, ?)",
-                    title, mpaa, synopsis, trailerVideo, trailerImage
-            );
-
-            resp.put("ok", true);
-            resp.put("message", "Movie created successfully");
-
-        } catch (Exception e) {
-            resp.put("ok", false);
-            resp.put("message", "Error creating movie: " + e.getMessage());
-        }
-
-        return resp;
-    }
-
-    /* ===============================
-       UPDATE MOVIE (PUT)
-    =============================== */
-    @PutMapping("/{id}")
-    public Map<String, Object> update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
-        Map<String, Object> resp = new HashMap<>();
-
-        try {
-            String title = (String) body.get("title");
-            String mpaa = (String) body.get("mpaa_rating");
-            String synopsis = (String) body.get("synopsis");
-            String trailerVideo = (String) body.get("trailer_video_url");
-            String trailerImage = (String) body.get("trailer_image_url");
-
-            int updated = jdbc.update(
-                    "UPDATE movies SET title=?, mpaa_rating=?, synopsis=?, trailer_video_url=?, trailer_image_url=? WHERE id=?",
-                    title, mpaa, synopsis, trailerVideo, trailerImage, id
-            );
-
-            if (updated == 0) {
-                resp.put("ok", false);
-                resp.put("message", "Movie not found");
-            } else {
-                resp.put("ok", true);
-                resp.put("message", "Movie updated successfully");
-            }
-
-        } catch (Exception e) {
-            resp.put("ok", false);
-            resp.put("message", "Error updating movie: " + e.getMessage());
-        }
-
-        return resp;
-    }
-
-    /* ===============================
-       DELETE MOVIE (DELETE)
-    =============================== */
-    @DeleteMapping("/{id}")
-    public Map<String, Object> delete(@PathVariable Integer id) {
-        Map<String, Object> resp = new HashMap<>();
-
-        try {
-            int deleted = jdbc.update("DELETE FROM movies WHERE id = ?", id);
-
-            if (deleted == 0) {
-                resp.put("ok", false);
-                resp.put("message", "Movie not found");
-            } else {
-                resp.put("ok", true);
-                resp.put("message", "Movie deleted successfully");
-            }
-
-        } catch (Exception e) {
-            resp.put("ok", false);
-            resp.put("message", "Error deleting movie: " + e.getMessage());
-        }
-
-        return resp;
     }
 }

@@ -18,6 +18,8 @@ export default function AdminMovies() {
     description: "",
     rating: "",
     poster_url: "",
+    is_now_playing: false,
+    is_coming_soon: false,
   });
 
   useEffect(() => {
@@ -45,7 +47,10 @@ export default function AdminMovies() {
       title: "",
       description: "",
       rating: "",
+      trailer_video_url: "",
       poster_url: "",
+      is_now_playing: false,
+      is_coming_soon: false,
     });
     setShowMovieModal(true);
   };
@@ -57,7 +62,10 @@ export default function AdminMovies() {
       title: movie.title || "",
       description: movie.synopsis || "",
       rating: movie.mpaa_rating || "",
+      trailer_video_url: movie.trailer_video_url || "",
       poster_url: movie.trailer_image_url || "",
+      is_now_playing: movie.is_now_playing || false,
+      is_coming_soon: movie.is_coming_soon || false,
     });
     setShowMovieModal(true);
   };
@@ -92,7 +100,10 @@ export default function AdminMovies() {
       title: formData.title,
       mpaa_rating: formData.rating,
       synopsis: formData.description,
+      trailer_video_url: formData.trailer_video_url,
       trailer_image_url: formData.poster_url,
+      is_now_playing: formData.is_now_playing,
+      is_coming_soon: formData.is_coming_soon,
     };
 
     try {
@@ -206,6 +217,21 @@ export default function AdminMovies() {
             </div>
 
             <div className="formGroup">
+              <label className="label">Trailer Video URL</label>
+              <input
+                className="input"
+                type="text"
+                name="trailer_video_url"
+                value={formData.trailer_video_url}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, trailer_video_url: e.target.value }))
+                }
+                placeholder="https://..."
+              />
+            </div>
+
+
+            <div className="formGroup">
               <label className="label">Poster Image URL</label>
               <input
                 className="input"
@@ -213,6 +239,34 @@ export default function AdminMovies() {
                 value={formData.poster_url}
                 onChange={handleInputChange}
               />
+            </div>
+
+            <div className="formGroup">
+              <label className="label">
+                <input
+                  type="checkbox"
+                  name="is_now_playing"
+                  checked={formData.is_now_playing}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, is_now_playing: e.target.checked }))
+                  }
+                />
+                Now Playing
+              </label>
+            </div>
+
+            <div className="formGroup">
+              <label className="label">
+                <input
+                  type="checkbox"
+                  name="is_coming_soon"
+                  checked={formData.is_coming_soon}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, is_coming_soon: e.target.checked }))
+                  }
+                />
+                Coming Soon
+              </label>
             </div>
 
             <button className="btnSave" onClick={handleSubmit}>
