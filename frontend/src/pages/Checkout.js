@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { useBooking } from '../context/BookingContext.js';
+
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+
+import { useNavigate } from 'react-router-dom';
 
 export default function Checkout() {
   const { selectedShow, selectedSeats, removeSeat, updateSeat, setCustomer, createOrderDraft } = useBooking();
@@ -53,6 +56,13 @@ export default function Checkout() {
     loadPaymentMethods();
   }, [user?.id]);
 
+  // Safety check: redirect if no show or seats selected
+  useEffect(() => {
+    if (!selectedShow || !selectedSeats || selectedSeats.length === 0) {
+      console.warn('No show or seats selected, cannot proceed with checkout');
+    }
+  }, [selectedShow, selectedSeats]);
+
   const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
   const taxes = useMemo(() => subtotal * 0.08, [subtotal]);
   const total = useMemo(() => subtotal + taxes, [subtotal, taxes]);
@@ -93,7 +103,14 @@ export default function Checkout() {
     navigate('/profile/edit#payment-methods');
   };
 
-  async function submit() {
+  async function submit(e) {
+    if (e) e.preventDefault();
+    
+    console.log('🎯 Submit button clicked!');
+    console.log('Selected Show:', selectedShow);
+    console.log('Selected Seats:', selectedSeats);
+    console.log('Customer:', { name, email, phone });
+    
     const errs = {};
     if (!selectedShow) errs.show = 'No show selected';
     if (!selectedSeats || selectedSeats.length === 0) errs.seats = 'No seats selected';
@@ -101,6 +118,8 @@ export default function Checkout() {
     
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
+      console.error('❌ Validation errors:', errs);
+      alert('Please fill in all required fields:\n' + Object.values(errs).join('\n'));
       return;
     }
 
@@ -137,31 +156,22 @@ export default function Checkout() {
   if (!selectedShow || !selectedSeats || selectedSeats.length === 0) {
     return (
       <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-        <h2>No Booking Data</h2>
-        <p>Please select a movie and seats to continue.</p>
-        <button onClick={() => navigate('/')} style={{ marginTop: '20px', padding: '10px 20px' }}>
-          Return Home
+        <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>No booking data found</div>
+        <button onClick={() => navigate('/movies')} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 16px', borderRadius: '6px', border: 'none' }}>
+          Back to Movies
         </button>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1417', color: '#f4f6f8', paddingTop: '80px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
+    <div style={{ minHeight: '70vh', padding: '24px', background: '#0f1417' }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto', color: '#f4f6f8' }}>
         
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px', gap: '20px' }}>
+        <div style={{ marginBottom: '32px' }}>
           <button 
             onClick={handleBackToSeats}
-            style={{ 
-              background: 'transparent', 
-              color: '#cbd5da', 
-              border: '1px solid #2a3339', 
-              padding: '10px 16px', 
-              borderRadius: '6px', 
-              cursor: 'pointer', 
-              fontSize: '14px' 
-            }}
+            style={{ background: 'transparent', border: 'none', color: '#cbd5da', fontSize: '14px', cursor: 'pointer', marginBottom: '16px' }}
           >
             ← Back to Seat Selection
           </button>
