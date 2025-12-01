@@ -1,12 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-
+import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext.js';
-<<<<<<< HEAD
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-=======
-import { useNavigate } from 'react-router-dom';
->>>>>>> origin/Checkout-Fixes
 
 export default function Checkout() {
   const { selectedShow, selectedSeats, removeSeat, updateSeat, setCustomer, createOrderDraft } = useBooking();
@@ -57,13 +53,6 @@ export default function Checkout() {
     loadPaymentMethods();
   }, [user?.id]);
 
-  // Safety check: redirect if no show or seats selected
-  useEffect(() => {
-    if (!selectedShow || !selectedSeats || selectedSeats.length === 0) {
-      console.warn('No show or seats selected, cannot proceed with checkout');
-    }
-  }, [selectedShow, selectedSeats]);
-
   const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
   const taxes = useMemo(() => subtotal * 0.08, [subtotal]);
   const total = useMemo(() => subtotal + taxes, [subtotal, taxes]);
@@ -104,34 +93,17 @@ export default function Checkout() {
     navigate('/profile/edit#payment-methods');
   };
 
-  async function submit(e) {
-    if (e) e.preventDefault();
-    
-    console.log('🎯 Submit button clicked!');
-    console.log('Selected Show:', selectedShow);
-    console.log('Selected Seats:', selectedSeats);
-    console.log('Customer:', { name, email, phone });
-    
+  async function submit() {
     const errs = {};
-<<<<<<< HEAD
     if (!selectedShow) errs.show = 'No show selected';
     if (!selectedSeats || selectedSeats.length === 0) errs.seats = 'No seats selected';
     if (!selectedPaymentMethod) errs.payment = 'Please select a payment method';
-=======
-    if (!name || name.trim() === '') errs.name = 'Name is required';
-    if (!email || email.trim() === '') errs.email = 'Email is required';
-    if (!selectedShow) errs.show = 'No show selected';
-    if (!selectedSeats || selectedSeats.length === 0) errs.seats = 'No seats selected';
->>>>>>> origin/Checkout-Fixes
     
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
-      console.error('❌ Validation errors:', errs);
-      alert('Please fill in all required fields:\n' + Object.values(errs).join('\n'));
       return;
     }
 
-<<<<<<< HEAD
     setLoading(true);
     try {
       setCustomer({ 
@@ -157,25 +129,6 @@ export default function Checkout() {
       }
     } catch (err) {
       setErrors({ submit: err.message || 'Failed to process booking' });
-=======
-    const payload = {
-      showId: selectedShow.id,
-      seats: selectedSeats.map((s) => s.id || s),
-      customer: { name, email, phone },
-    };
-    
-    setLoading(true);
-    try {
-      console.log('✅ Validation passed! Creating order draft with payload:', payload);
-      const result = await createOrderDraft(payload);
-      console.log('✅ Order draft created:', result);
-      setCustomer({ name, email, phone });
-      console.log('✅ Customer saved, navigating to summary...');
-      navigate('/order-summary');
-    } catch (err) {
-      console.error('❌ Failed to create order:', err);
-      alert('Failed to create order: ' + (err.message || err));
->>>>>>> origin/Checkout-Fixes
     } finally {
       setLoading(false);
     }
@@ -184,22 +137,31 @@ export default function Checkout() {
   if (!selectedShow || !selectedSeats || selectedSeats.length === 0) {
     return (
       <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-        <div style={{ color: '#ff6b6b', marginBottom: '16px' }}>No booking data found</div>
-        <button onClick={() => navigate('/movies')} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 16px', borderRadius: '6px', border: 'none' }}>
-          Back to Movies
+        <h2>No Booking Data</h2>
+        <p>Please select a movie and seats to continue.</p>
+        <button onClick={() => navigate('/')} style={{ marginTop: '20px', padding: '10px 20px' }}>
+          Return Home
         </button>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '70vh', padding: '24px', background: '#0f1417' }}>
-      <div style={{ maxWidth: '1000px', margin: '0 auto', color: '#f4f6f8' }}>
+    <div style={{ minHeight: '100vh', background: '#0f1417', color: '#f4f6f8', paddingTop: '80px' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
         
-        <div style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px', gap: '20px' }}>
           <button 
             onClick={handleBackToSeats}
-            style={{ background: 'transparent', border: 'none', color: '#cbd5da', fontSize: '14px', cursor: 'pointer', marginBottom: '16px' }}
+            style={{ 
+              background: 'transparent', 
+              color: '#cbd5da', 
+              border: '1px solid #2a3339', 
+              padding: '10px 16px', 
+              borderRadius: '6px', 
+              cursor: 'pointer', 
+              fontSize: '14px' 
+            }}
           >
             ← Back to Seat Selection
           </button>
@@ -218,7 +180,6 @@ export default function Checkout() {
               </div>
             </div>
 
-<<<<<<< HEAD
             <div style={{ background: '#1a2025', padding: '24px', borderRadius: '12px', marginBottom: '24px' }}>
               <h2 style={{ color: 'white', fontSize: '20px', margin: '0 0 16px 0' }}>Selected Tickets</h2>
               
@@ -362,66 +323,6 @@ export default function Checkout() {
               {errors.payment && (
                 <div style={{ color: '#ff6b6b', fontSize: '14px', marginTop: '8px' }}>{errors.payment}</div>
               )}
-=======
-              <div style={{ marginTop: 12 }}>
-                <button 
-                  type="button"
-                  onClick={submit} 
-                  disabled={loading} 
-                  style={{ 
-                    background: loading ? '#555' : '#7a1f1f', 
-                    color: '#fff', 
-                    padding: '10px 16px', 
-                    borderRadius: 6, 
-                    border: 'none', 
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}>
-                  {loading ? '⏳ Creating...' : 'Continue to Summary →'}
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => navigate(-1)} 
-                  style={{ 
-                    marginLeft: 8, 
-                    background: 'transparent', 
-                    color: '#cbd5da', 
-                    border: '1px solid #222', 
-                    padding: '10px 16px', 
-                    borderRadius: 6, 
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}>
-                  Cancel
-                </button>
-                <button onClick={async () => {
-                  // create a demo order draft and go straight to order summary
-                  const demoSeats = (selectedSeats && selectedSeats.length > 0) ? selectedSeats : [
-                    { id: 'demo-A1', row: 'A', number: 1, price: 10 },
-                    { id: 'demo-A2', row: 'A', number: 2, price: 10 }
-                  ];
-                  const draft = {
-                    id: `demo-draft-${Date.now()}`,
-                    orderId: `demo-draft-${Date.now()}`,
-                    showId: selectedShow?.id || 'demo-show-1',
-                    show: selectedShow || { id: 'demo-show-1', title: 'Demo Movie — 7:00 PM' },
-                    seats: demoSeats,
-                    customer: { name: name || 'Demo User', email: email || 'demo@example.com', phone: phone || '' }
-                  };
-                  setLoading(true);
-                  try {
-                    await createOrderDraft(draft);
-                    setCustomer({ name: draft.customer.name, email: draft.customer.email, phone: draft.customer.phone });
-                    navigate('/order-summary');
-                  } catch (err) {
-                    alert('Failed to create demo order: ' + (err.message || err));
-                  } finally {
-                    setLoading(false);
-                  }
-                }} style={{ marginLeft: 8, background: '#444', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>Generate demo order</button>
-              </div>
->>>>>>> origin/Checkout-Fixes
             </div>
           </div>
 
