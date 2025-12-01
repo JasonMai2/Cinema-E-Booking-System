@@ -1,16 +1,25 @@
 package com.cinemae.booking.service;
 
+import com.cinemae.booking.model.Booking;
+import com.cinemae.booking.model.Ticket;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class EmailService {
 
     @Autowired
     private JavaMailSender emailSender;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Value("${app.email.from}")
     private String fromEmail;
@@ -263,5 +272,130 @@ public class EmailService {
             firstName != null ? firstName : "Valued Customer",
             java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy 'at' hh:mm a"))
         );
+    }
+
+    /**
+     * Send booking confirmation email with ticket details.
+     * 
+     * @param userId User ID to get email and name
+     * @param booking The confirmed booking
+     * @param tickets List of tickets for this booking
+     */
+    public void sendBookingConfirmation(Long userId, Booking booking, List<Ticket> tickets) {
+        try {
+            // Get user email and name
+            Map<String, Object> user = jdbc.queryForMap(
+                "SELECT email, first_name, last_name FROM users WHERE id = ?", userId
+            );
+            
+            String toEmail = (String) user.get("email");
+            String firstName = (String) user.get("first_name");
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("Booking Confirmation - Cinema E-Booking System");
+            message.setText(buildBookingConfirmationBody(firstName, booking, tickets));
+            
+            emailSender.send(message);
+            System.out.println("🎫 Booking confirmation email sent successfully to: " + toEmail);
+            System.out.println("📋 Booking Number: " + booking.getBookingNumber());
+        } catch (Exception e) {
+            System.err.println("❌ Failed to send booking confirmation email: " + e.getMessage());
+            e.printStackTrace();
+            // Don't throw exception - email failure shouldn't fail the booking
+        }
+    }
+
+    private String buildBookingConfirmationBody(String firstName, Booking booking, List<Ticket> tickets) {
+        StringBuilder body = new StringBuilder();
+        
+        body.append(String.format("""
+            Hi %s,
+            
+            Thank you for your booking! Your tickets have been confirmed. 🎬
+            
+            ═══════════════════════════════════════
+            BOOKING CONFIRMATION
+            ═══════════════════════════════════════
+            
+            Booking Number: %s
+            Status: %s
+            
+            """, 
+            firstName != null ? firstName : "Movie Lover",
+            booking.getBookingNumber(),
+            booking.getStatus()
+        ));
+
+        // Add ticket details
+        body.append("YOUR TICKETS:\n");
+        body.append("───────────────────────────────────────\n");
+        
+        for (int i = 0; i < tickets.size(); i++) {
+            Ticket ticket = tickets.get(i);
+            body.append(String.format("""
+                
+                Ticket #%d
+                Ticket Number: %s
+                Movie: %s
+                Auditorium: %s
+                Seat: %s
+                Category: %s
+                Price: $%.2f
+                Showtime: %s
+                """,
+                i + 1,
+                ticket.getTicketNumber(),
+                ticket.getMovieTitle() != null ? ticket.getMovieTitle() : "N/A",
+                ticket.getAuditoriumName() != null ? ticket.getAuditoriumName() : "N/A",
+                ticket.getSeatLabel() != null ? ticket.getSeatLabel() : "N/A",
+                ticket.getAgeCategory(),
+                ticket.getPriceCents() / 100.0,
+                ticket.getShowtimeStart() != null ? ticket.getShowtimeStart() : "N/A"
+            ));
+        }
+
+        // Add pricing summary
+        body.append(String.format("""
+            
+            ───────────────────────────────────────
+            PAYMENT SUMMARY
+            ───────────────────────────────────────
+            
+            Subtotal:       $%.2f
+            Booking Fees:   $%.2f
+            Tax:            $%.2f
+            ───────────────────────────────────────
+            TOTAL PAID:     $%.2f
+            
+            ═══════════════════════════════════════
+            
+            IMPORTANT INFORMATION:
+            
+            • Please arrive at least 15 minutes before showtime
+            • Present your ticket number at the entrance
+            • You can access your tickets anytime from your account
+            • Save this email for your records
+            
+            Need to make changes or have questions?
+            Visit your account dashboard or contact our support team.
+            
+            Enjoy your movie! 🍿
+            
+            Best regards,
+            Cinema E-Booking System Team
+            
+            ───────────────────────────────────────
+            This is an automated confirmation email.
+            For support, please contact us through your account.
+            """,
+            booking.getSubtotalCents() / 100.0,
+            booking.getFeesCents() / 100.0,
+            booking.getTaxCents() / 100.0,
+            booking.getTotalCents() / 100.0
+        ));
+
+        return body.toString();
     }
 }

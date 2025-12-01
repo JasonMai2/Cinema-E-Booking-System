@@ -223,4 +223,38 @@ public class MovieController {
         resp.put("categories", list);
         return resp;
     }
+
+    /**
+     * Get "Now Playing" movies - movies with showtimes in the near future.
+     * Uses the v_now_playing database view.
+     */
+    @GetMapping("/now-playing")
+    public List<Map<String, Object>> getNowPlaying() {
+        String sql = """
+            SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
+                   m.trailer_video_url, m.trailer_image_url,
+                   np.first_show, np.last_show
+            FROM v_now_playing np
+            JOIN movies m ON np.movie_id = m.id
+            ORDER BY np.first_show ASC
+            """;
+        return jdbc.queryForList(sql);
+    }
+
+    /**
+     * Get "Coming Soon" movies - movies with showtimes in the future.
+     * Uses the v_coming_soon database view.
+     */
+    @GetMapping("/coming-soon")
+    public List<Map<String, Object>> getComingSoon() {
+        String sql = """
+            SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
+                   m.trailer_video_url, m.trailer_image_url,
+                   cs.first_show
+            FROM v_coming_soon cs
+            JOIN movies m ON cs.movie_id = m.id
+            ORDER BY cs.first_show ASC
+            """;
+        return jdbc.queryForList(sql);
+    }
 }
