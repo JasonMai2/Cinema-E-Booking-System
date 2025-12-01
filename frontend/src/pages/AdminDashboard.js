@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Film, Users, Percent } from "lucide-react";
+import { Film, Users, Percent, Ticket } from "lucide-react";
 import AdminUsers from "./AdminUsers";
 import AdminPromotions from "./AdminPromotions";
 import { useNavigate } from 'react-router-dom';
@@ -374,6 +374,19 @@ export default function AdminDashboard() {
                   Promotions
                 </h2>
               </div>
+
+              {/* NEW: Ticket Prices Card */}
+              <div className="adminCard" onClick={() => navigate('/admin/ticket') }>
+                <div className="adminCardIcon">
+                  <Ticket className="iconStyle" />
+                </div>
+                <h2 className="adminCardTitle">
+                  Manage
+                  <br />
+                  Ticket Prices
+                </h2>
+              </div>
+
             </div>
           </div>
         )}
