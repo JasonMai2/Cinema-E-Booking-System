@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+
 import { useBooking } from '../context/BookingContext.js';
+import { useNavigate } from 'react-router-dom';
 
 export default function Checkout() {
   const { selectedShow, selectedSeats, setCustomer, createOrderDraft, customer } = useBooking();
@@ -19,28 +20,52 @@ export default function Checkout() {
     }
   }, [customer]);
 
+  // Safety check: redirect if no show or seats selected
+  useEffect(() => {
+    if (!selectedShow || !selectedSeats || selectedSeats.length === 0) {
+      console.warn('No show or seats selected, cannot proceed with checkout');
+    }
+  }, [selectedShow, selectedSeats]);
+
   const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
 
-  async function submit() {
+  async function submit(e) {
+    if (e) e.preventDefault();
+    
+    console.log('🎯 Submit button clicked!');
+    console.log('Selected Show:', selectedShow);
+    console.log('Selected Seats:', selectedSeats);
+    console.log('Customer:', { name, email, phone });
+    
     const errs = {};
-    if (!name) errs.name = 'Name is required';
-    if (!email) errs.email = 'Email is required';
+    if (!name || name.trim() === '') errs.name = 'Name is required';
+    if (!email || email.trim() === '') errs.email = 'Email is required';
     if (!selectedShow) errs.show = 'No show selected';
     if (!selectedSeats || selectedSeats.length === 0) errs.seats = 'No seats selected';
+    
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+    if (Object.keys(errs).length > 0) {
+      console.error('❌ Validation errors:', errs);
+      alert('Please fill in all required fields:\n' + Object.values(errs).join('\n'));
+      return;
+    }
 
     const payload = {
       showId: selectedShow.id,
-      seats: selectedSeats.map((s) => s.id),
+      seats: selectedSeats.map((s) => s.id || s),
       customer: { name, email, phone },
     };
+    
     setLoading(true);
     try {
-      await createOrderDraft(payload);
+      console.log('✅ Validation passed! Creating order draft with payload:', payload);
+      const result = await createOrderDraft(payload);
+      console.log('✅ Order draft created:', result);
       setCustomer({ name, email, phone });
+      console.log('✅ Customer saved, navigating to summary...');
       navigate('/order-summary');
     } catch (err) {
+      console.error('❌ Failed to create order:', err);
       alert('Failed to create order: ' + (err.message || err));
     } finally {
       setLoading(false);
@@ -84,8 +109,37 @@ export default function Checkout() {
               </div>
 
               <div style={{ marginTop: 12 }}>
-                <button onClick={submit} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Creating...' : 'Continue to Summary'}</button>
-                <button onClick={() => navigate('/order-summary')} style={{ marginLeft: 8, background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 14px', borderRadius: 6 }}>Cancel</button>
+                <button 
+                  type="button"
+                  onClick={submit} 
+                  disabled={loading} 
+                  style={{ 
+                    background: loading ? '#555' : '#7a1f1f', 
+                    color: '#fff', 
+                    padding: '10px 16px', 
+                    borderRadius: 6, 
+                    border: 'none', 
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}>
+                  {loading ? '⏳ Creating...' : 'Continue to Summary →'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => navigate(-1)} 
+                  style={{ 
+                    marginLeft: 8, 
+                    background: 'transparent', 
+                    color: '#cbd5da', 
+                    border: '1px solid #222', 
+                    padding: '10px 16px', 
+                    borderRadius: 6, 
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}>
+                  Cancel
+                </button>
                 <button onClick={async () => {
                   // create a demo order draft and go straight to order summary
                   const demoSeats = (selectedSeats && selectedSeats.length > 0) ? selectedSeats : [

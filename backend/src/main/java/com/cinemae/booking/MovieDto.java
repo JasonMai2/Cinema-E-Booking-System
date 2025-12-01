@@ -1,4 +1,4 @@
-package com.cinemae.booking.api;
+package com.cinemae.booking;
 
 public class MovieDto {
     public Long id;
@@ -6,3 +6,4 @@ public class MovieDto {
     public String synopsis;
     public String mpaa_rating;
 }
+
