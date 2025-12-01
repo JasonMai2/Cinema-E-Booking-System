@@ -1,18 +1,36 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 // movies: array of movie objects { id, title, shows? }
 export default function ShowList({ movies = [] }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  function openShow(showId) {
-    // perform a full navigation+reload so the UI fully refreshes for the selected show
-    try {
-      window.location.href = `/shows/${showId}/seats`;
-    } catch (e) {
-      // fallback to SPA navigation if window is not available
-      navigate(`/shows/${showId}/seats`);
+  function openShow(show, movie) {
+    if (!user) {
+      alert('Please login to book tickets');
+      navigate('/login');
+      return;
     }
+
+    // Navigate to our new seat selection page with proper data
+    navigate('/seat-selection', {
+      state: {
+        showtime: {
+          id: show.id,
+          start_time: show.startTime,
+          auditorium_name: show.auditorium || show.theater_name,
+          price: show.price || 12.50 // Include price in showtime data
+        },
+        movie: {
+          id: movie.id,
+          title: movie.title,
+          synopsis: movie.synopsis,
+          poster_url: movie.poster_url || movie.trailer_image_url
+        }
+      }
+    });
   }
 
   return (
@@ -38,7 +56,7 @@ export default function ShowList({ movies = [] }) {
               {m.shows.map((s) => (
                 <div key={s.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <div style={{ color: '#cbd5da', fontSize: 13 }}>{s.startTime ? new Date(s.startTime).toLocaleString() : (s.time || 'TBD')}</div>
-                  <button onClick={() => openShow(s.id)} style={{ background: '#7a1f1f', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 6 }}>Book</button>
+                  <button onClick={() => openShow(s, m)} style={{ background: '#7a1f1f', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: 6 }}>Book</button>
                 </div>
               ))}
             </div>

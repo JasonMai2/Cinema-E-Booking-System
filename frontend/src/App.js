@@ -2,6 +2,7 @@ import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 
 import AdminDashboard from './pages/AdminDashboard';
 import { AuthProvider } from './context/AuthContext';
+import BookingConfirmation from './pages/BookingConfirmation';
 import { BookingProvider } from './context/BookingContext';
 import Checkout from './pages/Checkout';
 import EditProfile from './pages/EditProfile';
@@ -52,10 +53,15 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/movie-details" element={<MovieDetails />} />
-          <Route path="/movies/:movieId" element={<MovieDetails />} />
+          
+          {/* Put specific routes before parameterized ones */}
+          <Route path="/seat-selection" element={<SeatSelection />} />
           <Route path="/shows" element={<ShowTimes />} />
           <Route path="/shows/:movieId" element={<ShowTimes />} />
           <Route path="/shows/:showId/seats" element={<SeatSelection />} />
+          
+          <Route path="/movies/:movieId" element={<MovieDetails />} />
+          <Route path="/booking-confirmation" element={<BookingConfirmation />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order-summary" element={<OrderSummary />} />
           <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />

@@ -1,11 +1,27 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext.js';
+import { useAuth } from '../context/AuthContext';
 
 export default function OrderSummary() {
   const { orderDraft, confirmOrder, selectedSeats, selectedShow, customer, createOrderDraft, updateSeat, removeSeat, setCustomer } = useBooking();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Redirect to home if user is not authenticated
+  useEffect(() => {
+    if (user === null) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  // Redirect to home if no selected show or seats
+  useEffect(() => {
+    if (user && (!selectedShow || !selectedSeats || selectedSeats.length === 0)) {
+      navigate('/');
+    }
+  }, [user, selectedShow, selectedSeats, navigate]);
 
   async function onConfirm() {
     setLoading(true);
