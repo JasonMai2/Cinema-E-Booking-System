@@ -27,12 +27,16 @@ import ShowTimes from './pages/ShowTimes';
 // AdminDashboard imports:
 import AdminUsers from "./pages/AdminUsers";
 import AdminPromotions from "./pages/AdminPromotions";
+import AdminMovies from "./pages/AdminMovies";
 
 // AdminUsers imports:
 import UserModal from "./pages/UserModal";
 
 // AdminPromotions imports:
 import PromotionModal from "./pages/PromotionModal";
+
+// AdminMovies imports:
+import MovieModal from "./pages/MovieModal";
 
 function App() {
   return (
@@ -59,6 +63,7 @@ function App() {
           {/* Admin / additional pages */}
           <Route path="/admin" element={<AdminDashboard />} />
 
+          <Route path="/admin/movies" element={<AdminMovies />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/promotions" element={<AdminPromotions />} />
 

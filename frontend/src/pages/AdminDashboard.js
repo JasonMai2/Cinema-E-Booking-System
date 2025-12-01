@@ -25,7 +25,7 @@ export default function AdminDashboard() {
         {currentScreen === "main" && (
           <div id="mainScreen">
             <div className="adminCards">
-              <div className="adminCard" onClick={() => navigate('/') }>
+              <div className="adminCard" onClick={() => navigate('/admin/movies') }>
                 <div className="adminCardIcon">
                   <Film className="iconStyle" />
                 </div>
