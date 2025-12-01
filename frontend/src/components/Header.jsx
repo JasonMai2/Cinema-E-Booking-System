@@ -10,7 +10,7 @@ import bookingApi from "../services/bookingApi.js";
 export default function Header() {
   const [showFilters, setShowFilters] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const { query, setQuery, selectedCategory, setSelectedCategory } = useSearch();
+  const { query, setQuery } = useSearch();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -140,12 +140,12 @@ export default function Header() {
                 transition: "all 0.2s ease",
               }}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = "#1a1f2a";
-                e.target.style.transform = "scale(1.02)";
+                e.currentTarget.style.backgroundColor = "#1a1f2a";
+                e.currentTarget.style.transform = "scale(1.02)";
               }}
               onMouseLeave={(e) => {
-                e.target.style.backgroundColor = "#12151c";
-                e.target.style.transform = "scale(1)";
+                e.currentTarget.style.backgroundColor = "#12151c";
+                e.currentTarget.style.transform = "scale(1)";
               }}
               onClick={() => { navigate('/profile/edit'); }}
             >
@@ -158,18 +158,18 @@ export default function Header() {
                 setShowLogoutModal(true);
               }}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = "#ff1a1a";
-                e.target.style.color = "#fff";
-                e.target.style.borderColor = "#ff1a1a";
-                e.target.style.transform = "scale(1.05)";
-                e.target.style.boxShadow = "0 0 15px rgba(255, 26, 26, 0.5)";
+                e.currentTarget.style.backgroundColor = "#ff1a1a";
+                e.currentTarget.style.color = "#fff";
+                e.currentTarget.style.borderColor = "#ff1a1a";
+                e.currentTarget.style.transform = "scale(1.05)";
+                e.currentTarget.style.boxShadow = "0 0 15px rgba(255, 26, 26, 0.5)";
               }}
               onMouseLeave={(e) => {
-                e.target.style.backgroundColor = "transparent";
-                e.target.style.color = "#12151c";
-                e.target.style.borderColor = "#12151c";
-                e.target.style.transform = "scale(1)";
-                e.target.style.boxShadow = "none";
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.color = "#12151c";
+                e.currentTarget.style.borderColor = "#12151c";
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.boxShadow = "none";
               }}
               style={{
                 backgroundColor: "transparent",
@@ -223,14 +223,15 @@ export default function Header() {
               justifyContent: "center",
               gap: "20px",
               flexWrap: "wrap",
+              alignItems: "center",
             }}
           >
-            {/* Name filter (first option) */}
+            {/* Name filter */}
             <NameFilterCheckbox />
+            {/* Category filter */}
             <CategoryFilterDropdown />
-            <label>
-              <input type="checkbox" /> Filter 3
-            </label>
+            {/* Date range filter */}
+            <DateRangeFilter />
           </div>
         </div>
       )}
@@ -262,7 +263,7 @@ function NameFilterCheckbox() {
   }
 
   return (
-    <label>
+    <label style={{ cursor: "pointer" }}>
       <input type="checkbox" checked={!!(filters && filters.name)} onChange={onChange} /> Name
     </label>
   );
@@ -287,7 +288,7 @@ function CategoryFilterDropdown() {
         }
       } catch (err) {
         console.error("Failed to fetch categories:", err);
-        setCategories([]);
+        if (mounted) setCategories([]);
       }
     };
 
@@ -295,12 +296,16 @@ function CategoryFilterDropdown() {
     return () => { mounted = false; };
   }, []);
 
-
   return (
     <select
       value={selectedCategory || ""}
       onChange={(e) => setSelectedCategory(e.target.value)}
-      style={{ padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
+      style={{ 
+        padding: "6px 10px", 
+        borderRadius: "6px", 
+        cursor: "pointer",
+        border: "1px solid #ccc"
+      }}
     >
       <option value="">All Categories</option>
       {categories.map((cat) => (
@@ -309,5 +314,79 @@ function CategoryFilterDropdown() {
         </option>
       ))}
     </select>
+  );
+}
+
+function DateRangeFilter() {
+  const { dateRange, setDateRange } = useSearch();
+
+  const handleStartDateChange = (e) => {
+    setDateRange(prev => ({ ...prev, startDate: e.target.value }));
+  };
+
+  const handleEndDateChange = (e) => {
+    setDateRange(prev => ({ ...prev, endDate: e.target.value }));
+  };
+
+  const clearDates = () => {
+    setDateRange({ startDate: '', endDate: '' });
+  };
+
+  return (
+    <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <span style={{ fontSize: "0.9rem" }}>From:</span>
+        <input
+          type="date"
+          value={dateRange.startDate}
+          onChange={handleStartDateChange}
+          style={{
+            padding: "6px 10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+            cursor: "pointer",
+            fontSize: "0.9rem"
+          }}
+        />
+      </label>
+      <label style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <span style={{ fontSize: "0.9rem" }}>To:</span>
+        <input
+          type="date"
+          value={dateRange.endDate}
+          onChange={handleEndDateChange}
+          style={{
+            padding: "6px 10px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+            cursor: "pointer",
+            fontSize: "0.9rem"
+          }}
+        />
+      </label>
+      {(dateRange.startDate || dateRange.endDate) && (
+        <button
+          onClick={clearDates}
+          style={{
+            padding: "6px 12px",
+            borderRadius: "6px",
+            border: "1px solid #ccc",
+            backgroundColor: "#fff",
+            cursor: "pointer",
+            fontSize: "0.9rem",
+            fontWeight: "500",
+            transition: "all 0.2s ease"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#f0f0f0";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#fff";
+          }}
+        >
+          Clear
+        </button>
+      )}
+    </div>
   );
 }

@@ -9,6 +9,12 @@ export function SearchProvider({ children }) {
   // Add selectedCategory state
   const [selectedCategory, setSelectedCategory] = useState("");
 
+  // NEW: Date range filter state
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
+
   const toggleNameFilter = () => setFilters((f) => ({ ...f, name: !f.name }));
 
   return (
@@ -21,6 +27,8 @@ export function SearchProvider({ children }) {
         toggleNameFilter,
         selectedCategory,
         setSelectedCategory,
+        dateRange,
+        setDateRange,
       }}
     >
       {children}
