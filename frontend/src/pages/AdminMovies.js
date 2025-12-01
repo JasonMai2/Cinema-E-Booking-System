@@ -12,6 +12,9 @@ export default function AdminMovies() {
   const [showMovieModal, setShowMovieModal] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState(null);
 
+  // NEW: categories state
+  const [allCategories, setAllCategories] = useState([]);
+
   const [formData, setFormData] = useState({
     id: null,
     title: "",
@@ -21,19 +24,17 @@ export default function AdminMovies() {
     poster_url: "",
     is_now_playing: false,
     is_coming_soon: false,
+    category_ids: []
   });
 
   // Showtimes related state
   const [showtimes, setShowtimes] = useState([]);
   const [formStartTime, setFormStartTime] = useState(""); // For the new showtime input
-  const [newShowtime, setNewShowtime] = useState({
-    auditoriumId: "",
-    startsAt: ""
-  });
   const [auditoriums, setAuditoriums] = useState([]);
 
   useEffect(() => {
     loadMovies();
+    loadCategories(); // load categories on mount
   }, []);
 
   useEffect(() => {
@@ -55,6 +56,23 @@ export default function AdminMovies() {
     } catch (err) {
       console.error(err);
       alert("Failed to load movies: " + err.message);
+    }
+  };
+
+  // NEW: load categories
+  const loadCategories = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/movies/categories`);
+      // expect a payload like { ok: true, categories: [...] } or adjust if your API differs
+      if (!res.ok) throw new Error("Failed to load categories");
+      const data = await res.json();
+      // handle either direct array or wrapper object
+      if (Array.isArray(data)) setAllCategories(data);
+      else if (data.categories) setAllCategories(data.categories);
+      else setAllCategories([]);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load categories: " + err.message);
     }
   };
 
@@ -83,7 +101,6 @@ export default function AdminMovies() {
     }
   };
 
-
   // ===================== MODAL OPERATIONS =====================
   const openAddMovie = () => {
     setSelectedMovie(null);
@@ -96,12 +113,17 @@ export default function AdminMovies() {
       poster_url: "",
       is_now_playing: false,
       is_coming_soon: false,
+      category_ids: []
     });
     setShowMovieModal(true);
   };
 
   const openManageMovie = (movie) => {
     setSelectedMovie(movie);
+
+    // Extract category ids safely (depends on API shape)
+    const extractedCategories = (movie.categories || []).map(c => c.id).filter(Boolean);
+
     setFormData({
       id: movie.id,
       title: movie.title || "",
@@ -111,6 +133,7 @@ export default function AdminMovies() {
       poster_url: movie.trailer_image_url || "",
       is_now_playing: movie.is_now_playing || false,
       is_coming_soon: movie.is_coming_soon || false,
+      category_ids: extractedCategories
     });
     setShowMovieModal(true);
   };
@@ -136,6 +159,17 @@ export default function AdminMovies() {
     }));
   };
 
+  // NEW: category toggle
+  const toggleCategory = (catId) => {
+    setFormData(prev => {
+      const exists = prev.category_ids.includes(catId);
+      return {
+        ...prev,
+        category_ids: exists ? prev.category_ids.filter(id => id !== catId) : [...prev.category_ids, catId]
+      };
+    });
+  };
+
   const handleSubmit = async () => {
     if (!formData.title) return alert("Title is required");
 
@@ -146,7 +180,8 @@ export default function AdminMovies() {
       trailer_video_url: formData.trailer_video_url,
       trailer_image_url: formData.poster_url,
       is_now_playing: formData.is_now_playing,
-      is_coming_soon: formData.is_coming_soon
+      is_coming_soon: formData.is_coming_soon,
+      category_ids: formData.category_ids // include categories
     };
 
     try {
@@ -204,7 +239,6 @@ export default function AdminMovies() {
       loadShowtimes(formData.id);
       setFormStartTime("");
       setSelectedAuditorium(null);
-
     } catch (err) {
       console.error(err);
       alert("Failed to add showtime: " + err.message);
@@ -295,19 +329,40 @@ export default function AdminMovies() {
               <label className="label"><input type="checkbox" name="is_coming_soon" checked={formData.is_coming_soon} onChange={handleInputChange} /> Coming Soon</label>
             </div>
 
+            {/* ===== Categories (NEW) ===== */}
+            <div className="formGroup">
+              <h3>Genres</h3>
+              <div className="categoryList">
+                {allCategories.length === 0 ? (
+                  <p className="mutedText">No categories available</p>
+                ) : (
+                  allCategories.map(cat => (
+                    <label key={cat.id} className="checkboxLabel">
+                      <input
+                        type="checkbox"
+                        checked={formData.category_ids.includes(cat.id)}
+                        onChange={() => toggleCategory(cat.id)}
+                      />
+                      <span>{cat.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+
             <button className="btnSave" onClick={handleSubmit}>{selectedMovie ? "Save Changes" : "Add Movie"}</button>
 
             {/* ===== Showtimes Section ===== */}
             {selectedMovie && (
-              <div className="showtimesSection" style={{ marginTop: "2rem", borderTop: "1px solid #ccc", paddingTop: "1rem" }}>
+              <div className="showtimesSection">
                 <h3>Showtimes</h3>
 
                 {showtimes.length === 0 ? <p>No showtimes yet.</p> : (
-                  <ul>
+                  <ul className="showtimeList">
                     {showtimes.map(st => (
-                      <li key={st.id}>
-                        {new Date(st.starts_at).toLocaleString()} - {st.auditorium_name} 
-                        <button style={{ marginLeft: "1rem" }} onClick={() => handleDeleteShowtime(st.id)}>Delete</button>
+                      <li key={st.id} className="showtimeItem">
+                        {new Date(st.starts_at).toLocaleString()} - {st.auditorium_name}
+                        <button className="btnDelete small" onClick={() => handleDeleteShowtime(st.id)}>Delete</button>
                       </li>
                     ))}
                   </ul>

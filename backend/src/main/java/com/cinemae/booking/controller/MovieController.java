@@ -59,6 +59,18 @@ public class MovieController {
 
         List<Map<String, Object>> rows = jdbc.queryForList(sql, params.toArray());
 
+        // attach categories to each movie
+        for (Map<String, Object> movie : rows) {
+            Long movieId = ((Number) movie.get("id")).longValue();
+            List<Map<String, Object>> categories = jdbc.queryForList("""
+                    SELECT c.id, c.name
+                    FROM categories c
+                    JOIN movie_categories mc ON mc.category_id = c.id
+                    WHERE mc.movie_id = ?
+            """, movieId);
+            movie.put("categories", categories);
+        }
+
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("page", page);
         resp.put("size", size);
@@ -91,8 +103,19 @@ public class MovieController {
             return resp;
         }
 
+        Map<String, Object> movie = rows.get(0);
+
+        // categories
+        List<Map<String, Object>> categories = jdbc.queryForList("""
+                SELECT c.id, c.name
+                FROM categories c
+                JOIN movie_categories mc ON mc.category_id = c.id
+                WHERE mc.movie_id = ?
+        """, id);
+        movie.put("categories", categories);
+
         resp.put("ok", true);
-        resp.put("movie", rows.get(0));
+        resp.put("movie", movie);
         return resp;
     }
 
@@ -115,9 +138,21 @@ public class MovieController {
                 body.get("is_coming_soon")
         );
 
+        // get new movie ID
+        Long movieId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+
+        // handle categories
+        List<Integer> categoryIds = (List<Integer>) body.get("category_ids");
+        if (categoryIds != null) {
+            for (Integer catId : categoryIds) {
+                jdbc.update("INSERT INTO movie_categories (movie_id, category_id) VALUES (?, ?)", movieId, catId);
+            }
+        }
+
         Map<String, Object> resp = new HashMap<>();
         resp.put("ok", true);
         resp.put("message", "movie created successfully");
+        resp.put("movie_id", movieId);
         return resp;
     }
 
@@ -140,6 +175,17 @@ public class MovieController {
                 body.get("is_coming_soon"),
                 id
         );
+
+        // clear entries
+        jdbc.update("DELETE FROM movie_categories WHERE movie_id = ?", id);
+
+        // reinsert categories
+        List<Integer> categoryIds = (List<Integer>) body.get("category_ids");
+        if (categoryIds != null) {
+            for (Integer catId : categoryIds) {
+                jdbc.update("INSERT INTO movie_categories (movie_id, category_id) VALUES (?, ?)", id, catId);
+            }
+        }
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("ok", true);
@@ -165,5 +211,16 @@ public class MovieController {
         p.put("ok", true);
         p.put("time", new Date());
         return p;
+    }
+
+    // Fetch all categories for dropdowns
+    @GetMapping("/categories")
+    public Map<String, Object> getCategories() {
+        List<Map<String, Object>> list = jdbc.queryForList("SELECT id, name FROM categories ORDER BY name ASC");
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("ok", true);
+        resp.put("categories", list);
+        return resp;
     }
 }
