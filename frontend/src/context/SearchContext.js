@@ -4,13 +4,25 @@ const SearchContext = createContext(null);
 
 export function SearchProvider({ children }) {
   const [query, setQuery] = useState('');
-  // filters object - start with name filter enabled
   const [filters, setFilters] = useState({ name: true });
+
+  // Add selectedCategory state
+  const [selectedCategory, setSelectedCategory] = useState("");
 
   const toggleNameFilter = () => setFilters((f) => ({ ...f, name: !f.name }));
 
   return (
-    <SearchContext.Provider value={{ query, setQuery, filters, setFilters, toggleNameFilter }}>
+    <SearchContext.Provider
+      value={{
+        query,
+        setQuery,
+        filters,
+        setFilters,
+        toggleNameFilter,
+        selectedCategory,
+        setSelectedCategory,
+      }}
+    >
       {children}
     </SearchContext.Provider>
   );

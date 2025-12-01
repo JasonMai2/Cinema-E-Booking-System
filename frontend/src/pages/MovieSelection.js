@@ -7,7 +7,7 @@ export default function MovieSelection() {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { query, filters } = useSearch();
+  const { query, filters, selectedCategory } = useSearch();
 
   useEffect(() => {
     let mounted = true;
@@ -26,6 +26,13 @@ export default function MovieSelection() {
           );
         }
 
+        // Category filter
+        if (selectedCategory) {
+          filteredMovies = filteredMovies.filter(movie =>
+            movie.categories.some(cat => cat.id === parseInt(selectedCategory))
+          );
+        }
+
         if (mounted) setMovies(filteredMovies || []);
       } catch (err) {
         console.error("Error loading movies:", err);
@@ -40,7 +47,7 @@ export default function MovieSelection() {
     return () => {
       mounted = false;
     };
-  }, [query, filters]);
+  }, [query, filters, selectedCategory]);
 
   return (
     <div style={{ padding: 24 }}>

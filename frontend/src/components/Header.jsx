@@ -1,15 +1,16 @@
 import { Filter, Home, Search, User } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useSearch } from "../context/SearchContext.js";
 import ConfirmationModal from './ConfirmationModal';
+import bookingApi from "../services/bookingApi.js";
 
 export default function Header() {
   const [showFilters, setShowFilters] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const { query, setQuery } = useSearch();
+  const { query, setQuery, selectedCategory, setSelectedCategory } = useSearch();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -226,9 +227,7 @@ export default function Header() {
           >
             {/* Name filter (first option) */}
             <NameFilterCheckbox />
-            <label>
-              <input type="checkbox" /> Filter 2
-            </label>
+            <CategoryFilterDropdown />
             <label>
               <input type="checkbox" /> Filter 3
             </label>
@@ -266,5 +265,49 @@ function NameFilterCheckbox() {
     <label>
       <input type="checkbox" checked={!!(filters && filters.name)} onChange={onChange} /> Name
     </label>
+  );
+}
+
+function CategoryFilterDropdown() {
+  const { selectedCategory, setSelectedCategory } = useSearch();
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchCategories = async () => {
+      try {
+        const res = await bookingApi.get('/movies/categories');
+        const data = res.data;
+
+        if (mounted) {
+          if (Array.isArray(data)) setCategories(data);
+          else if (data.categories) setCategories(data.categories);
+          else setCategories([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+        setCategories([]);
+      }
+    };
+
+    fetchCategories();
+    return () => { mounted = false; };
+  }, []);
+
+
+  return (
+    <select
+      value={selectedCategory || ""}
+      onChange={(e) => setSelectedCategory(e.target.value)}
+      style={{ padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
+    >
+      <option value="">All Categories</option>
+      {categories.map((cat) => (
+        <option key={cat.id} value={cat.id}>
+          {cat.name}
+        </option>
+      ))}
+    </select>
   );
 }
