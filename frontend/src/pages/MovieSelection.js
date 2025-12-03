@@ -3,6 +3,8 @@ import MovieCard from "../components/MovieCard";
 import bookingApi from "../services/bookingApi.js";
 import { useSearch } from "../context/SearchContext.js";
 
+const API_BASE = "http://localhost:8080/api";
+
 export default function MovieSelection() {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,11 +16,19 @@ export default function MovieSelection() {
     const fetch = async () => {
       setLoading(true);
       try {
-        // If name filter is active and a query is present, perform a search
-        const res = await bookingApi.getMovies();
-        const payload = res && res.data ? (res.data.content || res.data) : [];
-        let filteredMovies = payload || [];
+        let filteredMovies = [];
 
+        // If date range is active, use the showtimes endpoint
+        if (dateRange.startDate || dateRange.endDate) {
+          filteredMovies = await fetchMoviesWithShowtimes(dateRange);
+        } else {
+          // Otherwise, use the regular movies endpoint
+          const res = await bookingApi.getMovies();
+          const payload = res && res.data ? (res.data.content || res.data) : [];
+          filteredMovies = payload || [];
+        }
+
+        // Apply name filter
         if (filters && filters.name && (query || '').trim()) {
           const q = (query || '').trim().toLowerCase();
           filteredMovies = filteredMovies.filter(movie =>
@@ -26,16 +36,11 @@ export default function MovieSelection() {
           );
         }
 
-        // Category filter
+        // Apply category filter
         if (selectedCategory) {
           filteredMovies = filteredMovies.filter(movie =>
-            movie.categories.some(cat => cat.id === parseInt(selectedCategory))
+            movie.categories && movie.categories.some(cat => cat.id === parseInt(selectedCategory))
           );
-        }
-
-        // Date range filter - filter by showtimes
-        if (dateRange.startDate || dateRange.endDate) {
-          filteredMovies = await filterByDateRange(filteredMovies, dateRange);
         }
 
         if (mounted) setMovies(filteredMovies || []);
@@ -54,12 +59,41 @@ export default function MovieSelection() {
     };
   }, [query, filters, selectedCategory, dateRange]);
 
-  // Helper function to filter movies by date range
-  const filterByDateRange = async (movies, dateRange) => {
+  // Helper function to fetch movies with showtimes in date range
+  const fetchMoviesWithShowtimes = async (dateRange) => {
     try {
+      // Build query params
+      const params = new URLSearchParams();
+      if (dateRange.startDate) params.append('startDate', dateRange.startDate);
+      if (dateRange.endDate) params.append('endDate', dateRange.endDate);
+
+      const url = `${API_BASE}/movies/with-showtimes${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await window.fetch(url);
+      
+      if (!res.ok) {
+        throw new Error("Failed to fetch movies with showtimes");
+      }
+      
+      const data = await res.json();
+      return data.content || [];
+    } catch (err) {
+      console.error("Error fetching movies with showtimes:", err);
+      // If the endpoint doesn't exist, fall back to the old method
+      return await filterByDateRangeFallback(dateRange);
+    }
+  };
+
+  // Fallback method using the existing bookings endpoint
+  const filterByDateRangeFallback = async (dateRange) => {
+    try {
+      // First get all movies
+      const res = await bookingApi.getMovies();
+      const payload = res && res.data ? (res.data.content || res.data) : [];
+      let allMovies = payload || [];
+
       // Fetch all showtimes
-      const showtimesRes = await bookingApi.get('/bookings/movies');
-      const showtimesData = showtimesRes.data;
+      const showtimesRes = await window.fetch(`${API_BASE}/bookings/movies`);
+      const showtimesData = await showtimesRes.json();
       const moviesWithShowtimes = showtimesData.movies || [];
 
       // Create a set of movie IDs that have showtimes in the date range
@@ -95,11 +129,11 @@ export default function MovieSelection() {
       });
 
       // Filter movies that have valid showtimes
-      return movies.filter(movie => validMovieIds.has(movie.id));
+      return allMovies.filter(movie => validMovieIds.has(movie.id));
     } catch (err) {
       console.error("Error filtering by date range:", err);
-      // If there's an error fetching showtimes, return original movies
-      return movies;
+      // If there's an error, return empty array
+      return [];
     }
   };
 

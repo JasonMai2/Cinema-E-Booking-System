@@ -5,7 +5,7 @@ export default function MovieCard({ movie, compact }) {
   if (!movie) return null;
   const navigate = useNavigate();
 
-  console.log(movie.title, movie.trailer_image_url, movie.id);
+  // console.log(movie.title, movie.trailer_image_url, movie.id);
   
   const getYouTubeId = (url) => {
     try {

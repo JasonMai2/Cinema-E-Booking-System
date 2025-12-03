@@ -3,10 +3,6 @@ package com.cinemae.booking.controller;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.*;
 
@@ -256,5 +252,57 @@ public class MovieController {
             ORDER BY cs.first_show ASC
             """;
         return jdbc.queryForList(sql);
+    }
+
+    /**
+     * Get movies with showtimes in a specific date range
+     */
+    @GetMapping("/with-showtimes")
+    public Map<String, Object> getMoviesWithShowtimes(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        Map<String, Object> resp = new HashMap<>();
+        
+        String sql = """
+            SELECT DISTINCT m.id, m.title, m.mpaa_rating, m.synopsis, 
+                m.trailer_video_url, m.trailer_image_url,
+                m.is_now_playing, m.is_coming_soon, m.created_at
+            FROM movies m
+            JOIN showtimes s ON s.movie_id = m.id
+            WHERE 1=1
+            """;
+        
+        List<Object> params = new ArrayList<>();
+        
+        if (startDate != null && !startDate.trim().isEmpty()) {
+            sql += " AND s.starts_at >= ?";
+            params.add(startDate);
+        }
+        
+        if (endDate != null && !endDate.trim().isEmpty()) {
+            sql += " AND s.starts_at <= DATE_ADD(?, INTERVAL 1 DAY)";
+            params.add(endDate);
+        }
+        
+        sql += " ORDER BY m.id ASC";
+        
+        List<Map<String, Object>> movies = jdbc.queryForList(sql, params.toArray());
+        
+        // Attach categories to each movie
+        for (Map<String, Object> movie : movies) {
+            Long movieId = ((Number) movie.get("id")).longValue();
+            List<Map<String, Object>> categories = jdbc.queryForList("""
+                SELECT c.id, c.name
+                FROM categories c
+                JOIN movie_categories mc ON mc.category_id = c.id
+                WHERE mc.movie_id = ?
+            """, movieId);
+            movie.put("categories", categories);
+        }
+        
+        resp.put("ok", true);
+        resp.put("content", movies);
+        return resp;
     }
 }

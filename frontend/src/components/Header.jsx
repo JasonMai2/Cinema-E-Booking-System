@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useSearch } from "../context/SearchContext.js";
 import ConfirmationModal from './ConfirmationModal';
-import bookingApi from "../services/bookingApi.js";
 
 export default function Header() {
   const [showFilters, setShowFilters] = useState(false);
@@ -25,6 +24,10 @@ export default function Header() {
   const handleLogoutCancel = () => {
     setShowLogoutModal(false);
   };
+
+  useEffect(() => {
+    console.log("Header loaded");
+  }, []);
 
   return (
     <>
@@ -278,8 +281,9 @@ function CategoryFilterDropdown() {
 
     const fetchCategories = async () => {
       try {
-        const res = await bookingApi.get('/movies/categories');
-        const data = res.data;
+        const res = await fetch('http://localhost:8080/api/movies/categories');
+        if (!res.ok) throw new Error("Failed to load categories");
+        const data = await res.json();
 
         if (mounted) {
           if (Array.isArray(data)) setCategories(data);
