@@ -22,21 +22,12 @@ import { SearchProvider } from './context/SearchContext';
 import SearchResults from './pages/SearchResults';
 import SeatSelection from './pages/SeatSelection';
 import ShowTimes from './pages/ShowTimes';
-
-// In your main app file:
-
-// AdminDashboard imports:
 import AdminUsers from "./pages/AdminUsers";
 import AdminPromotions from "./pages/AdminPromotions";
 import AdminMovies from "./pages/AdminMovies";
-
-// AdminUsers imports:
+import AdminTickets from "./pages/AdminTickets";
 import UserModal from "./pages/UserModal";
-
-// AdminPromotions imports:
 import PromotionModal from "./pages/PromotionModal";
-
-// AdminMovies imports:
 import MovieModal from "./pages/MovieModal";
 
 function App() {
@@ -72,7 +63,7 @@ function App() {
           <Route path="/admin/movies" element={<AdminMovies />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/promotions" element={<AdminPromotions />} />
-
+          <Route path="/admin/tickets" element={<AdminTickets />} />
           
           <Route path="/admin/movies" element={<AdminDashboard />} />
 

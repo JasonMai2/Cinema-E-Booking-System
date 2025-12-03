@@ -375,8 +375,7 @@ export default function AdminDashboard() {
                 </h2>
               </div>
 
-              {/* NEW: Ticket Prices Card */}
-              <div className="adminCard" onClick={() => navigate('/admin/ticket') }>
+              <div className="adminCard" onClick={() => navigate('/admin/tickets') }>
                 <div className="adminCardIcon">
                   <Ticket className="iconStyle" />
                 </div>
