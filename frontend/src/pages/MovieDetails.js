@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
 import api from "../services/api";
 
 export default function MovieDetails() {
@@ -12,11 +11,36 @@ export default function MovieDetails() {
   useEffect(() => {
     if (!movieId) return;
     setLoading(true);
-    api.get(`/movies/${movieId}`).then((res) => {
-      if (res?.data?.ok) setMovie(res.data.movie);
-      else setMovie(null);
-    }).catch(() => setMovie(null)).finally(() => setLoading(false));
+    api.get(`/movies/${movieId}`)
+      .then((res) => {
+        if (res?.data?.ok) setMovie(res.data.movie);
+        else setMovie(null);
+      })
+      .catch(() => setMovie(null))
+      .finally(() => setLoading(false));
   }, [movieId]);
+
+  const getYouTubeId = (url) => {
+    try {
+      const match = url.match(
+        /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^\s&?]+)/i
+      );
+      return match ? match[1] : null;
+    } catch {
+      return null;
+    }
+  };
+
+  if (loading) return <div style={{ padding: 40 }}>Loading…</div>;
+  if (!movie) return (
+    <div style={{ padding: 40 }}>
+      <h3>Movie not found</h3>
+      <button onClick={() => navigate('/movies')}>Back to movies</button>
+    </div>
+  );
+
+  const videoId = movie.trailer_video_url ? getYouTubeId(movie.trailer_video_url) : null;
+
   const styles = {
     container: {
       minHeight: "100vh",
@@ -127,25 +151,15 @@ export default function MovieDetails() {
     },
   };
 
-  if (loading) return <div style={{ padding: 40 }}>Loading…</div>;
-  if (!movie) return (
-    <div style={{ padding: 40 }}>
-      <h3>Movie not found</h3>
-      <button onClick={() => navigate('/movies')}>Back to movies</button>
-    </div>
-  );
-
   return (
     <div style={styles.container}>
-      {/* Main Content */}
       <div style={styles.mainContent}>
-        {/* Top Section - Poster and Info */}
         <div style={styles.topSection}>
           <div style={styles.poster}>
             {movie.trailer_image_url ? (
               <img src={movie.trailer_image_url} alt={`${movie.title} Poster`} style={styles.posterImg} />
             ) : (
-              <div style={{ color: '#888' }}>No poster</div>
+              <div>No poster</div>
             )}
           </div>
           <div style={styles.rightSection}>
@@ -156,23 +170,29 @@ export default function MovieDetails() {
               </div>
             </div>
             <div style={styles.trailer}>
-              {movie.trailer_video_url ? (
-                <iframe style={styles.trailerIframe} src={movie.trailer_video_url} title={`${movie.title} Trailer`} allow="clipboard-write; encrypted-media; picture-in-picture" allowFullScreen></iframe>
+              {videoId ? (
+                <iframe
+                  style={styles.trailerIframe}
+                  src={`https://www.youtube.com/embed/${videoId}`}
+                  title={`${movie.title} Trailer`}
+                  allow="clipboard-write; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                />
               ) : (
-                <div style={{ color: '#888' }}>No trailer available</div>
+                <div>No trailer available</div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Description */}
         <div style={styles.descriptionSection}>
-            <h3 style={styles.sectionTitle}>Description</h3>
-            <p style={styles.description}>{movie.synopsis}</p>
+          <h3 style={styles.sectionTitle}>Description</h3>
+          <p style={styles.description}>{movie.synopsis}</p>
         </div>
 
-  {/* Book Button */}
-  <button style={styles.bookButton} onClick={() => navigate(`/shows/${movie.id}`)}>Book Now</button>
+        <button style={styles.bookButton} onClick={() => navigate(`/shows/${movie.id}`)}>
+          Book Now
+        </button>
       </div>
     </div>
   );
