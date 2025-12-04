@@ -309,7 +309,7 @@ export default function SeatSelection() {
 
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '820px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
+      <div style={{ width: 'fit-content', minWidth: '820px', background: '#0f1417', color: '#f4f6f8', padding: 28, borderRadius: 10, boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
         <header style={{ marginBottom: 20 }}>
           <button 
             onClick={() => navigate('/shows')} 
@@ -332,9 +332,9 @@ export default function SeatSelection() {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
                 {sortedRows.map(rowLetter => (
-                  <div key={rowLetter} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '20px', textAlign: 'center', color: '#cbd5da', fontSize: '14px' }}>{rowLetter}</div>
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                  <div key={rowLetter} style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 'fit-content' }}>
+                    <div style={{ width: '20px', textAlign: 'center', color: '#cbd5da', fontSize: '14px', flexShrink: 0 }}>{rowLetter}</div>
+                    <div style={{ display: 'flex', gap: '4px', minWidth: 'fit-content' }}>
                       {seatRows[rowLetter].map(seat => (
                         <button
                           key={seat.number}
@@ -349,7 +349,8 @@ export default function SeatSelection() {
                             cursor: bookedSeats.includes(seat.number) ? 'not-allowed' : 'pointer',
                             background: bookedSeats.includes(seat.number) ? '#ff6b6b' :
                                       selectedSeats.includes(seat.number) ? '#51cf66' : '#444',
-                            color: '#fff'
+                            color: '#fff',
+                            flexShrink: 0
                           }}
                           title={`Seat ${seat.number} - ${
                             bookedSeats.includes(seat.number) ? 'Booked' :
