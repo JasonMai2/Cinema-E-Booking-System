@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { Film, Users, Percent, X } from "lucide-react";
 import "./AdminDashboard.css";
+
+import { Film, Percent, Users, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
 
 const API_BASE = "http://localhost:8080/api";
 
@@ -35,6 +36,7 @@ export default function AdminDashboard() {
     discount: "",
     startDate: "",
     endDate: "",
+    active: true,
   });
   const [loadingPromo, setLoadingPromo] = useState(false);
 
@@ -176,6 +178,7 @@ export default function AdminDashboard() {
         discount: p.percent_off != null ? p.percent_off : p.flat_off_cents != null ? p.flat_off_cents / 100 : "",
         startDate: p.starts_at.split("T")[0],
         endDate: p.ends_at.split("T")[0],
+        active: p.active,
       }));
       setPromotions(formatted);
     } catch (err) {
@@ -191,10 +194,10 @@ export default function AdminDashboard() {
   };
 
   const handlePromoInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setPromoFormData((prev) => ({
       ...prev,
-      [name]: name === "discount" ? Number(value) : value,
+      [name]: type === "checkbox" ? checked : name === "discount" ? Number(value) : value,
     }));
   };
 
@@ -213,7 +216,7 @@ export default function AdminDashboard() {
         flat_off_cents: promoFormData.discountType === "FLAT" ? Math.round(Number(promoFormData.discount) * 100) : null,
         starts_at: promoFormData.startDate + " 00:00:00",
         ends_at: promoFormData.endDate + " 23:59:59",
-        active: true,
+        active: promoFormData.active,
       };
 
       if (selectedPromotion) {
@@ -347,7 +350,7 @@ export default function AdminDashboard() {
               className="btnSave"
               onClick={() => {
                 setSelectedPromotion(null);
-                setPromoFormData({ title: "", description: "", discountType: "PERCENT", discount: "", startDate: "", endDate: "" });
+                setPromoFormData({ title: "", description: "", discountType: "PERCENT", discount: "", startDate: "", endDate: "", active: true });
                 setShowPromoModal(true);
               }}
             >
@@ -362,7 +365,7 @@ export default function AdminDashboard() {
                 <div>
                   <h3 className="itemInfoTitle">{p.title}</h3>
                   <p className="itemInfoSubtitle">
-                    Description: {p.description} • Discount: {p.discountType === "PERCENT" ? `${p.discount}%` : `$${p.discount}`} • Start: {p.startDate} • End: {p.endDate}
+                    Description: {p.description} • Discount: {p.discountType === "PERCENT" ? `${p.discount}%` : `$${p.discount}`} • Start: {p.startDate} • End: {p.endDate} • Status: {p.active ? "Active" : "Inactive"}
                   </p>
                 </div>
                 <div className="itemActions">
@@ -524,6 +527,12 @@ function PromotionModal({ promoFormData, handleInputChange, handleSave, close })
               <label className="label">End Date</label>
               <input className="input" type="date" name="endDate" value={promoFormData.endDate} onChange={handleInputChange} />
             </div>
+          </div>
+          <div className="formGroup">
+            <label className="label">
+              <input type="checkbox" name="active" checked={promoFormData.active} onChange={handleInputChange} />
+              Active
+            </label>
           </div>
           <button className="btnSave" onClick={handleSave}>Save Promotion</button>
         </div>

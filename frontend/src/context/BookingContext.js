@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState } from 'react';
 
+import api from '../services/api';
+import bookingApi from '../services/bookingApi';
+
 const BookingContext = createContext(null);
 
 export function BookingProvider({ children }) {
@@ -55,21 +58,82 @@ export function BookingProvider({ children }) {
     }
   };
 
-  // Confirm an order. If there is no server, return a demo confirmation object.
+  // Confirm an order and process checkout
   const confirmOrder = async (orderId) => {
-    // If a real API exists pages can call bookingApi.confirmOrder and then call this to set state.
-    const draft = orderDraft || orderDetails || { orderId };
-    const confirmation = {
-      orderId: draft.orderId || orderId || `demo-confirm-${Date.now()}`,
-      id: draft.orderId || orderId || `demo-confirm-${Date.now()}`,
-      confirmationCode: `CONF-${Math.floor(Math.random() * 900000 + 100000)}`,
-      show: draft.show || selectedShow,
-      showId: draft.showId || selectedShow?.id,
-      seats: (draft.seats || selectedSeats || []).map((s) => (s.id ? (s.id) : s)),
-      totals: { subtotal: (selectedSeats || []).reduce((s, x) => s + (x.price || 0), 0) },
-    };
-    setOrderDetails(confirmation);
-    return confirmation;
+    try {
+      // Prepare the checkout payload from orderDraft
+      const draft = orderDraft || { orderId };
+      
+      // Validate required fields
+      if (!draft.userId) {
+        throw new Error('User ID is missing. Please log in again.');
+      }
+      if (!draft.showId) {
+        throw new Error('Show ID is missing. Please select a show again.');
+      }
+      if (!draft.paymentMethodId) {
+        throw new Error('Payment method is missing. Please go back to checkout and select a payment method.');
+      }
+      if (!draft.seats || draft.seats.length === 0) {
+        throw new Error('No seats selected. Please select seats.');
+      }
+      
+      // Call the actual checkout API
+      const checkoutPayload = {
+        userId: draft.userId,
+        showId: draft.showId,
+        seats: (draft.seats || selectedSeats || []).map((s) => ({
+          seatId: typeof s === 'object' ? s.id : s,
+          ageCategory: (typeof s === 'object' ? s.ageCategory : 'adult').toUpperCase()
+        })),
+        paymentMethodId: draft.paymentMethodId,
+        promoCode: draft.promoCode || undefined,
+      };
+      
+      console.log('Calling checkout API with:', checkoutPayload);
+      const res = await api.post('/checkout', checkoutPayload);
+      
+      console.log('Checkout API response:', res);
+      
+      if (res?.data?.success) {
+        // Calculate totals from seats
+        const seats = draft.seats || selectedSeats || [];
+        const subtotal = seats.reduce((s, x) => s + (x.price || 0), 0);
+        const serviceFee = seats.length * 1.50;
+        const tax = Math.round((subtotal + serviceFee) * 0.08 * 100) / 100; // 8% tax, rounded
+        let discount = 0;
+        // Example: $5 off for any promo code (customize as needed)
+        if (draft.promoCode) {
+          discount = 5.00;
+        }
+        const total = subtotal + serviceFee + tax - discount;
+        const confirmation = {
+          orderId: res.data.bookingId || res.data.id,
+          id: res.data.bookingId || res.data.id,
+          bookingNumber: res.data.bookingNumber,
+          confirmationCode: res.data.bookingNumber || `CONF-${Math.floor(Math.random() * 900000 + 100000)}`,
+          show: draft.show || selectedShow,
+          showId: draft.showId || selectedShow?.id,
+          seats: seats,
+          promoCode: draft.promoCode || undefined,
+          totals: { 
+            subtotal: subtotal,
+            serviceFee: serviceFee,
+            tax: tax,
+            discount: discount,
+            total: total
+          },
+        };
+        setOrderDetails(confirmation);
+        return confirmation;
+      } else {
+        throw new Error(res?.data?.message || 'Checkout failed');
+      }
+    } catch (err) {
+      console.error('Checkout failed:', err);
+      console.error('Error details:', err.response?.data);
+      throw err;
+    }
   };
 
   const value = {

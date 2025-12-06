@@ -7,6 +7,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -14,6 +18,7 @@ import java.util.*;
 @RequestMapping("/api/movies")
 public class MovieController {
 
+    private static final Logger log = LoggerFactory.getLogger(MovieController.class);
     private final JdbcTemplate jdbc;
 
     @Autowired
@@ -96,5 +101,59 @@ public class MovieController {
         p.put("ok", true);
         p.put("time", new Date());
         return p;
+    }
+
+    /**
+     * Get "Now Playing" movies - movies with showtimes starting from today.
+     */
+    @GetMapping("/now-playing")
+    public ResponseEntity<?> getNowPlaying() {
+        try {
+            String sql = """
+                SELECT DISTINCT m.id, m.title, m.mpaa_rating, m.synopsis, 
+                       m.trailer_video_url, m.trailer_image_url
+                FROM movies m
+                JOIN showtimes s ON m.id = s.movie_id
+                WHERE s.starts_at >= CURDATE()
+                ORDER BY m.title ASC
+                """;
+            List<Map<String, Object>> movies = jdbc.queryForList(sql);
+            return ResponseEntity.ok(movies);
+        } catch (Exception e) {
+            log.error("Error fetching now-playing movies", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to fetch now-playing movies: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get "Coming Soon" movies - movies with showtimes in the future, not in now-playing.
+     */
+    @GetMapping("/coming-soon")
+    public ResponseEntity<?> getComingSoon() {
+        try {
+            String sql = """
+                SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
+                       m.trailer_video_url, m.trailer_image_url, MIN(s.starts_at) as first_show
+                FROM movies m
+                JOIN showtimes s ON m.id = s.movie_id
+                WHERE s.starts_at > DATE_ADD(NOW(), INTERVAL 1 DAY)
+                  AND m.id NOT IN (
+                    SELECT DISTINCT m2.id
+                    FROM movies m2
+                    JOIN showtimes s2 ON m2.id = s2.movie_id
+                    WHERE s2.starts_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                      AND s2.starts_at <= DATE_ADD(NOW(), INTERVAL 1 DAY)
+                  )
+                GROUP BY m.id, m.title, m.mpaa_rating, m.synopsis, m.trailer_video_url, m.trailer_image_url
+                ORDER BY first_show ASC
+                """;
+            List<Map<String, Object>> movies = jdbc.queryForList(sql);
+            return ResponseEntity.ok(movies);
+        } catch (Exception e) {
+            log.error("Error fetching coming-soon movies", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to fetch coming-soon movies: " + e.getMessage()));
+        }
     }
 }

@@ -1,12 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+
+import api from '../services/api.js';
+import { useAuth } from '../context/AuthContext.js';
 import { useBooking } from '../context/BookingContext.js';
+import { useNavigate } from 'react-router-dom';
 
 export default function Checkout() {
   const { selectedShow, selectedSeats, setCustomer, createOrderDraft, customer } = useBooking();
+  const [promoCode, setPromoCode] = useState('');
+  const { user } = useAuth();
   const [name, setName] = useState(customer?.name || '');
   const [email, setEmail] = useState(customer?.email || '');
   const [phone, setPhone] = useState(customer?.phone || '');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
@@ -19,28 +26,86 @@ export default function Checkout() {
     }
   }, [customer]);
 
-  const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
+  useEffect(() => {
+    if (user) {
+      api.get(`/payment-methods?userId=${user.id}`)
+        .then((res) => {
+          if (res?.data?.ok) {
+            setPaymentMethods(res.data.methods || []);
+            if (res.data.methods && res.data.methods.length > 0) {
+              setSelectedPaymentMethod(res.data.methods[0]); // default to first
+            }
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load payment methods:', err);
+        });
+    }
+  }, [user]);
 
-  async function submit() {
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!user) {
+      alert('You must be logged in to proceed with checkout.');
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  // Safety check: redirect if no show or seats selected
+  useEffect(() => {
+    if (!selectedShow || !selectedSeats || selectedSeats.length === 0) {
+      console.warn('No show or seats selected, cannot proceed with checkout');
+    }
+  }, [selectedShow, selectedSeats]);
+
+  const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
+  const serviceFee = useMemo(() => selectedSeats.length * 1.50, [selectedSeats]); // $1.50 per ticket
+  const taxRate = 0.08; // 8% sales tax (matches backend)
+  const tax = useMemo(() => Math.round((subtotal + serviceFee) * taxRate * 100) / 100, [subtotal, serviceFee]);
+  const discount = useMemo(() => promoCode.trim() ? 5.00 : 0, [promoCode]);
+  const total = useMemo(() => subtotal + serviceFee + tax - discount, [subtotal, serviceFee, tax, discount]);
+
+  async function submit(e) {
+    if (e) e.preventDefault();
+    
+    console.log('🎯 Submit button clicked!');
+    console.log('Selected Show:', selectedShow);
+    console.log('Selected Seats:', selectedSeats);
+    console.log('Customer:', { name, email, phone });
+    
     const errs = {};
-    if (!name) errs.name = 'Name is required';
-    if (!email) errs.email = 'Email is required';
+    if (!name || name.trim() === '') errs.name = 'Name is required';
+    if (!email || email.trim() === '') errs.email = 'Email is required';
     if (!selectedShow) errs.show = 'No show selected';
     if (!selectedSeats || selectedSeats.length === 0) errs.seats = 'No seats selected';
+    if (!selectedPaymentMethod) errs.payment = 'Please select a payment method';
+    
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+    if (Object.keys(errs).length > 0) {
+      console.error('❌ Validation errors:', errs);
+      alert('Please fill in all required fields:\n' + Object.values(errs).join('\n'));
+      return;
+    }
 
     const payload = {
       showId: selectedShow.id,
-      seats: selectedSeats.map((s) => s.id),
+      seats: selectedSeats,  // Send full seat objects with age categories
       customer: { name, email, phone },
+      paymentMethodId: selectedPaymentMethod.id,
+      userId: user.id,
+      promoCode: promoCode.trim() || undefined,
     };
+    
     setLoading(true);
     try {
-      await createOrderDraft(payload);
+      console.log('✅ Validation passed! Creating order draft with payload:', payload);
+      const result = await createOrderDraft(payload);
+      console.log('✅ Order draft created:', result);
       setCustomer({ name, email, phone });
+      console.log('✅ Customer saved, navigating to summary...');
       navigate('/order-summary');
     } catch (err) {
+      console.error('❌ Failed to create order:', err);
       alert('Failed to create order: ' + (err.message || err));
     } finally {
       setLoading(false);
@@ -59,6 +124,18 @@ export default function Checkout() {
           <div style={{ flex: 1 }}>
             <div style={{ background: '#0b0d0f', padding: 16, borderRadius: 8 }}>
               <h3 style={{ marginTop: 0, color: '#fff' }}>Contact Details</h3>
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ color: '#cbd5da', fontWeight: 500 }}>
+                  Promo Code <span style={{ fontSize: '12px', fontWeight: 'normal' }}>(optional)</span>
+                  <br />
+                  <input 
+                    value={promoCode} 
+                    onChange={(e) => setPromoCode(e.target.value)} 
+                    placeholder="Enter promo code (optional)" 
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} 
+                  />
+                </label>
+              </div>
               <div style={{ marginBottom: 8 }}>
                 <label style={{ color: '#cbd5da', fontWeight: 500 }}>
                   Name
@@ -83,34 +160,67 @@ export default function Checkout() {
                 </label>
               </div>
 
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ color: '#cbd5da', fontWeight: 500 }}>
+                  Payment Method
+                  <br />
+                  {paymentMethods.length === 0 ? (
+                    <div style={{ color: '#ff6b6b', marginBottom: 8 }}>
+                      No payment methods found. Please add one in your <a href="/profile" style={{ color: '#7a1f1f' }}>profile</a>.
+                    </div>
+                  ) : (
+                    <select 
+                      value={selectedPaymentMethod?.id || ''} 
+                      onChange={(e) => {
+                        const pm = paymentMethods.find(m => m.id == e.target.value);
+                        setSelectedPaymentMethod(pm);
+                      }} 
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }}
+                    >
+                      <option value="">Select a payment method</option>
+                      {paymentMethods.map((pm) => (
+                        <option key={pm.id} value={pm.id}>
+                          {pm.brand} •••• {pm.provider_token ? pm.provider_token.slice(-4) : '****'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {errors.payment && <div style={{ color: '#ff6b6b', marginTop: 6 }}>{errors.payment}</div>}
+                </label>
+              </div>
+
               <div style={{ marginTop: 12 }}>
-                <button onClick={submit} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Creating...' : 'Continue to Summary'}</button>
-                <button onClick={() => navigate('/order-summary')} style={{ marginLeft: 8, background: 'transparent', color: '#cbd5da', border: '1px solid #222', padding: '8px 14px', borderRadius: 6 }}>Cancel</button>
-                <button onClick={async () => {
-                  // create a demo order draft and go straight to order summary
-                  const demoSeats = (selectedSeats && selectedSeats.length > 0) ? selectedSeats : [
-                    { id: 'demo-A1', row: 'A', number: 1, price: 10 },
-                    { id: 'demo-A2', row: 'A', number: 2, price: 10 }
-                  ];
-                  const draft = {
-                    id: `demo-draft-${Date.now()}`,
-                    orderId: `demo-draft-${Date.now()}`,
-                    showId: selectedShow?.id || 'demo-show-1',
-                    show: selectedShow || { id: 'demo-show-1', title: 'Demo Movie — 7:00 PM' },
-                    seats: demoSeats,
-                    customer: { name: name || 'Demo User', email: email || 'demo@example.com', phone: phone || '' }
-                  };
-                  setLoading(true);
-                  try {
-                    await createOrderDraft(draft);
-                    setCustomer({ name: draft.customer.name, email: draft.customer.email, phone: draft.customer.phone });
-                    navigate('/order-summary');
-                  } catch (err) {
-                    alert('Failed to create demo order: ' + (err.message || err));
-                  } finally {
-                    setLoading(false);
-                  }
-                }} style={{ marginLeft: 8, background: '#444', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>Generate demo order</button>
+                <button 
+                  type="button"
+                  onClick={submit} 
+                  disabled={loading} 
+                  style={{ 
+                    background: loading ? '#555' : '#7a1f1f', 
+                    color: '#fff', 
+                    padding: '10px 16px', 
+                    borderRadius: 6, 
+                    border: 'none', 
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}>
+                  {loading ? '⏳ Creating...' : 'Continue to Summary →'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => navigate(-1)} 
+                  style={{ 
+                    marginLeft: 8, 
+                    background: 'transparent', 
+                    color: '#cbd5da', 
+                    border: '1px solid #222', 
+                    padding: '10px 16px', 
+                    borderRadius: 6, 
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}>
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
@@ -130,6 +240,21 @@ export default function Checkout() {
                 </ul>
               )}
               <div style={{ marginTop: 8, color: '#cbd5da' }}><strong>Subtotal:</strong> <span style={{ color: '#fff' }}>${subtotal.toFixed(2)}</span></div>
+              <div style={{ color: '#cbd5da' }}><strong>Service Fee:</strong> <span style={{ color: '#fff' }}>${serviceFee.toFixed(2)}</span></div>
+              <div style={{ color: '#cbd5da' }}><strong>Sales Tax (8%):</strong> <span style={{ color: '#fff' }}>${tax.toFixed(2)}</span></div>
+              {promoCode.trim() && (
+                <div style={{ marginTop: 4, color: '#7a1f1f', fontSize: '14px' }}>
+                  Promo Discount: -${discount.toFixed(2)}
+                </div>
+              )}
+              <div style={{ marginTop: 8, borderTop: '1px solid #222', paddingTop: 8, color: '#cbd5da', fontWeight: 'bold', fontSize: '16px' }}>
+                <strong>Total:</strong> <span style={{ color: '#fff' }}>${total.toFixed(2)}</span>
+              </div>
+              {promoCode.trim() && (
+                <div style={{ marginTop: 8, color: '#7a1f1f', fontSize: '12px' }}>
+                  Promo: {promoCode}
+                </div>
+              )}
             </div>
           </aside>
         </div>

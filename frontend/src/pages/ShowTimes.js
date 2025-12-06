@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import bookingApi from '../services/bookingApi.js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+
 import ShowList from '../components/ShowList.jsx';
+import bookingApi from '../services/bookingApi.js';
 import { useSearch } from '../context/SearchContext.js';
 
 export default function ShowTimes() {
@@ -13,28 +14,55 @@ export default function ShowTimes() {
   const fetchId = useRef(0);
 
   useEffect(() => {
-    // Demo-only mode: don't call backend, always show local demo movies/shows
+    // Fetch real movies and showtimes from backend
     setLoading(true);
     setError(null);
+    const id = fetchId.current;
+    
     if (movieId) {
-      const demoId = movieId || 'demo-1';
-      const singleDemo = {
-        id: demoId,
-        title: movieId ? `Demo Movie ${movieId}` : 'Demo Movie 1',
-        synopsis: 'Demo synopsis',
-        shows: generateDemoShows(demoId),
-      };
-      setMovies([singleDemo]);
+      // Fetch shows for specific movie
+      bookingApi.getShowsForMovie(movieId)
+        .then((res) => {
+          if (id !== fetchId.current) return;
+          const shows = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.shows || res.data.content || [])) : [];
+          // Fetch movie details
+          return bookingApi.getMovie(movieId).then((movRes) => {
+            if (id !== fetchId.current) return;
+            const movieData = movRes && movRes.data && movRes.data.ok ? movRes.data.movie : null;
+            if (movieData) {
+              setMovies([{ ...movieData, shows }]);
+            } else {
+              setMovies([{ id: movieId, title: `Movie ${movieId}`, shows }]);
+            }
+          });
+        })
+        .catch((err) => {
+          if (id !== fetchId.current) return;
+          console.error('Failed to load shows:', err);
+          setError(err.message || 'Failed to load shows');
+        })
+        .finally(() => {
+          if (id !== fetchId.current) return;
+          setLoading(false);
+        });
     } else {
-      const demoMovies = [1, 2].map((n) => ({
-        id: `demo-${n}`,
-        title: `Demo Movie ${n}`,
-        synopsis: `Demo synopsis ${n}`,
-        shows: generateDemoShows(`demo-${n}`),
-      }));
-      setMovies(demoMovies);
+      // Fetch all movies
+      bookingApi.getMovies()
+        .then((res) => {
+          if (id !== fetchId.current) return;
+          const payload = res && res.data ? (res.data.content || res.data) : [];
+          setMovies(payload || []);
+        })
+        .catch((err) => {
+          if (id !== fetchId.current) return;
+          console.error('Failed to load movies:', err);
+          setError(err.message || 'Failed to load movies');
+        })
+        .finally(() => {
+          if (id !== fetchId.current) return;
+          setLoading(false);
+        });
     }
-    setLoading(false);
   }, [movieId]);
 
   useEffect(() => {

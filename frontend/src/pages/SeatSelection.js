@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import bookingApi from '../services/bookingApi.js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+
 import SeatMap from '../components/SeatMap.jsx';
+import bookingApi from '../services/bookingApi.js';
 import { useBooking } from '../context/BookingContext.js';
 
 export default function SeatSelection() {
@@ -19,23 +20,49 @@ export default function SeatSelection() {
     setSelectedShow,
   } = useBooking();
 
-  const [ageCategory, setAgeCategory] = useState('adult');
-
   const [seats, setSeats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reserving, setReserving] = useState(false);
   const [useDemo, setUseDemo] = useState(false);
+  const [ageCategory, setAgeCategory] = useState('adult');
+  const [ticketPrices, setTicketPrices] = useState({ adult: 15.00, senior: 12.50, child: 9.00 });
 
   const pollRef = useRef(null);
+
+  // Fetch ticket prices from backend
+  useEffect(() => {
+    fetch('/api/ticket-types')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data)) {
+          const prices = {};
+          data.forEach(type => {
+            prices[type.age_category.toLowerCase()] = type.price_cents / 100;
+          });
+          setTicketPrices(prices);
+        }
+      })
+      .catch(err => console.error('Failed to load ticket prices:', err));
+  }, []);
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    bookingApi
-      .getSeatMap(showId)
-      .then((res) => {
+    // Fetch show details and seat map in parallel
+    Promise.all([
+      bookingApi.getShow(showId).catch(() => null), // ignore errors for show
+      bookingApi.getSeatMap(showId)
+    ])
+      .then(([showRes, res]) => {
         if (!mounted) return;
+        const showData = showRes && showRes.data ? showRes.data.show : null;
+        if (showData) {
+          setSelectedShow(showData);
+        } else {
+          // Fallback for demo or missing show
+          setSelectedShow({ id: showId, title: showId.startsWith('demo-') ? 'Demo Movie' : 'Unknown Show' });
+        }
         // support multiple shapes: array, { seats: [...] }, or paginated { content: [...] }
         const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
         if (!payload || payload.length === 0) {
@@ -56,6 +83,8 @@ export default function SeatSelection() {
         setSeats(demo);
         setUseDemo(true);
         setError(msg);
+        // Set fallback show
+        setSelectedShow({ id: showId, title: 'Demo Show' });
       })
       .finally(() => mounted && setLoading(false));
     return () => (mounted = false);
@@ -81,11 +110,9 @@ export default function SeatSelection() {
     if (exists) {
       removeSeat(seat.id);
     } else {
-      // apply age-based pricing modifier when adding the seat
-      const modifiers = { adult: 1.0, child: 0.5, senior: 0.8 };
-      const basePrice = seat.price || 0;
-      const price = +(basePrice * (modifiers[ageCategory] || 1)).toFixed(2);
-      const seatWithAge = { ...seat, price, ageCategory };
+      // Use actual database prices instead of modifiers
+      const price = ticketPrices[ageCategory] || ticketPrices.adult || 15.00;
+      const seatWithAge = { ...seat, price, ageCategory, originalPrice: price };
       addSeat(seatWithAge);
     }
   }
@@ -95,30 +122,26 @@ export default function SeatSelection() {
     setReserving(true);
     try {
       const seatIds = selectedSeats.map((s) => s.id);
-      if (useDemo) {
-        // create a simple order draft in context and go to checkout
-        const draft = {
-          showId: showId,
-          show: selectedShow,
-          seats: selectedSeats,
-          customer: null,
-        };
-        if (typeof createOrderDraft === 'function') {
-          await createOrderDraft(draft);
-        }
-        navigate('/checkout');
-      } else {
-        // call API to reserve seats; bookingApi.reserveSeats returns reservation/order data
-        const res = await bookingApi.reserveSeats(showId, { seats: seatIds });
-        const data = res && res.data ? res.data : res;
-        // store resulting reservation/order in context if setter exists
-        if (setOrderDetails) setOrderDetails(data);
-        // start a countdown or show expiry info if provided
-        navigate('/checkout');
-      }
+      
+      // Always try to call the backend API first
+      const res = await bookingApi.reserveSeats(showId, { seats: seatIds });
+      const data = res && res.data ? res.data : res;
+      
+      // Store resulting reservation/order in context
+      if (setOrderDetails) setOrderDetails(data);
+      
+      // Navigate to checkout
+      navigate('/checkout');
     } catch (err) {
+      console.error('Reserve seats failed:', err);
       // Try to refresh seat map and show helpful message
-      await bookingApi.getSeatMap(showId).then((res) => setSeats(res.data.seats || [])).catch(() => {});
+      try {
+        const res = await bookingApi.getSeatMap(showId);
+        const payload = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.seats || res.data.content || res.data)) : [];
+        setSeats(payload || []);
+      } catch (refreshErr) {
+        console.error('Failed to refresh seats:', refreshErr);
+      }
       alert('Failed to reserve seats — some may no longer be available. Please reselect.');
     } finally {
       setReserving(false);
@@ -191,14 +214,6 @@ export default function SeatSelection() {
             <aside style={{ width: 320, paddingLeft: 8 }}>
               <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
                 <h3 style={{ marginTop: 0, color: '#fff' }}>Selected Seats</h3>
-                <div style={{ marginBottom: 8 }}>
-                  <label style={{ color: '#cbd5da', fontSize: 13, display: 'block', marginBottom: 6 }}>Age category for new seats</label>
-                  <select value={ageCategory} onChange={(e) => setAgeCategory(e.target.value)} style={{ padding: '6px 8px', borderRadius: 6, background: '#0b0d0f', color: '#fff', border: '1px solid #222' }}>
-                    <option value="adult">Adult</option>
-                    <option value="child">Child (50%)</option>
-                    <option value="senior">Senior (20% off)</option>
-                  </select>
-                </div>
                 {selectedSeats.length === 0 ? (
                   <div style={{ color: '#cbd5da' }}>No seats selected</div>
                 ) : (

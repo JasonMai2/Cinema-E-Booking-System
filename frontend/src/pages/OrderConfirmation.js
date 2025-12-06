@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+
 import bookingApi from '../services/bookingApi.js';
 import { useBooking } from '../context/BookingContext.js';
 
@@ -16,15 +17,24 @@ export default function OrderConfirmation() {
     const doLoad = async () => {
       try {
         if (!orderId && orderDetails) {
-          if (mounted) setOrder(orderDetails);
+          if (mounted) {
+            console.log('Order details from context:', orderDetails);
+            setOrder(orderDetails);
+          }
           return;
         }
         const res = await bookingApi.getOrder(orderId);
-        if (mounted) setOrder(res.data);
+        if (mounted) {
+          console.log('Order details from API:', res.data);
+          setOrder(res.data);
+        }
       } catch (err) {
         // If fetching from server fails (likely in demo mode), use context-stored confirmation if available
         if (orderDetails) {
-          if (mounted) setOrder(orderDetails);
+          if (mounted) {
+            console.log('Order details fallback:', orderDetails);
+            setOrder(orderDetails);
+          }
         } else if (mounted) {
           setError(err.message || 'Failed to fetch');
         }
@@ -34,7 +44,7 @@ export default function OrderConfirmation() {
     };
     doLoad();
     return () => (mounted = false);
-  }, [orderId]);
+  }, [orderId, orderDetails]);
 
   if (loading) return <div style={{ padding: 16 }}>Loading confirmation...</div>;
   if (error) return <div style={{ padding: 16 }}>Error: {error}</div>;
@@ -48,11 +58,70 @@ export default function OrderConfirmation() {
         </header>
 
         <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
-          <p style={{ color: '#cbd5da' }}>Your booking id: <strong style={{ color: '#fff' }}>{order?.confirmationCode || order?.id || orderId}</strong></p>
+          <p style={{ color: '#cbd5da' }}>Your booking id: <strong style={{ color: '#fff' }}>{order?.confirmationCode || order?.bookingNumber || order?.id || orderId}</strong></p>
           <h4 style={{ marginTop: 8, color: '#fff' }}>Summary</h4>
           <div style={{ color: '#cbd5da' }}><strong>Show:</strong> {order.show?.title || order.showId || order.show?.id}</div>
-          <div style={{ color: '#cbd5da' }}><strong>Seats:</strong> {(order.seats || []).join(', ')}</div>
-          <div style={{ color: '#cbd5da' }}><strong>Total:</strong> ${order.totals?.subtotal?.toFixed ? order.totals.subtotal.toFixed(2) : order.totals?.subtotal || '—'}</div>
+          
+          <h4 style={{ marginTop: 12, color: '#fff' }}>Seats</h4>
+          {(order.seats || []).length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {(order.seats || []).map((s, idx) => {
+                // Handle different seat formats
+                let seatLabel = '';
+                let ageCategory = 'Adult';
+                let price = '';
+                
+                if (typeof s === 'object' && s !== null) {
+                  // Try multiple possible properties for seat label
+                  if (s.seatLabel) {
+                    seatLabel = s.seatLabel;
+                  } else if (s.seat_label) {
+                    seatLabel = s.seat_label;
+                  } else if (s.row && s.number) {
+                    seatLabel = `${s.row}${s.number}`;
+                  } else if (s.row && s.seat_number) {
+                    seatLabel = `${s.row}${s.seat_number}`;
+                  } else if (s.id) {
+                    seatLabel = `Seat ${s.id}`;
+                  } else {
+                    seatLabel = `Seat ${idx + 1}`;
+                  }
+                  
+                  ageCategory = s.ageCategory || s.age_category || 'Adult';
+                  // Capitalize first letter
+                  ageCategory = ageCategory.charAt(0).toUpperCase() + ageCategory.slice(1);
+                  price = s.price ? `$${s.price.toFixed(2)}` : '';
+                } else if (typeof s === 'string' && s !== '[object Object]') {
+                  seatLabel = s;
+                } else {
+                  seatLabel = `Seat ${idx + 1}`;
+                }
+                
+                return (
+                  <li key={idx} style={{ color: '#f4f6f8' }}>
+                    Seat {seatLabel} ({ageCategory}) {price}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div style={{ color: '#cbd5da' }}>No seat information available</div>
+          )}
+
+          <div style={{ marginTop: 12, borderTop: '1px solid #222', paddingTop: 8 }}>
+            <div style={{ color: '#cbd5da' }}><strong>Subtotal:</strong> <span style={{ color: '#fff' }}>${order.totals?.subtotal?.toFixed ? order.totals.subtotal.toFixed(2) : (order.totals?.subtotal || '0.00')}</span></div>
+            <div style={{ color: '#cbd5da' }}><strong>Service Fee:</strong> <span style={{ color: '#fff' }}>${order.totals?.serviceFee?.toFixed ? order.totals.serviceFee.toFixed(2) : (order.totals?.serviceFee || '0.00')}</span></div>
+            <div style={{ color: '#cbd5da' }}><strong>Sales Tax:</strong> <span style={{ color: '#fff' }}>${order.totals?.tax?.toFixed ? order.totals.tax.toFixed(2) : (order.totals?.tax || '0.00')}</span></div>
+            {order.promoCode && (
+              <div style={{ color: '#7a1f1f', fontSize: '14px', marginTop: 4 }}>
+                Promo Code Applied: <strong>{order.promoCode}</strong>
+                {order.totals?.discount && ` (-$${order.totals.discount.toFixed(2)})`}
+              </div>
+            )}
+            <div style={{ marginTop: 8, color: '#cbd5da', fontWeight: 'bold', fontSize: '16px' }}>
+              <strong>Total:</strong> <span style={{ color: '#fff' }}>${order.totals?.total?.toFixed ? order.totals.total.toFixed(2) : (order.totals?.total || order.totals?.subtotal || '0.00')}</span>
+            </div>
+          </div>
         </div>
 
         <div style={{ marginTop: 12 }}>

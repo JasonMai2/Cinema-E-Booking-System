@@ -1,0 +1,138 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------< com.cinemae:booking >-------------------------
+[INFO] Building booking 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.5:run (default-cli) > test-compile @ booking >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ booking ---
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] Copying 10 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ booking ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 26 source files with javac [debug parameters release 17] to target/classes
+[INFO] /Users/avialdosolution/Desktop/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/controller/MovieController.java: /Users/avialdosolution/Desktop/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/controller/MovieController.java uses or overrides a deprecated API.
+[INFO] /Users/avialdosolution/Desktop/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/controller/MovieController.java: Recompile with -Xlint:deprecation for details.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ booking ---
+[INFO] skip non existing resourceDirectory /Users/avialdosolution/Desktop/Cinema-E-Booking-System/backend/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ booking ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug parameters release 17] to target/test-classes
+[INFO] 
+[INFO] <<< spring-boot:3.5.5:run (default-cli) < test-compile @ booking <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.5:run (default-cli) @ booking ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.5)
+
+2025-12-06T20:47:31.764+05:00  INFO 38577 --- [booking] [           main] com.cinemae.booking.BookingApplication   : Starting BookingApplication using Java 17.0.17 with PID 38577 (/Users/avialdosolution/Desktop/Cinema-E-Booking-System/backend/target/classes started by avialdosolution in /Users/avialdosolution/Desktop/Cinema-E-Booking-System/backend)
+2025-12-06T20:47:31.765+05:00  INFO 38577 --- [booking] [           main] com.cinemae.booking.BookingApplication   : The following 1 profile is active: "dev"
+2025-12-06T20:47:32.043+05:00  INFO 38577 --- [booking] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-12-06T20:47:32.060+05:00  INFO 38577 --- [booking] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 9 ms. Found 0 JPA repository interfaces.
+2025-12-06T20:47:32.326+05:00  INFO 38577 --- [booking] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2025-12-06T20:47:32.332+05:00  INFO 38577 --- [booking] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-12-06T20:47:32.332+05:00  INFO 38577 --- [booking] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.44]
+2025-12-06T20:47:32.355+05:00  INFO 38577 --- [booking] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-12-06T20:47:32.356+05:00  INFO 38577 --- [booking] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 570 ms
+2025-12-06T20:47:32.472+05:00  INFO 38577 --- [booking] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-12-06T20:47:32.526+05:00  INFO 38577 --- [booking] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.26.Final
+2025-12-06T20:47:32.540+05:00  INFO 38577 --- [booking] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-12-06T20:47:32.683+05:00  INFO 38577 --- [booking] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-12-06T20:47:32.696+05:00  INFO 38577 --- [booking] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-12-06T20:47:32.875+05:00  INFO 38577 --- [booking] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@ff03361
+2025-12-06T20:47:32.875+05:00  INFO 38577 --- [booking] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-12-06T20:47:32.948+05:00  WARN 38577 --- [booking] [           main] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-12-06T20:47:32.958+05:00  INFO 38577 --- [booking] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 9.5
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2025-12-06T20:47:33.134+05:00  INFO 38577 --- [booking] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-12-06T20:47:33.137+05:00  INFO 38577 --- [booking] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-12-06T20:47:33.179+05:00  INFO 38577 --- [booking] [           main] c.cinemae.booking.facade.CheckoutFacade  : CheckoutFacade initialized with PaymentGateway: FakePaymentGatewayProxy
+2025-12-06T20:47:33.191+05:00  WARN 38577 --- [booking] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-12-06T20:47:33.339+05:00  INFO 38577 --- [booking] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2025-12-06T20:47:33.344+05:00  INFO 38577 --- [booking] [           main] com.cinemae.booking.BookingApplication   : Started BookingApplication in 1.802 seconds (process running for 1.953)
+2025-12-06T20:47:43.366+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-12-06T20:47:43.367+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-12-06T20:47:43.372+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 5 ms
+Error decrypting payment method 13: Error decrypting data
+2025-12-06T20:51:58.666+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.b.controller.CheckoutController      : Checkout request received with body: {userId=6, showId=26, seats=[{seatId=76, ageCategory=ADULT}, {seatId=87, ageCategory=CHILD}], paymentMethodId=13}
+2025-12-06T20:51:58.673+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.b.controller.CheckoutController      : Checkout request received for user 6
+2025-12-06T20:51:58.675+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.b.controller.CheckoutController      : Processing checkout for 2 seats
+2025-12-06T20:51:58.677+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Starting checkout for user=6, showtime=26, seats=2, promoCode=none
+2025-12-06T20:51:58.677+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Step 1: Creating booking and reserving seats
+2025-12-06T20:51:58.696+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.booking.service.BookingService       : Creating booking for user=6, showtime=26, seats=2, promoCodeId=null, discount=0
+2025-12-06T20:51:58.700+05:00  WARN 38577 --- [booking] [nio-8080-exec-4] c.c.booking.service.BookingService       : Unknown age category 'child', using adult price: 1500 cents
+2025-12-06T20:51:58.700+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.booking.service.BookingService       : Calculated subtotal: 3000 cents for 2 seats
+2025-12-06T20:51:58.720+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.booking.service.BookingService       : Created booking id=26, number=BKBDCA0F0A2E35, total=3564 cents
+2025-12-06T20:51:58.730+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Booking created: id=26, total=3564 cents
+2025-12-06T20:51:58.730+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Step 2: Processing payment through FakePaymentGatewayProxy
+2025-12-06T20:51:58.730+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.b.gateway.FakePaymentGatewayProxy    : FAKE CHARGE: booking=26, amount=3564
+2025-12-06T20:51:58.730+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.b.gateway.FakePaymentGatewayProxy    : FAKE CHARGE: Card ending in 1111
+2025-12-06T20:51:58.730+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.b.gateway.FakePaymentGatewayProxy    : FAKE CHARGE SUCCESS: transactionId=FAKE-TX-26
+2025-12-06T20:51:58.730+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Payment successful: transactionId=FAKE-TX-26
+2025-12-06T20:51:58.738+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Payment record stored for booking 26
+2025-12-06T20:51:58.738+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Step 3: Confirming booking and generating tickets
+2025-12-06T20:51:58.738+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.booking.service.BookingService       : Marking booking 26 as PAID
+2025-12-06T20:51:58.744+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.service.TicketService  : Generating 2 tickets for booking 26
+2025-12-06T20:51:58.754+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.service.TicketService  : Generated ticket TKC00366BB54F644 for seat 76 (ADULT)
+2025-12-06T20:51:58.755+05:00  WARN 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.service.TicketService  : Could not find price for category 'CHILD', using default
+2025-12-06T20:51:58.756+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.service.TicketService  : Generated ticket TK1B52956FF54648 for seat 87 (CHILD)
+2025-12-06T20:51:58.758+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Generated 2 tickets for booking 26
+2025-12-06T20:51:58.760+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Removed seat locks for 2 seats
+2025-12-06T20:51:58.760+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Step 4: Sending confirmation email
+🎫 Booking confirmation email sent successfully to: faizan@linkedunion.com
+📋 Booking Number: BKBDCA0F0A2E35
+2025-12-06T20:52:01.977+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.cinemae.booking.facade.CheckoutFacade  : Checkout completed successfully for booking 26
+Error decrypting payment method 13: Error decrypting data
+Error decrypting payment method 13: Error decrypting data
+Error decrypting payment method 13: Error decrypting data
+Error decrypting payment method 13: Error decrypting data
+Error decrypting payment method 13: Error decrypting data
+2025-12-06T20:59:45.818+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.b.controller.CheckoutController      : Checkout request received with body: {userId=6, showId=91, seats=[{seatId=66, ageCategory=ADULT}, {seatId=67, ageCategory=CHILD}], paymentMethodId=13}
+2025-12-06T20:59:45.825+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.b.controller.CheckoutController      : Checkout request received for user 6
+2025-12-06T20:59:45.825+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.b.controller.CheckoutController      : Processing checkout for 2 seats
+2025-12-06T20:59:45.826+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Starting checkout for user=6, showtime=91, seats=2, promoCode=none
+2025-12-06T20:59:45.826+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Step 1: Creating booking and reserving seats
+2025-12-06T20:59:45.854+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.booking.service.BookingService       : Creating booking for user=6, showtime=91, seats=2, promoCodeId=null, discount=0
+2025-12-06T20:59:45.864+05:00  WARN 38577 --- [booking] [nio-8080-exec-1] c.c.booking.service.BookingService       : Unknown age category 'child', using adult price: 1500 cents
+2025-12-06T20:59:45.864+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.booking.service.BookingService       : Calculated subtotal: 3000 cents for 2 seats
+2025-12-06T20:59:45.871+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.booking.service.BookingService       : Created booking id=27, number=BKAB5AA0A9D30F, total=3564 cents
+2025-12-06T20:59:45.878+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Booking created: id=27, total=3564 cents
+2025-12-06T20:59:45.879+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Step 2: Processing payment through FakePaymentGatewayProxy
+2025-12-06T20:59:45.879+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.b.gateway.FakePaymentGatewayProxy    : FAKE CHARGE: booking=27, amount=3564
+2025-12-06T20:59:45.879+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.b.gateway.FakePaymentGatewayProxy    : FAKE CHARGE: Card ending in 1111
+2025-12-06T20:59:45.879+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.b.gateway.FakePaymentGatewayProxy    : FAKE CHARGE SUCCESS: transactionId=FAKE-TX-27
+2025-12-06T20:59:45.879+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Payment successful: transactionId=FAKE-TX-27
+2025-12-06T20:59:45.885+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Payment record stored for booking 27
+2025-12-06T20:59:45.885+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Step 3: Confirming booking and generating tickets
+2025-12-06T20:59:45.885+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.c.booking.service.BookingService       : Marking booking 27 as PAID
+2025-12-06T20:59:45.893+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.service.TicketService  : Generating 2 tickets for booking 27
+2025-12-06T20:59:45.901+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.service.TicketService  : Generated ticket TK4580B7D316B944 for seat 66 (ADULT)
+2025-12-06T20:59:45.905+05:00  WARN 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.service.TicketService  : Could not find price for category 'CHILD', using default
+2025-12-06T20:59:45.907+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.service.TicketService  : Generated ticket TK31CC09D9F5DA43 for seat 67 (CHILD)
+2025-12-06T20:59:45.909+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Generated 2 tickets for booking 27
+2025-12-06T20:59:45.916+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Removed seat locks for 2 seats
+2025-12-06T20:59:45.916+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Step 4: Sending confirmation email
+🎫 Booking confirmation email sent successfully to: faizan@linkedunion.com
+📋 Booking Number: BKAB5AA0A9D30F
+2025-12-06T20:59:49.890+05:00  INFO 38577 --- [booking] [nio-8080-exec-1] c.cinemae.booking.facade.CheckoutFacade  : Checkout completed successfully for booking 27
+2025-12-06T20:59:53.380+05:00  INFO 38577 --- [booking] [nio-8080-exec-4] c.c.b.controller.CheckoutController      : Getting order history for user: 6

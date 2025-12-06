@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import MovieDetails from './pages/MovieDetails';
 import MovieSelection from './pages/MovieSelection';
 import OrderConfirmation from './pages/OrderConfirmation';
+import OrderHistory from './pages/OrderHistory';
 import OrderSummary from './pages/OrderSummary';
 import React from 'react';
 import RegistrationConfirmation from './pages/RegistrationConfirmation';
@@ -48,6 +49,7 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/registration-confirmation" element={<RegistrationConfirmation />} />
           <Route path="/profile/edit" element={<EditProfile />} />
+          <Route path="/order-history" element={<OrderHistory />} />
           <Route path="/movies" element={<MovieSelection />} />
           {/* Keep /search for compatibility but render MovieSelection so results live on /movies */}
           <Route path="/search" element={<MovieSelection />} />
