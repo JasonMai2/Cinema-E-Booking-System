@@ -76,12 +76,11 @@ public class TicketService {
             // Get price for this age category
             int priceCents = getPriceForCategory(showtimeId, ageCategory);
 
-            // Insert ticket
+            // Insert ticket with all required fields
             jdbc.update(
                 "INSERT INTO tickets (ticket_number, booking_id, showtime_id, seat_id, age_category, price_cents) " +
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                ticketNumber, booking.getId(), showtimeId, seatSelection.getSeatId(), 
-                ageCategory, priceCents
+                ticketNumber, booking.getId(), showtimeId, seatSelection.getSeatId(), ageCategory, priceCents
             );
 
             Long ticketId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
@@ -120,62 +119,34 @@ public class TicketService {
     }
 
     /**
-     * Get price for a specific age category and showtime.
+     * Get price for a specific age category from ticket_types table.
      */
     private int getPriceForCategory(Long showtimeId, String ageCategory) {
-        // Try showtime-specific pricing first
-        List<Map<String, Object>> rules = jdbc.queryForList(
-            "SELECT child_cents, adult_cents, senior_cents " +
-            "FROM price_rules " +
-            "WHERE scope = 'SHOWTIME' AND showtime_id = ? AND active = TRUE " +
-            "AND (effective_to IS NULL OR effective_to > NOW()) " +
-            "ORDER BY effective_from DESC LIMIT 1",
-            showtimeId
-        );
-
-        if (rules.isEmpty()) {
-            // Try movie-specific pricing
-            Long movieId = jdbc.queryForObject(
-                "SELECT movie_id FROM showtimes WHERE id = ?", Long.class, showtimeId
+        // Get price from ticket_types table
+        try {
+            Integer price = jdbc.queryForObject(
+                "SELECT price_cents FROM ticket_types WHERE age_category = ? AND is_active = 1 LIMIT 1",
+                Integer.class,
+                ageCategory.toLowerCase()
             );
-            rules = jdbc.queryForList(
-                "SELECT child_cents, adult_cents, senior_cents " +
-                "FROM price_rules " +
-                "WHERE scope = 'MOVIE' AND movie_id = ? AND active = TRUE " +
-                "AND (effective_to IS NULL OR effective_to > NOW()) " +
-                "ORDER BY effective_from DESC LIMIT 1",
-                movieId
-            );
+            
+            if (price != null) {
+                log.debug("Found price for {}: {} cents", ageCategory, price);
+                return price;
+            }
+        } catch (Exception e) {
+            log.warn("Could not find price for category '{}', using default", ageCategory);
         }
 
-        if (rules.isEmpty()) {
-            // Fall back to global pricing
-            rules = jdbc.queryForList(
-                "SELECT child_cents, adult_cents, senior_cents " +
-                "FROM price_rules " +
-                "WHERE scope = 'GLOBAL' AND active = TRUE " +
-                "AND (effective_to IS NULL OR effective_to > NOW()) " +
-                "ORDER BY effective_from DESC LIMIT 1"
-            );
-        }
-
-        // Default prices if no rules found
+        // Fallback to default prices if category not found
         Map<String, Integer> defaultPrices = Map.of(
-            "CHILD", 800,   // $8.00
-            "ADULT", 1200,  // $12.00
-            "SENIOR", 900   // $9.00
+            "STUDENT", 900,   // $9.00
+            "ADULT", 1500,    // $15.00
+            "SENIOR", 1250,   // $12.50
+            "CHILD", 900      // $9.00 (same as student)
         );
 
-        if (rules.isEmpty()) {
-            return defaultPrices.getOrDefault(ageCategory, 1200);
-        }
-
-        Map<String, Object> rule = rules.get(0);
-        return switch (ageCategory) {
-            case "CHILD" -> (Integer) rule.get("child_cents");
-            case "SENIOR" -> (Integer) rule.get("senior_cents");
-            default -> (Integer) rule.get("adult_cents");
-        };
+        return defaultPrices.getOrDefault(ageCategory.toUpperCase(), 1500);
     }
 
     /**

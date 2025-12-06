@@ -11,7 +11,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate     # validate | none | update | create-drop (use validate or none in dev)
+      ddl-auto: update     # validate | none | update | create-drop (use validate or none in dev)
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect

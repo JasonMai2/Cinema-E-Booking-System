@@ -8,6 +8,9 @@ const bookingApi = {
     const params = args[0] || undefined;
     return api.get('/movies', params ? { params } : undefined);
   },
+  getMovie(movieId) {
+    return api.get(`/movies/${movieId}`);
+  },
   getShowsForMovie(movieId) {
     // Primary: try to fetch shows for a movie.
     // If backend returns an empty payload (no shows yet) or the request fails,
@@ -17,6 +20,9 @@ const bookingApi = {
       // bubble the error to callers; they may still want to show demo data.
       throw err;
     });
+  },
+  getShow(showId) {
+    return api.get(`/shows/${showId}`);
   },
   getSeatMap(showId) {
     // accept optional params argument: getSeatMap(showId, { q, page, size })
@@ -30,8 +36,8 @@ const bookingApi = {
   createOrder(body) {
     return api.post('/orders', body);
   },
-  confirmOrder(orderId) {
-    return api.post(`/orders/${orderId}/confirm`);
+  confirmOrder(orderId, body) {
+    return api.post(`/orders/${orderId}/confirm`, body);
   },
   getOrder(orderId) {
     return api.get(`/orders/${orderId}`);

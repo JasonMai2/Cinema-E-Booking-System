@@ -1,27 +1,30 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+
 import { useBooking } from '../context/BookingContext.js';
-import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function OrderSummary() {
   const { orderDraft, confirmOrder, selectedSeats, selectedShow, customer, createOrderDraft, updateSeat, removeSeat, setCustomer } = useBooking();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [ticketPrices, setTicketPrices] = useState({ adult: 15.00, senior: 12.50, child: 9.00 });
   const navigate = useNavigate();
 
-  // Redirect to home if user is not authenticated
+  // Fetch ticket prices from backend
   useEffect(() => {
-    if (user === null) {
-      navigate('/');
-    }
-  }, [user, navigate]);
-
-  // Redirect to home if no selected show or seats
-  useEffect(() => {
-    if (user && (!selectedShow || !selectedSeats || selectedSeats.length === 0)) {
-      navigate('/');
-    }
-  }, [user, selectedShow, selectedSeats, navigate]);
+    fetch('/api/ticket-types')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data)) {
+          const prices = {};
+          data.forEach(type => {
+            prices[type.age_category.toLowerCase()] = type.price_cents / 100;
+          });
+          setTicketPrices(prices);
+        }
+      })
+      .catch(err => console.error('Failed to load ticket prices:', err));
+  }, []);
 
   async function onConfirm() {
     setLoading(true);
@@ -92,6 +95,10 @@ export default function OrderSummary() {
   }, [selectedSeats, orderDraft]);
 
   const subtotal = useMemo(() => (seatsList || []).reduce((s, x) => s + (x.price || 0), 0), [seatsList]);
+  const serviceFee = useMemo(() => seatsList.length * 1.50, [seatsList]);
+  const tax = useMemo(() => (subtotal + serviceFee) * 0.08, [subtotal, serviceFee]);
+  const discount = orderDraft?.promoCode ? 5.00 : 0;
+  const total = useMemo(() => subtotal + serviceFee + tax - discount, [subtotal, serviceFee, tax, discount]);
 
   return (
     <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -115,10 +122,8 @@ export default function OrderSummary() {
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <select value={s.ageCategory || 'adult'} onChange={(e) => {
                           const newAge = e.target.value;
-                          const modifiers = { adult: 1.0, child: 0.5, senior: 0.8 };
-                          const basePrice = (s.originalPrice || s.price || 0);
-                          const newPrice = +(basePrice * (modifiers[newAge] || 1)).toFixed(2);
-                          updateSeat(s.id, { ageCategory: newAge, price: newPrice, originalPrice: basePrice });
+                          const newPrice = ticketPrices[newAge] || ticketPrices.adult || 15.00;
+                          updateSeat(s.id, { ageCategory: newAge, price: newPrice });
                         }} style={{ background: '#0b0d0f', color: '#fff', border: '1px solid #222', borderRadius: 6, padding: '4px 6px' }}>
                           <option value="adult">Adult</option>
                           <option value="child">Child</option>
@@ -137,11 +142,60 @@ export default function OrderSummary() {
             <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
               <h3 style={{ marginTop: 0, color: '#fff' }}>Totals</h3>
               <div style={{ color: '#cbd5da' }}>Subtotal: <span style={{ color: '#fff' }}>${subtotal.toFixed(2)}</span></div>
-              <div style={{ marginTop: 12 }}>
-                {/* Back button removed per request */}
-                <button onClick={onUpdateOrder} style={{ marginRight: 8, background: '#336', color: '#fff', padding: '8px 12px', borderRadius: 6, border: 'none' }}>Update Order</button>
-                <button onClick={onConfirmAndCheckout} disabled={loading} style={{ marginRight: 8, background: '#1b5e20', color: '#fff', padding: '8px 12px', borderRadius: 6, border: 'none' }}>{loading ? 'Preparing...' : 'Return to Checkout'}</button>
-                <button onClick={onConfirm} disabled={loading} style={{ background: '#7a1f1f', color: '#fff', padding: '8px 14px', borderRadius: 6, border: 'none' }}>{loading ? 'Confirming...' : 'Confirm Booking'}</button>
+              <div style={{ color: '#cbd5da' }}>Service Fee: <span style={{ color: '#fff' }}>${serviceFee.toFixed(2)}</span></div>
+              <div style={{ color: '#cbd5da' }}>Sales Tax (8%): <span style={{ color: '#fff' }}>${tax.toFixed(2)}</span></div>
+              {orderDraft?.promoCode && (
+                <div style={{ color: '#7a1f1f', fontSize: '14px', marginTop: 4 }}>
+                  Promo: {orderDraft.promoCode} (-${discount.toFixed(2)})
+                </div>
+              )}
+              <div style={{ marginTop: 8, borderTop: '1px solid #222', paddingTop: 8, color: '#cbd5da', fontWeight: 'bold', fontSize: '16px' }}>
+                Total: <span style={{ color: '#fff' }}>${total.toFixed(2)}</span>
+              </div>
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button 
+                  onClick={onUpdateOrder} 
+                  disabled={loading}
+                  style={{ 
+                    background: '#336', 
+                    color: '#fff', 
+                    padding: '10px 14px', 
+                    borderRadius: 6, 
+                    border: 'none',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}>
+                  {loading ? '⏳ Updating...' : 'Update Order'}
+                </button>
+                <button 
+                  onClick={() => navigate(-1)} 
+                  style={{ 
+                    background: 'transparent', 
+                    color: '#cbd5da', 
+                    border: '1px solid #222', 
+                    padding: '10px 14px', 
+                    borderRadius: 6, 
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}>
+                  Cancel
+                </button>
+                <button 
+                  onClick={onConfirm} 
+                  disabled={loading} 
+                  style={{ 
+                    background: loading ? '#555' : '#7a1f1f', 
+                    color: '#fff', 
+                    padding: '10px 14px', 
+                    borderRadius: 6, 
+                    border: 'none',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}>
+                  {loading ? '⏳ Confirming...' : 'Confirm Booking'}
+                </button>
               </div>
             </div>
           </aside>

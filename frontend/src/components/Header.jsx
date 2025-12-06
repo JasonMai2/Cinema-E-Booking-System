@@ -156,6 +156,20 @@ export default function Header() {
               <User size={20} style={{ marginLeft: "8px" }} />
             </div>
             <button
+              onClick={() => { navigate('/order-history'); }}
+              style={{
+                backgroundColor: "#12151c",
+                color: "#fff",
+                border: "1px solid #12151c",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: 500,
+              }}
+            >
+              Order History
+            </button>
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowLogoutModal(true);

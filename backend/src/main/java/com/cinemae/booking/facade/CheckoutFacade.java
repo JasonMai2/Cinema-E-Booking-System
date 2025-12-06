@@ -13,6 +13,7 @@ import com.cinemae.booking.service.PromotionService;
 import com.cinemae.booking.service.TicketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -39,6 +40,7 @@ public class CheckoutFacade {
     private final TicketService ticketService;
     private final EmailService emailService;
     private final PromotionService promotionService;
+    private final JdbcTemplate jdbc;
 
     /**
      * Constructor with dependency injection.
@@ -49,12 +51,14 @@ public class CheckoutFacade {
                           PaymentGateway paymentGateway,
                           TicketService ticketService,
                           EmailService emailService,
-                          PromotionService promotionService) {
+                          PromotionService promotionService,
+                          JdbcTemplate jdbc) {
         this.bookingService = bookingService;
         this.paymentGateway = paymentGateway;
         this.ticketService = ticketService;
         this.emailService = emailService;
         this.promotionService = promotionService;
+        this.jdbc = jdbc;
         
         log.info("CheckoutFacade initialized with PaymentGateway: {}", 
                  paymentGateway.getClass().getSimpleName());
@@ -130,6 +134,14 @@ public class CheckoutFacade {
 
             log.info("Payment successful: transactionId={}", paymentResult.getTransactionId());
 
+            // Store payment record
+            jdbc.update(
+                "INSERT INTO payments (booking_id, processor, processor_charge_id, amount_cents, success, paid_at) " +
+                "VALUES (?, ?, ?, ?, ?, NOW())",
+                booking.getId(), "fake", paymentResult.getTransactionId(), booking.getTotalPrice(), true
+            );
+            log.info("Payment record stored for booking {}", booking.getId());
+
             // STEP 3: Confirm booking and create tickets
             log.info("Step 3: Confirming booking and generating tickets");
             bookingService.markAsPaid(booking.getId());
@@ -146,6 +158,15 @@ public class CheckoutFacade {
                     request.getSelectedSeats()
             );
             log.info("Generated {} tickets for booking {}", tickets.size(), booking.getId());
+
+            // Remove seat locks for the booked seats
+            for (CheckoutRequest.SeatSelection seat : request.getSelectedSeats()) {
+                jdbc.update(
+                    "DELETE FROM seat_locks WHERE showtime_id = ? AND seat_id = ?",
+                    request.getShowtimeId(), seat.getSeatId()
+                );
+            }
+            log.info("Removed seat locks for {} seats", request.getSelectedSeats().size());
 
             // STEP 4: Send confirmation email
             log.info("Step 4: Sending confirmation email");

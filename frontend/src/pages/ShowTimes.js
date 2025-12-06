@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import api from '../services/api.js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+
 import ShowList from '../components/ShowList.jsx';
+import bookingApi from '../services/bookingApi.js';
 import { useSearch } from '../context/SearchContext.js';
 
 export default function ShowTimes() {
@@ -13,72 +14,56 @@ export default function ShowTimes() {
   const fetchId = useRef(0);
 
   useEffect(() => {
-    loadMoviesAndShowtimes();
-  }, [movieId]);
-
-  const loadMoviesAndShowtimes = async () => {
+    // Fetch real movies and showtimes from backend
     setLoading(true);
     setError(null);
+    const id = fetchId.current;
     
-    try {
-      const response = await api.get('/bookings/movies');
-      
-      if (response.data.ok) {
-        let moviesData = response.data.movies;
-        
-        // Filter by specific movie if movieId is provided
-        if (movieId) {
-          moviesData = moviesData.filter(movie => movie.id.toString() === movieId);
-        }
-        
-        // Transform data to match ShowList component expectations
-        const transformedMovies = moviesData.map(movie => ({
-          id: movie.id,
-          title: movie.title,
-          synopsis: movie.description || movie.synopsis || 'No description available',
-          poster_url: movie.poster_url || movie.trailer_image_url,
-          shows: movie.showtimes.map(showtime => ({
-            id: showtime.id,
-            startTime: showtime.starts_at, // Updated to use correct API field
-            runtimeMinutes: movie.duration || 120,
-            auditorium: showtime.auditorium_name, // Updated to use correct API field
-            price: showtime.price || 12.50, // Default price if not provided
-            capacity: showtime.capacity || (showtime.seat_rows * showtime.seat_cols)
-          }))
-        }));
-        
-        setMovies(transformedMovies);
-      } else {
-        throw new Error(response.data.message || 'Failed to load movies');
-      }
-    } catch (err) {
-      console.error('Error loading movies and showtimes:', err);
-      setError(err.message || 'Failed to load shows');
-      
-      // Fallback to demo data if API fails
-      setMovies(generateDemoMovies());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateDemoMovies = () => {
     if (movieId) {
-      return [{
-        id: movieId,
-        title: `Demo Movie ${movieId}`,
-        synopsis: 'Demo synopsis',
-        shows: generateDemoShows(movieId),
-      }];
+      // Fetch shows for specific movie
+      bookingApi.getShowsForMovie(movieId)
+        .then((res) => {
+          if (id !== fetchId.current) return;
+          const shows = res && res.data ? (Array.isArray(res.data) ? res.data : (res.data.shows || res.data.content || [])) : [];
+          // Fetch movie details
+          return bookingApi.getMovie(movieId).then((movRes) => {
+            if (id !== fetchId.current) return;
+            const movieData = movRes && movRes.data && movRes.data.ok ? movRes.data.movie : null;
+            if (movieData) {
+              setMovies([{ ...movieData, shows }]);
+            } else {
+              setMovies([{ id: movieId, title: `Movie ${movieId}`, shows }]);
+            }
+          });
+        })
+        .catch((err) => {
+          if (id !== fetchId.current) return;
+          console.error('Failed to load shows:', err);
+          setError(err.message || 'Failed to load shows');
+        })
+        .finally(() => {
+          if (id !== fetchId.current) return;
+          setLoading(false);
+        });
     } else {
-      return [1, 2].map((n) => ({
-        id: `demo-${n}`,
-        title: `Demo Movie ${n}`,
-        synopsis: `Demo synopsis ${n}`,
-        shows: generateDemoShows(`demo-${n}`),
-      }));
+      // Fetch all movies
+      bookingApi.getMovies()
+        .then((res) => {
+          if (id !== fetchId.current) return;
+          const payload = res && res.data ? (res.data.content || res.data) : [];
+          setMovies(payload || []);
+        })
+        .catch((err) => {
+          if (id !== fetchId.current) return;
+          console.error('Failed to load movies:', err);
+          setError(err.message || 'Failed to load movies');
+        })
+        .finally(() => {
+          if (id !== fetchId.current) return;
+          setLoading(false);
+        });
     }
-  };
+  }, [movieId]);
 
   useEffect(() => {
     if (movies && movies.length > 0) {

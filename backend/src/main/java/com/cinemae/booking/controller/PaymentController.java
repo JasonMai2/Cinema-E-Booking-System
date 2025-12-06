@@ -92,7 +92,9 @@ public class PaymentController {
                 }
             } catch (Exception e) {
                 System.err.println("Error decrypting payment method " + row.get("id") + ": " + e.getMessage());
-                // Return original if decryption fails (for backwards compatibility)
+                // Return original values if decryption fails (for backwards compatibility)
+                decrypted.put("provider_token", row.get("provider_token"));
+                decrypted.put("last4", row.get("last4"));
             }
             return decrypted;
         }).collect(Collectors.toList());
