@@ -63,10 +63,8 @@ export default function AdminMovies() {
   const loadCategories = async () => {
     try {
       const res = await fetch(`${API_BASE}/movies/categories`);
-      // expect a payload like { ok: true, categories: [...] } or adjust if your API differs
       if (!res.ok) throw new Error("Failed to load categories");
       const data = await res.json();
-      // handle either direct array or wrapper object
       if (Array.isArray(data)) setAllCategories(data);
       else if (data.categories) setAllCategories(data.categories);
       else setAllCategories([]);
@@ -273,18 +271,27 @@ export default function AdminMovies() {
       {movies.length === 0 ? (
         <p>No movies found.</p>
       ) : (
-        movies.map(m => (
-          <div key={m.id} className="itemCardDetailed">
-            <div>
-              <h3 className="itemInfoTitle">{m.title}</h3>
-              <p className="itemInfoSubtitle">Rating: {m.mpaa_rating || "N/A"}</p>
+        movies.map(m => {
+          const subtitles = [
+            m.mpaa_rating ? `Rating: ${m.mpaa_rating}` : null,
+            (m.categories || []).length > 0 ? `Genres: ${(m.categories || []).map(c => c.name).join(", ")}` : null,
+            m.is_now_playing ? "Now Playing" : null,
+            m.is_coming_soon ? "Coming Soon" : null
+          ].filter(Boolean).join(" | ");
+
+          return (
+            <div key={m.id} className="itemCardDetailed">
+              <div>
+                <h3 className="itemInfoTitle">{m.title}</h3>
+                <p className="itemInfoSubtitle">{subtitles}</p>
+              </div>
+              <div className="itemActions">
+                <button className="btnManage" onClick={() => openManageMovie(m)}>Manage</button>
+                <button className="btnDelete" onClick={() => deleteMovie(m.id)}>Delete</button>
+              </div>
             </div>
-            <div className="itemActions">
-              <button className="btnManage" onClick={() => openManageMovie(m)}>Manage</button>
-              <button className="btnDelete" onClick={() => deleteMovie(m.id)}>Delete</button>
-            </div>
-          </div>
-        ))
+          );
+        })
       )}
 
       {showMovieModal && (
