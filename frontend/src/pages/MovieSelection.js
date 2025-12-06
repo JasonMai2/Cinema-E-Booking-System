@@ -156,7 +156,8 @@ export default function MovieSelection() {
           style={{
             display: "grid",
             gap: 16,
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, 300px)",
+            justifyContent: "start",
           }}
         >
           {movies.map((movie) => (

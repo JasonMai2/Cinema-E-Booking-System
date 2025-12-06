@@ -64,7 +64,7 @@ export default function Home() {
         ) : nowPlaying.length === 0 ? (
           <p>No movies currently playing.</p>
         ) : (
-          <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+          <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, 300px)", justifyContent: "start", }}>
             {nowPlaying.map((m) => (
               <MovieCard key={m.id} movie={m} compact />
             ))}
@@ -79,7 +79,7 @@ export default function Home() {
         ) : comingSoon.length === 0 ? (
           <p>No upcoming movies at this time.</p>
         ) : (
-          <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))" }}>
+          <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fill, 300px)", justifyContent: "start", }}>
             {comingSoon.map((m) => (
               <MovieCard key={m.id} movie={m} compact />
             ))}
