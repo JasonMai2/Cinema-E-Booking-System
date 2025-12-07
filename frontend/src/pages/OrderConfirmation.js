@@ -39,7 +39,7 @@ export default function OrderConfirmation() {
           setOrder(res.data);
         }
       } catch (err) {
-        // If fetching from server fails (likely in demo mode), use context-stored confirmation if available
+        // If fetching from server fails, use context-stored confirmation if available
         if (orderDetails) {
           if (mounted) {
             console.log('Order details fallback:', orderDetails);
@@ -121,13 +121,13 @@ export default function OrderConfirmation() {
           <div style={{ marginTop: 12, borderTop: '1px solid #222', paddingTop: 8 }}>
             <div style={{ color: '#cbd5da' }}><strong>Subtotal:</strong> <span style={{ color: '#fff' }}>${order.totals?.subtotal?.toFixed ? order.totals.subtotal.toFixed(2) : (order.totals?.subtotal || '0.00')}</span></div>
             <div style={{ color: '#cbd5da' }}><strong>Service Fee:</strong> <span style={{ color: '#fff' }}>${order.totals?.serviceFee?.toFixed ? order.totals.serviceFee.toFixed(2) : (order.totals?.serviceFee || '0.00')}</span></div>
-            <div style={{ color: '#cbd5da' }}><strong>Sales Tax:</strong> <span style={{ color: '#fff' }}>${order.totals?.tax?.toFixed ? order.totals.tax.toFixed(2) : (order.totals?.tax || '0.00')}</span></div>
-            {order.promoCode && (
-              <div style={{ color: '#7a1f1f', fontSize: '14px', marginTop: 4 }}>
-                Promo Code Applied: <strong>{order.promoCode}</strong>
-                {order.totals?.discount && ` (-$${order.totals.discount.toFixed(2)})`}
+            {(order.promoName || order.promoCode) && order.totals?.discount > 0 && (
+              <div style={{ color: '#4ade80', fontSize: '14px', marginTop: 4 }}>
+                <strong>Promo Applied:</strong> {order.promoName || order.promoCode}
+                <span> (-${order.totals?.discount?.toFixed ? order.totals.discount.toFixed(2) : order.totals?.discount})</span>
               </div>
             )}
+            <div style={{ color: '#cbd5da' }}><strong>Sales Tax (8%):</strong> <span style={{ color: '#fff' }}>${order.totals?.tax?.toFixed ? order.totals.tax.toFixed(2) : (order.totals?.tax || '0.00')}</span></div>
             <div style={{ marginTop: 8, color: '#cbd5da', fontWeight: 'bold', fontSize: '16px' }}>
               <strong>Total:</strong> <span style={{ color: '#fff' }}>${order.totals?.total?.toFixed ? order.totals.total.toFixed(2) : (order.totals?.total || order.totals?.subtotal || '0.00')}</span>
             </div>

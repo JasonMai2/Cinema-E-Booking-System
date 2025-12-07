@@ -24,17 +24,20 @@ export default function AdminTickets() {
 
   const loadTickets = async () => {
     try {
-      const res = await fetch(`${API_BASE}/tickets`);
-      if (!res.ok) throw new Error("Failed to load tickets");
+      const res = await fetch(`${API_BASE}/ticket-types`);
+      if (!res.ok) throw new Error("Failed to load ticket types");
 
       const data = await res.json();
+      
+      // Handle both array response and response with ticketTypes property
+      const ticketList = Array.isArray(data) ? data : (data.ticketTypes || []);
 
-      const formatted = data.map((t) => ({
+      const formatted = ticketList.map((t) => ({
         id: t.id,
         name: t.name,
-        ageCategory: t.ageCategory,
-        price: (t.priceCents / 100).toFixed(2),
-        active: t.active,
+        ageCategory: t.age_category || t.ageCategory,
+        price: ((t.price_cents || t.priceCents) / 100).toFixed(2),
+        active: t.is_active !== undefined ? t.is_active : (t.active !== undefined ? t.active : true),
       }));
 
       setTickets(formatted);
@@ -68,24 +71,28 @@ export default function AdminTickets() {
       alert("Name is required");
       return;
     }
+    if (!ticketFormData.ageCategory) {
+      alert("Age category is required");
+      return;
+    }
 
     const payload = {
       name: ticketFormData.name,
-      ageCategory: ticketFormData.ageCategory,
-      priceCents: Math.round(Number(ticketFormData.price) * 100),
-      active: ticketFormData.active,
+      age_category: ticketFormData.ageCategory.toLowerCase(),
+      price_cents: Math.round(Number(ticketFormData.price) * 100),
+      is_active: ticketFormData.active,
     };
 
     try {
       let res;
       if (selectedTicket) {
-        res = await fetch(`${API_BASE}/tickets/${selectedTicket.id}`, {
+        res = await fetch(`${API_BASE}/ticket-types/${selectedTicket.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${API_BASE}/tickets`, {
+        res = await fetch(`${API_BASE}/ticket-types`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -94,15 +101,16 @@ export default function AdminTickets() {
 
       if (!res.ok) {
         const result = await res.json();
-        throw new Error(result.error || "Failed to save ticket type");
+        throw new Error(result.message || result.error || "Failed to save ticket type");
       }
 
+      alert(selectedTicket ? "Ticket type updated successfully" : "Ticket type created successfully");
       await loadTickets();
       setShowModal(false);
       setSelectedTicket(null);
     } catch (err) {
       console.error(err);
-      alert("Failed to save ticket: " + err.message);
+      alert("Failed to save ticket type: " + err.message);
     }
   };
 
@@ -110,7 +118,7 @@ export default function AdminTickets() {
     if (!window.confirm("Delete this ticket type?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/tickets/${id}`, {
+      const res = await fetch(`${API_BASE}/ticket-types/${id}`, {
         method: "DELETE",
       });
 
@@ -120,7 +128,7 @@ export default function AdminTickets() {
       alert("Deleted successfully");
     } catch (err) {
       console.error(err);
-      alert("Failed to delete ticket: " + err.message);
+      alert("Failed to delete ticket type: " + err.message);
     }
   };
 
@@ -158,7 +166,7 @@ export default function AdminTickets() {
             <div>
               <h3 className="itemInfoTitle">{t.name}</h3>
               <p className="itemInfoSubtitle">
-                  Price: ${t.price} •{" "}
+                  Category: {t.ageCategory} • Price: ${t.price} •{" "}
                 {t.active ? "Active" : "Inactive"}
               </p>
             </div>

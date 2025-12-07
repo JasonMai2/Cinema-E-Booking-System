@@ -31,23 +31,18 @@ public class TicketTypeController {
      * @return List of ticket types with id, name, age_category, and price_cents
      */
     @GetMapping
-    public Map<String, Object> getAllTicketTypes() {
-        Map<String, Object> response = new HashMap<>();
+    public List<Map<String, Object>> getAllTicketTypes() {
         try {
             List<Map<String, Object>> ticketTypes = jdbc.queryForList(
                 "SELECT id, name, age_category, price_cents, is_active, created_at, updated_at " +
                 "FROM ticket_types " +
                 "WHERE is_active = 1 " +
-                "ORDER BY price_cents ASC"
+                "ORDER BY price_cents DESC"
             );
-            
-            response.put("ok", true);
-            response.put("ticketTypes", ticketTypes);
-            return response;
+            return ticketTypes;
         } catch (Exception e) {
-            response.put("ok", false);
-            response.put("message", "Failed to fetch ticket types: " + e.getMessage());
-            return response;
+            // Return empty list on error - this allows the frontend to use fallback values
+            return new java.util.ArrayList<>();
         }
     }
 

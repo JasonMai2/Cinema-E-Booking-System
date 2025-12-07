@@ -124,4 +124,115 @@ public class PromotionController {
             return Map.of("error", "Code not found");
         }
     }
+
+    // Validate a promo code and return details
+    @PostMapping("/validate")
+    public Map<String, Object> validatePromoCode(@RequestBody Map<String, Object> payload) {
+        String code = (String) payload.get("code");
+        Integer subtotalCents = payload.get("subtotalCents") != null ? ((Number) payload.get("subtotalCents")).intValue() : 0;
+
+        if (code == null || code.trim().isEmpty()) {
+            return Map.of(
+                "valid", false,
+                "message", "Please enter a promo code"
+            );
+        }
+
+        try {
+            // Fetch promotion + code data
+            String sql = """
+                SELECT pc.id AS code_id, pc.promotion_id, pc.code, pc.max_redemptions, pc.redeemed_count,
+                       p.name, p.description, p.percent_off, p.flat_off_cents,
+                       p.starts_at, p.ends_at, p.active
+                FROM promotion_codes pc
+                JOIN promotions p ON pc.promotion_id = p.id
+                WHERE pc.code = ?
+                """;
+            Map<String, Object> result = jdbc.queryForMap(sql, code.trim());
+
+            String name = (String) result.get("name");
+            String description = (String) result.get("description");
+            Boolean active = (Boolean) result.get("active");
+            
+            java.time.LocalDateTime startsAt = (java.time.LocalDateTime) result.get("starts_at");
+            java.time.LocalDateTime endsAt = (java.time.LocalDateTime) result.get("ends_at");
+            
+            Integer maxRedemptions = result.get("max_redemptions") != null
+                ? ((Number) result.get("max_redemptions")).intValue()
+                : null;
+            Integer redeemedCount = ((Number) result.get("redeemed_count")).intValue();
+
+            // Validate active status
+            if (!active) {
+                return Map.of(
+                    "valid", false,
+                    "message", "This promotion is currently inactive"
+                );
+            }
+
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+            // Validate date range
+            if (now.isBefore(startsAt)) {
+                return Map.of(
+                    "valid", false,
+                    "message", "This promotion has not started yet"
+                );
+            }
+            if (now.isAfter(endsAt)) {
+                return Map.of(
+                    "valid", false,
+                    "message", "This promotion has expired"
+                );
+            }
+
+            // Validate redemption limits
+            if (maxRedemptions != null && redeemedCount >= maxRedemptions) {
+                return Map.of(
+                    "valid", false,
+                    "message", "This promo code has reached its maximum redemptions"
+                );
+            }
+
+            // Calculate discount
+            Double percentOff = result.get("percent_off") != null
+                ? ((Number) result.get("percent_off")).doubleValue()
+                : null;
+            Integer flatOffCents = result.get("flat_off_cents") != null
+                ? ((Number) result.get("flat_off_cents")).intValue()
+                : null;
+
+            int discountCents = 0;
+            String discountDescription = "";
+
+            if (percentOff != null && percentOff > 0) {
+                discountCents = (int) Math.round(subtotalCents * (percentOff / 100.0));
+                discountDescription = percentOff + "% off";
+            } else if (flatOffCents != null && flatOffCents > 0) {
+                discountCents = Math.min(flatOffCents, subtotalCents);
+                discountDescription = "$" + String.format("%.2f", flatOffCents / 100.0) + " off";
+            }
+
+            return Map.of(
+                "valid", true,
+                "name", name,
+                "description", description != null ? description : "",
+                "discountDescription", discountDescription,
+                "discountCents", discountCents,
+                "percentOff", percentOff != null ? percentOff : 0,
+                "flatOffCents", flatOffCents != null ? flatOffCents : 0
+            );
+
+        } catch (EmptyResultDataAccessException e) {
+            return Map.of(
+                "valid", false,
+                "message", "Invalid promo code"
+            );
+        } catch (Exception e) {
+            return Map.of(
+                "valid", false,
+                "message", "Error validating promo code: " + e.getMessage()
+            );
+        }
+    }
 }

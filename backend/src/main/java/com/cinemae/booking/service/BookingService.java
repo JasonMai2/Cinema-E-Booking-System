@@ -159,19 +159,45 @@ public class BookingService {
         }
 
         if (priceMap.isEmpty()) {
+            // Fallback defaults only if database has no ticket types
+            log.warn("No ticket types found in database, using fallback defaults");
+            priceMap.put("child", 900);
             priceMap.put("adult", 1500);
-            priceMap.put("student", 900);
-            priceMap.put("senior", 1250);
+            priceMap.put("senior", 1100);
         }
 
         return priceMap;
     }
 
     private int calculateFees(int numSeats) {
-        return numSeats * 150; // $1.50 per ticket
+        // Try to get booking fee from price_rules table, fallback to $1.50
+        try {
+            Integer bookingFeeCents = jdbc.queryForObject(
+                "SELECT booking_fee_cents FROM price_rules WHERE active = true AND scope = 'GLOBAL' LIMIT 1",
+                Integer.class
+            );
+            if (bookingFeeCents != null) {
+                return numSeats * bookingFeeCents;
+            }
+        } catch (Exception e) {
+            // Table may not exist or no global rule found
+        }
+        return numSeats * 150; // Fallback: $1.50 per ticket
     }
 
     private int calculateTax(int taxableAmount) {
-        return (int) Math.round(taxableAmount * 0.08);
+        // Try to get tax rate from settings, fallback to 8%
+        try {
+            Double taxRate = jdbc.queryForObject(
+                "SELECT tax_rate FROM settings WHERE setting_key = 'tax_rate' LIMIT 1",
+                Double.class
+            );
+            if (taxRate != null) {
+                return (int) Math.round(taxableAmount * taxRate);
+            }
+        } catch (Exception e) {
+            // Table may not exist or no setting found
+        }
+        return (int) Math.round(taxableAmount * 0.08); // Fallback: 8% tax
     }
 }

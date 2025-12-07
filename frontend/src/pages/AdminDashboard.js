@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../context/AuthContext";
 import "./AdminDashboard.css";
 
+const API_BASE = "http://localhost:8080/api";
+
 export default function AdminDashboard() {
   const [currentScreen, setCurrentScreen] = useState("main");
 

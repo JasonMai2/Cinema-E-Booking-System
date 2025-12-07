@@ -17,7 +17,6 @@ const bookingApi = {
     // callers in the UI expect a consistent shape. We return the axios promise
     // but resolve to a payload when possible so callers can rely on `res.data`.
     return api.get(`/movies/${movieId}/shows`).catch((err) => {
-      // bubble the error to callers; they may still want to show demo data.
       throw err;
     });
   },

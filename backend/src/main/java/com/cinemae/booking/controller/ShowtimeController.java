@@ -73,18 +73,6 @@ public class ShowtimeController {
         Map<String, Object> resp = new HashMap<>();
         
         try {
-            // Handle demo show IDs
-            if (showId.startsWith("demo-show-")) {
-                Map<String, Object> demoShow = new LinkedHashMap<>();
-                demoShow.put("id", showId);
-                demoShow.put("title", "Demo Movie Show");
-                demoShow.put("startTime", new Date());
-                demoShow.put("auditorium", "Demo Auditorium");
-                resp.put("ok", true);
-                resp.put("show", demoShow);
-                return resp;
-            }
-            
             // Parse showId as Long for database queries
             Long numericShowId;
             try {
@@ -141,11 +129,6 @@ public class ShowtimeController {
         Map<String, Object> resp = new HashMap<>();
         
         try {
-            // Handle demo show IDs
-            if (showId.startsWith("demo-show-")) {
-                return getDemoSeatMap(showId);
-            }
-            
             // Parse showId as Long for database queries
             Long numericShowId;
             try {
@@ -258,11 +241,6 @@ public class ShowtimeController {
         Map<String, Object> resp = new HashMap<>();
         
         try {
-            // Handle demo show IDs
-            if (showId.startsWith("demo-show-")) {
-                return reserveDemoSeats(showId, body);
-            }
-            
             // Parse showId as Long for database queries
             Long numericShowId;
             try {
@@ -337,74 +315,5 @@ public class ShowtimeController {
             resp.put("message", "Failed to reserve seats: " + e.getMessage());
             return resp;
         }
-    }
-
-    /**
-     * Generate demo seat map for demo showtimes
-     */
-    private Map<String, Object> getDemoSeatMap(String showId) {
-        Map<String, Object> resp = new HashMap<>();
-        
-        List<Map<String, Object>> seats = new ArrayList<>();
-        
-        // Generate a 10x10 grid of seats
-        String[] rows = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"};
-        
-        for (int row = 0; row < rows.length; row++) {
-            for (int col = 1; col <= 10; col++) {
-                Map<String, Object> seat = new LinkedHashMap<>();
-                seat.put("id", rows[row] + col);
-                seat.put("row", rows[row]);
-                seat.put("number", col);
-                seat.put("type", "standard");
-                seat.put("price", 15.0); // Add price for demo seats
-                
-                // Randomly mark some seats as booked for demo purposes
-                if (Math.random() < 0.3) {
-                    seat.put("status", "booked");
-                } else {
-                    seat.put("status", "available");
-                }
-                
-                seats.add(seat);
-            }
-        }
-        
-        // Add pricing info
-        Map<String, Object> pricing = new LinkedHashMap<>();
-        pricing.put("adultCents", 1500); // $15.00
-        pricing.put("childCents", 1200); // $12.00
-        pricing.put("seniorCents", 1000); // $10.00
-        pricing.put("bookingFeeCents", 200); // $2.00
-        
-        resp.put("seats", seats);
-        resp.put("pricing", pricing);
-        resp.put("ok", true);
-        
-        return resp;
-    }
-
-    /**
-     * Reserve demo seats (no-op for demo)
-     */
-    private Map<String, Object> reserveDemoSeats(String showId, Map<String, Object> body) {
-        Map<String, Object> resp = new HashMap<>();
-        
-        @SuppressWarnings("unchecked")
-        List<Object> seatIds = (List<Object>) body.get("seats");
-        
-        if (seatIds == null || seatIds.isEmpty()) {
-            resp.put("ok", false);
-            resp.put("message", "No seats provided");
-            return resp;
-        }
-        
-        // For demo, just return success
-        resp.put("ok", true);
-        resp.put("message", "Demo seats reserved for 10 minutes");
-        resp.put("reservationId", "DEMO-RES-" + System.currentTimeMillis());
-        resp.put("expiresAt", new Date(System.currentTimeMillis() + 600000)); // 10 minutes
-        
-        return resp;
     }
 }

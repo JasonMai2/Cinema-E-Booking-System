@@ -1,0 +1,50 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    # Default for local dev when MySQL container exposes 3306 on host
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/ecinema?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:rootpw}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update     # validate | none | update | create-drop (use validate or none in dev)
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+
+  # Email configuration - Gmail SMTP (Hardcoded for project)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ebookingteam33@gmail.com
+    password: ifpk avvn ugbl tose
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+        transport:
+          protocol: smtp
+
+# Application-specific configuration
+app:
+  email:
+    from: Cinema E-Booking System <ebookingteam33@gmail.com>
+    verification:
+      subject: "Verify Your Email - Cinema E-Booking System"
+    password-reset:
+      subject: "Reset Your Password - Cinema E-Booking System"
+    promotion:
+      subject: "New Promotion from Cinema E-Booking!"

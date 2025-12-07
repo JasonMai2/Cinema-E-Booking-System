@@ -33,24 +33,20 @@ export function BookingProvider({ children }) {
     setOrderDetails(null);
   };
 
-  // Create an order draft. Try to call server-side API if available; otherwise create a demo draft locally.
+  // Create an order draft with the given payload
   const createOrderDraft = async (payload) => {
     try {
-      // try server call if available (bookingApi is a runtime import in pages)
-      // avoid importing bookingApi here to keep context lightweight; callers may call API themselves
-      // If a server call is desired, the pages should call bookingApi and then setOrderDraft.
-      // For demo mode, just create a local draft object.
       const draft = {
-        id: payload.orderId || `demo-order-${Date.now()}`,
-        orderId: payload.orderId || `demo-order-${Date.now()}`,
+        id: payload.orderId || `order-${Date.now()}`,
+        orderId: payload.orderId || `order-${Date.now()}`,
         ...payload,
       };
       setOrderDraft(draft);
       return draft;
     } catch (err) {
       const draft = {
-        id: payload.orderId || `demo-order-${Date.now()}`,
-        orderId: payload.orderId || `demo-order-${Date.now()}`,
+        id: payload.orderId || `order-${Date.now()}`,
+        orderId: payload.orderId || `order-${Date.now()}`,
         ...payload,
       };
       setOrderDraft(draft);
@@ -100,13 +96,15 @@ export function BookingProvider({ children }) {
         const seats = draft.seats || selectedSeats || [];
         const subtotal = seats.reduce((s, x) => s + (x.price || 0), 0);
         const serviceFee = seats.length * 1.50;
-        const tax = Math.round((subtotal + serviceFee) * 0.08 * 100) / 100; // 8% tax, rounded
-        let discount = 0;
-        // Example: $5 off for any promo code (customize as needed)
-        if (draft.promoCode) {
-          discount = 5.00;
-        }
+        
+        // Get discount from draft if promo was applied
+        const discount = draft.promoDiscount || 0;
+        
+        // Calculate tax on (subtotal + fees - discount)
+        const taxableAmount = Math.max(0, subtotal + serviceFee - discount);
+        const tax = Math.round(taxableAmount * 0.08 * 100) / 100; // 8% tax, rounded
         const total = subtotal + serviceFee + tax - discount;
+        
         const confirmation = {
           orderId: res.data.bookingId || res.data.id,
           id: res.data.bookingId || res.data.id,
@@ -116,6 +114,7 @@ export function BookingProvider({ children }) {
           showId: draft.showId || selectedShow?.id,
           seats: seats,
           promoCode: draft.promoCode || undefined,
+          promoName: draft.promoName || undefined,
           totals: { 
             subtotal: subtotal,
             serviceFee: serviceFee,

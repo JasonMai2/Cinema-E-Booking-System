@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 export default function Checkout() {
   const { selectedShow, selectedSeats, setCustomer, createOrderDraft, customer } = useBooking();
   const [promoCode, setPromoCode] = useState('');
+  const [promoValidation, setPromoValidation] = useState(null); // { valid, name, discountCents, discountDescription, message }
+  const [validatingPromo, setValidatingPromo] = useState(false);
   const { user } = useAuth();
   const [name, setName] = useState(customer?.name || '');
   const [email, setEmail] = useState(customer?.email || '');
@@ -16,7 +18,20 @@ export default function Checkout() {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [ticketTypes, setTicketTypes] = useState([]);
   const navigate = useNavigate();
+
+  // Load ticket types from database
+  useEffect(() => {
+    fetch('/api/ticket-types')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data)) {
+          setTicketTypes(data);
+        }
+      })
+      .catch(err => console.error('Failed to load ticket types:', err));
+  }, []);
 
   useEffect(() => {
     if (customer) {
@@ -58,12 +73,71 @@ export default function Checkout() {
     }
   }, [selectedShow, selectedSeats]);
 
+  // Calculate totals
   const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
   const serviceFee = useMemo(() => selectedSeats.length * 1.50, [selectedSeats]); // $1.50 per ticket
-  const taxRate = 0.08; // 8% sales tax (matches backend)
-  const tax = useMemo(() => Math.round((subtotal + serviceFee) * taxRate * 100) / 100, [subtotal, serviceFee]);
-  const discount = useMemo(() => promoCode.trim() ? 5.00 : 0, [promoCode]);
+  const taxRate = 0.08; // 8% sales tax
+  const subtotalCents = useMemo(() => Math.round(subtotal * 100), [subtotal]);
+  
+  // Calculate discount from validated promo
+  const discount = useMemo(() => {
+    if (promoValidation?.valid && promoValidation?.discountCents) {
+      return promoValidation.discountCents / 100;
+    }
+    return 0;
+  }, [promoValidation]);
+  
+  // Calculate tax on (subtotal + fees - discount)
+  const taxableAmount = useMemo(() => Math.max(0, subtotal + serviceFee - discount), [subtotal, serviceFee, discount]);
+  const tax = useMemo(() => Math.round(taxableAmount * taxRate * 100) / 100, [taxableAmount]);
   const total = useMemo(() => subtotal + serviceFee + tax - discount, [subtotal, serviceFee, tax, discount]);
+
+  // Validate promo code against database
+  const validatePromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoValidation(null);
+      return;
+    }
+
+    setValidatingPromo(true);
+    try {
+      const res = await api.post('/promotions/validate', {
+        code: promoCode.trim(),
+        subtotalCents: subtotalCents
+      });
+      
+      if (res?.data?.valid) {
+        setPromoValidation({
+          valid: true,
+          name: res.data.name,
+          discountCents: res.data.discountCents,
+          discountDescription: res.data.discountDescription,
+          percentOff: res.data.percentOff,
+          flatOffCents: res.data.flatOffCents
+        });
+      } else {
+        setPromoValidation({
+          valid: false,
+          message: res.data?.message || 'Invalid promo code'
+        });
+      }
+    } catch (err) {
+      console.error('Promo validation error:', err);
+      setPromoValidation({
+        valid: false,
+        message: 'Failed to validate promo code'
+      });
+    } finally {
+      setValidatingPromo(false);
+    }
+  };
+
+  // Clear promo validation when code changes
+  useEffect(() => {
+    if (!promoCode.trim()) {
+      setPromoValidation(null);
+    }
+  }, [promoCode]);
 
   async function submit(e) {
     if (e) e.preventDefault();
@@ -93,7 +167,9 @@ export default function Checkout() {
       customer: { name, email, phone },
       paymentMethodId: selectedPaymentMethod.id,
       userId: user.id,
-      promoCode: promoCode.trim() || undefined,
+      promoCode: promoValidation?.valid ? promoCode.trim() : undefined,
+      promoName: promoValidation?.valid ? promoValidation.name : undefined,
+      promoDiscount: promoValidation?.valid ? promoValidation.discountCents / 100 : undefined,
     };
     
     setLoading(true);
@@ -128,12 +204,42 @@ export default function Checkout() {
                 <label style={{ color: '#cbd5da', fontWeight: 500 }}>
                   Promo Code <span style={{ fontSize: '12px', fontWeight: 'normal' }}>(optional)</span>
                   <br />
-                  <input 
-                    value={promoCode} 
-                    onChange={(e) => setPromoCode(e.target.value)} 
-                    placeholder="Enter promo code (optional)" 
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} 
-                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input 
+                      value={promoCode} 
+                      onChange={(e) => setPromoCode(e.target.value)} 
+                      placeholder="Enter promo code" 
+                      style={{ flex: 1, padding: '10px 12px', borderRadius: 6, background: '#0a0b0c', border: '1px solid #222', color: '#e6eef3' }} 
+                    />
+                    <button
+                      type="button"
+                      onClick={validatePromoCode}
+                      disabled={validatingPromo || !promoCode.trim()}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: 6,
+                        background: validatingPromo ? '#444' : '#336',
+                        color: '#fff',
+                        border: 'none',
+                        cursor: validatingPromo || !promoCode.trim() ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {validatingPromo ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                  {promoValidation && (
+                    <div style={{ marginTop: 6, fontSize: '14px' }}>
+                      {promoValidation.valid ? (
+                        <div style={{ color: '#4ade80' }}>
+                          ✓ "{promoValidation.name}" applied: {promoValidation.discountDescription}
+                        </div>
+                      ) : (
+                        <div style={{ color: '#ff6b6b' }}>
+                          ✗ {promoValidation.message}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </label>
               </div>
               <div style={{ marginBottom: 8 }}>
@@ -228,7 +334,15 @@ export default function Checkout() {
           <aside style={{ width: 260 }}>
             <div style={{ background: '#0b0d0f', padding: 12, borderRadius: 8 }}>
               <h3 style={{ marginTop: 0, color: '#fff' }}>Order Preview</h3>
-              <div style={{ color: '#cbd5da' }}><strong>Show:</strong> {selectedShow?.title || selectedShow?.id || '—'}</div>
+              <div style={{ color: '#fff', fontWeight: 600, fontSize: 16, marginBottom: 4 }}>
+                {selectedShow?.movieTitle || selectedShow?.title || 'Your Movie'}
+              </div>
+              {selectedShow?.startTime && (
+                <div style={{ color: '#cbd5da', fontSize: 13, marginBottom: 4 }}>
+                  {new Date(selectedShow.startTime).toLocaleString()}
+                  {selectedShow?.auditorium && ` • ${selectedShow.auditorium}`}
+                </div>
+              )}
               <div style={{ marginTop: 6, color: '#cbd5da' }}><strong>Seats:</strong></div>
               {selectedSeats.length === 0 ? (
                 <div style={{ color: '#cbd5da' }}>No seats selected</div>
@@ -241,18 +355,18 @@ export default function Checkout() {
               )}
               <div style={{ marginTop: 8, color: '#cbd5da' }}><strong>Subtotal:</strong> <span style={{ color: '#fff' }}>${subtotal.toFixed(2)}</span></div>
               <div style={{ color: '#cbd5da' }}><strong>Service Fee:</strong> <span style={{ color: '#fff' }}>${serviceFee.toFixed(2)}</span></div>
-              <div style={{ color: '#cbd5da' }}><strong>Sales Tax (8%):</strong> <span style={{ color: '#fff' }}>${tax.toFixed(2)}</span></div>
-              {promoCode.trim() && (
-                <div style={{ marginTop: 4, color: '#7a1f1f', fontSize: '14px' }}>
-                  Promo Discount: -${discount.toFixed(2)}
+              {promoValidation?.valid && discount > 0 && (
+                <div style={{ color: '#4ade80', fontSize: '14px' }}>
+                  <strong>Promo ({promoValidation.name}):</strong> <span>-${discount.toFixed(2)}</span>
                 </div>
               )}
+              <div style={{ color: '#cbd5da' }}><strong>Sales Tax (8%):</strong> <span style={{ color: '#fff' }}>${tax.toFixed(2)}</span></div>
               <div style={{ marginTop: 8, borderTop: '1px solid #222', paddingTop: 8, color: '#cbd5da', fontWeight: 'bold', fontSize: '16px' }}>
                 <strong>Total:</strong> <span style={{ color: '#fff' }}>${total.toFixed(2)}</span>
               </div>
-              {promoCode.trim() && (
-                <div style={{ marginTop: 8, color: '#7a1f1f', fontSize: '12px' }}>
-                  Promo: {promoCode}
+              {promoValidation?.valid && (
+                <div style={{ marginTop: 8, color: '#4ade80', fontSize: '12px' }}>
+                  ✓ Promo: {promoValidation.name} ({promoValidation.discountDescription})
                 </div>
               )}
             </div>

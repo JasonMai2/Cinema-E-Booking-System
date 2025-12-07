@@ -1,8 +1,10 @@
 package com.cinemae.booking.service;
 
-import com.cinemae.booking.dto.CheckoutRequest;
-import com.cinemae.booking.model.Booking;
-import com.cinemae.booking.model.Ticket;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,10 +12,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import com.cinemae.booking.dto.CheckoutRequest;
+import com.cinemae.booking.model.Booking;
+import com.cinemae.booking.model.Ticket;
 
 /**
  * Service for generating and managing tickets.
@@ -135,15 +136,15 @@ public class TicketService {
                 return price;
             }
         } catch (Exception e) {
-            log.warn("Could not find price for category '{}', using default", ageCategory);
+            log.warn("Could not find price for category '{}' in database, using fallback", ageCategory);
         }
 
-        // Fallback to default prices if category not found
+        // Fallback to default prices if category not found in database
+        // These should match the ticket_types table defaults
         Map<String, Integer> defaultPrices = Map.of(
-            "STUDENT", 900,   // $9.00
+            "CHILD", 900,     // $9.00
             "ADULT", 1500,    // $15.00
-            "SENIOR", 1250,   // $12.50
-            "CHILD", 900      // $9.00 (same as student)
+            "SENIOR", 1100    // $11.00
         );
 
         return defaultPrices.getOrDefault(ageCategory.toUpperCase(), 1500);

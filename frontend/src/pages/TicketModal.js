@@ -20,27 +20,46 @@ export default function TicketModal({
         </div>
 
         <div className="formGroup">
-          <label className="label">Name</label>
+          <label className="label">Name *</label>
           <input
             className="input"
             type="text"
             name="name"
             value={ticketFormData.name}
             onChange={handleInputChange}
+            placeholder="e.g., Adult Ticket"
           />
         </div>
 
-
+        <div className="formGroup">
+          <label className="label">Age Category *</label>
+          <select
+            className="input"
+            name="ageCategory"
+            value={ticketFormData.ageCategory || ''}
+            onChange={handleInputChange}
+          >
+            <option value="">Select a category</option>
+            <option value="child">Child</option>
+            <option value="adult">Adult</option>
+            <option value="senior">Senior</option>
+          </select>
+          <p style={{ fontSize: '12px', color: '#888', marginTop: 4 }}>
+            This determines which ticket type appears in the dropdown during seat selection
+          </p>
+        </div>
 
         <div className="formGroup">
-          <label className="label">Price ($)</label>
+          <label className="label">Price ($) *</label>
           <input
             className="input"
             type="number"
             step="0.01"
+            min="0"
             name="price"
             value={ticketFormData.price}
             onChange={handleInputChange}
+            placeholder="e.g., 15.00"
           />
         </div>
 

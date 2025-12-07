@@ -18,6 +18,12 @@ export default function AdminPromotions({ onBack }) {
     endDate: "",
   });
   const [loadingPromo, setLoadingPromo] = useState(false);
+  
+  // Promo codes state
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [selectedPromoForCode, setSelectedPromoForCode] = useState(null);
+  const [newCode, setNewCode] = useState("");
+  const [maxRedemptions, setMaxRedemptions] = useState("");
 
   useEffect(() => {
     loadPromotions();
@@ -28,21 +34,51 @@ export default function AdminPromotions({ onBack }) {
       const res = await fetch(`${API_BASE}/promotions`);
       if (!res.ok) throw new Error("Failed to load promotions");
       const data = await res.json();
-      const formatted = data.map((p) => ({
-        id: p.id,
-        title: p.name,
-        description: p.description || "",
-        discountType: p.percent_off != null ? "PERCENT" : "FLAT",
-        discount:
-          p.percent_off != null
-            ? p.percent_off
-            : p.flat_off_cents != null
-            ? p.flat_off_cents / 100
-            : "",
-        startDate: p.starts_at.split("T")[0],
-        endDate: p.ends_at.split("T")[0],
-      }));
-      setPromotions(formatted);
+      
+      // Load codes for each promotion
+      const promotionsWithCodes = await Promise.all(
+        data.map(async (p) => {
+          try {
+            const codeRes = await fetch(`${API_BASE}/promotions/${p.id}`);
+            const codeData = await codeRes.json();
+            return {
+              id: p.id,
+              title: p.name,
+              description: p.description || "",
+              discountType: p.percent_off != null ? "PERCENT" : "FLAT",
+              discount:
+                p.percent_off != null
+                  ? p.percent_off
+                  : p.flat_off_cents != null
+                  ? p.flat_off_cents / 100
+                  : "",
+              startDate: p.starts_at.split("T")[0],
+              endDate: p.ends_at.split("T")[0],
+              active: p.active,
+              codes: codeData.codes || []
+            };
+          } catch (err) {
+            return {
+              id: p.id,
+              title: p.name,
+              description: p.description || "",
+              discountType: p.percent_off != null ? "PERCENT" : "FLAT",
+              discount:
+                p.percent_off != null
+                  ? p.percent_off
+                  : p.flat_off_cents != null
+                  ? p.flat_off_cents / 100
+                  : "",
+              startDate: p.starts_at.split("T")[0],
+              endDate: p.ends_at.split("T")[0],
+              active: p.active,
+              codes: []
+            };
+          }
+        })
+      );
+      
+      setPromotions(promotionsWithCodes);
     } catch (err) {
       console.error(err);
       alert("Failed to load promotions: " + err.message);
@@ -170,6 +206,60 @@ export default function AdminPromotions({ onBack }) {
     }
   };
 
+  // Promo code functions
+  const openAddCode = (promo) => {
+    setSelectedPromoForCode(promo);
+    setNewCode("");
+    setMaxRedemptions("");
+    setShowCodeModal(true);
+  };
+
+  const handleAddCode = async () => {
+    if (!newCode.trim()) {
+      alert("Please enter a promo code");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/promotions/${selectedPromoForCode.id}/codes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: newCode.trim().toUpperCase(),
+          max_redemptions: maxRedemptions ? parseInt(maxRedemptions) : null
+        }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to add code");
+
+      alert("Promo code added successfully");
+      setShowCodeModal(false);
+      await loadPromotions();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add promo code: " + err.message);
+    }
+  };
+
+  const handleDeleteCode = async (codeId) => {
+    if (!window.confirm("Delete this promo code?")) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/promotions/codes/${codeId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Failed to delete code");
+
+      alert("Code deleted successfully");
+      await loadPromotions();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete code: " + err.message);
+    }
+  };
+
   return (
     <div className="container">
         <button className="backButton" onClick={() => navigate('/admin') }>
@@ -201,8 +291,8 @@ export default function AdminPromotions({ onBack }) {
           <p>No promotions found.</p>
         ) : (
           promotions.map((p) => (
-            <div key={p.id} className="itemCardDetailed">
-              <div>
+            <div key={p.id} className="itemCardDetailed" style={{ marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
                 <h3 className="itemInfoTitle">{p.title}</h3>
                 <p className="itemInfoSubtitle">
                   Description: {p.description} • Discount:{" "}
@@ -210,15 +300,62 @@ export default function AdminPromotions({ onBack }) {
                     ? `${p.discount}%`
                     : `$${p.discount}`}{" "}
                   • Start: {p.startDate} • End: {p.endDate}
+                  {p.active === false && " • INACTIVE"}
                 </p>
+                
+                {/* Display promo codes */}
+                <div style={{ marginTop: 8 }}>
+                  <strong style={{ color: '#cbd5da', fontSize: 14 }}>Promo Codes:</strong>
+                  {p.codes && p.codes.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                      {p.codes.map((code) => (
+                        <span key={code.id} style={{
+                          background: '#1a1f24',
+                          padding: '4px 8px',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          color: '#4ade80',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}>
+                          <code>{code.code}</code>
+                          {code.max_redemptions && (
+                            <span style={{ color: '#888' }}>
+                              ({code.redeemed_count || 0}/{code.max_redemptions})
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleDeleteCode(code.id)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ff6b6b',
+                              cursor: 'pointer',
+                              padding: '0 4px',
+                              fontSize: 14
+                            }}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{ color: '#888', fontSize: 12, marginLeft: 8 }}>No codes - add one to enable this promotion</span>
+                  )}
+                </div>
               </div>
 
-              <div className="itemActions">
+              <div className="itemActions" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <button className="btnManage" onClick={() => openManagePromotion(p)}>
-                  Manage
+                  Edit
+                </button>
+                <button className="btnManage" onClick={() => openAddCode(p)} style={{ background: '#336' }}>
+                  + Add Code
                 </button>
                 <button className="btnManage" onClick={() => sendPromotion(p)}>
-                  Send Promotion
+                  Send Email
                 </button>
                 <button className="btnDelete" onClick={() => deletePromotion(p.id)}>
                   Delete
@@ -235,6 +372,46 @@ export default function AdminPromotions({ onBack }) {
             handleSave={handleSavePromotion}
             close={() => setShowPromoModal(false)}
           />
+        )}
+
+        {/* Add Code Modal */}
+        {showCodeModal && (
+          <div className="modalOverlay" onClick={() => setShowCodeModal(false)}>
+            <div className="modalContent" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+              <div className="modalHeader">
+                <h2 className="modalTitle">Add Promo Code</h2>
+                <button className="closeButton" onClick={() => setShowCodeModal(false)}>×</button>
+              </div>
+              <p style={{ color: '#888', marginBottom: 16 }}>
+                Adding code for: <strong>{selectedPromoForCode?.title}</strong>
+              </p>
+              <div className="formGroup">
+                <label className="label">Code *</label>
+                <input
+                  className="input"
+                  type="text"
+                  value={newCode}
+                  onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                  placeholder="e.g., SUMMER20"
+                  style={{ textTransform: 'uppercase' }}
+                />
+              </div>
+              <div className="formGroup">
+                <label className="label">Max Redemptions (optional)</label>
+                <input
+                  className="input"
+                  type="number"
+                  min="1"
+                  value={maxRedemptions}
+                  onChange={(e) => setMaxRedemptions(e.target.value)}
+                  placeholder="Leave empty for unlimited"
+                />
+              </div>
+              <button className="btnSave" onClick={handleAddCode}>
+                Add Code
+              </button>
+            </div>
+          </div>
         )}
     </div>
   );

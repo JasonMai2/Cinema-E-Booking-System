@@ -134,8 +134,11 @@ public class CheckoutController {
             // Corrected SQL — matches real DB schema
             String sql = """
                 SELECT b.id, b.booking_number, b.status, b.total_cents, b.created_at,
-                       b.subtotal_cents, b.fees_cents, b.tax_cents, b.promo_code_id
+                       b.subtotal_cents, b.fees_cents, b.tax_cents, b.promo_code_id,
+                       pc.code AS promo_code, p.name AS promo_name
                 FROM bookings b
+                LEFT JOIN promotion_codes pc ON b.promo_code_id = pc.id
+                LEFT JOIN promotions p ON pc.promotion_id = p.id
                 WHERE b.user_id = ?
                 ORDER BY b.created_at DESC
                 """;
@@ -165,12 +168,22 @@ public class CheckoutController {
 
                 // Totals breakdown
                 Map<String, Object> totals = new HashMap<>();
-                totals.put("subtotal", ((Number) booking.get("subtotal_cents")).doubleValue() / 100);
-                totals.put("serviceFee", booking.get("fees_cents") != null ?
-                    ((Number) booking.get("fees_cents")).doubleValue() / 100 : 0);
-                totals.put("tax", booking.get("tax_cents") != null ?
-                    ((Number) booking.get("tax_cents")).doubleValue() / 100 : 0);
-                totals.put("total", ((Number) booking.get("total_cents")).doubleValue() / 100);
+                int subtotalCents = ((Number) booking.get("subtotal_cents")).intValue();
+                int feesCents = booking.get("fees_cents") != null ?
+                    ((Number) booking.get("fees_cents")).intValue() : 0;
+                int taxCents = booking.get("tax_cents") != null ?
+                    ((Number) booking.get("tax_cents")).intValue() : 0;
+                int totalCents = ((Number) booking.get("total_cents")).intValue();
+                
+                // Calculate discount (total should be subtotal + fees + tax - discount)
+                int calculatedWithoutDiscount = subtotalCents + feesCents + taxCents;
+                int discountCents = Math.max(0, calculatedWithoutDiscount - totalCents);
+                
+                totals.put("subtotal", subtotalCents / 100.0);
+                totals.put("serviceFee", feesCents / 100.0);
+                totals.put("tax", taxCents / 100.0);
+                totals.put("discount", discountCents / 100.0);
+                totals.put("total", totalCents / 100.0);
                 totals.put("promoCodeId", booking.get("promo_code_id"));
 
                 order.put("totals", totals);

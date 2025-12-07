@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import bookingApi from '../services/bookingApi.js';
 import ShowList from '../components/ShowList.jsx';
 import { useSearch } from '../context/SearchContext.js';
+import bookingApi from '../services/bookingApi.js';
 
 export default function SearchResults() {
   const { query, filters } = useSearch();
@@ -21,12 +21,29 @@ export default function SearchResults() {
     let mounted = true;
     const id = ++fetchId.current;
     setLoading(true);
+    
     bookingApi
       .getMovies({ q })
-      .then((res) => {
+      .then(async (res) => {
         if (!mounted || id !== fetchId.current) return;
         const payload = res && res.data ? (res.data.content || res.data) : [];
-        setMovies(payload || []);
+        
+        // Fetch showtimes for each movie found
+        const moviesWithShows = await Promise.all(
+          (payload || []).map(async (movie) => {
+            try {
+              const showsRes = await bookingApi.getShowsForMovie(movie.id);
+              const shows = showsRes?.data?.shows || showsRes?.data || [];
+              return { ...movie, shows: Array.isArray(shows) ? shows : [] };
+            } catch (err) {
+              console.warn(`Could not fetch shows for movie ${movie.id}:`, err);
+              return { ...movie, shows: [] };
+            }
+          })
+        );
+        
+        if (!mounted || id !== fetchId.current) return;
+        setMovies(moviesWithShows);
       })
       .catch((err) => {
         if (!mounted || id !== fetchId.current) return;

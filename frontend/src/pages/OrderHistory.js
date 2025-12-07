@@ -95,19 +95,19 @@ export default function OrderHistory() {
               {order.totals && (
                 <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #222' }}>
                   <div style={{ color: '#cbd5da', fontSize: '14px' }}>
-                    Subtotal: ${order.totals.subtotal?.toFixed(2) || '0.00'}
+                    Subtotal: ${order.totals.subtotal?.toFixed(2) || (order.subtotal_cents / 100).toFixed(2) || '0.00'}
                   </div>
                   <div style={{ color: '#cbd5da', fontSize: '14px' }}>
-                    Service Fee: ${order.totals.serviceFee?.toFixed(2) || '0.00'}
+                    Service Fee: ${order.totals.serviceFee?.toFixed(2) || (order.fees_cents / 100).toFixed(2) || '0.00'}
                   </div>
-                  <div style={{ color: '#cbd5da', fontSize: '14px' }}>
-                    Tax: ${order.totals.tax?.toFixed(2) || '0.00'}
-                  </div>
-                  {order.promo_code && (
-                    <div style={{ color: '#7a1f1f', fontSize: '14px' }}>
-                      Promo ({order.promo_code}): -$5.00
+                  {(order.promo_name || order.promo_code) && (
+                    <div style={{ color: '#4ade80', fontSize: '14px' }}>
+                      Promo ({order.promo_name || order.promo_code}): -${order.totals.discount?.toFixed(2) || '0.00'}
                     </div>
                   )}
+                  <div style={{ color: '#cbd5da', fontSize: '14px' }}>
+                    Tax (8%): ${order.totals.tax?.toFixed(2) || (order.tax_cents / 100).toFixed(2) || '0.00'}
+                  </div>
                 </div>
               )}
             </div>
