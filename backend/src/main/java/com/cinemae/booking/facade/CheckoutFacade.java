@@ -1,5 +1,13 @@
 package com.cinemae.booking.facade;
 
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+
 import com.cinemae.booking.dto.CheckoutRequest;
 import com.cinemae.booking.dto.CheckoutResult;
 import com.cinemae.booking.dto.PaymentRequest;
@@ -11,12 +19,6 @@ import com.cinemae.booking.service.BookingService;
 import com.cinemae.booking.service.EmailService;
 import com.cinemae.booking.service.PromotionService;
 import com.cinemae.booking.service.TicketService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
  * Application-layer Facade for the checkout workflow.
@@ -193,15 +195,41 @@ public class CheckoutFacade {
 
     /**
      * Calculate preliminary subtotal for promotion validation.
-     * This duplicates some logic from BookingService but avoids creating a booking
-     * before validating the promotion code.
+     * Uses actual ticket prices from the database.
      */
     private int calculatePreliminarySubtotal(CheckoutRequest request) {
-        // This is a simplified calculation - in a real system you might want to
-        // extract this logic to a shared service or have BookingService expose it
-        int count = request.getSelectedSeats().size();
-        // Using a rough estimate - adult price ($12) per seat
-        // The actual BookingService will do the precise calculation
-        return count * 1200;
+        // Get ticket prices from database
+        Map<String, Integer> prices = new java.util.HashMap<>();
+        try {
+            List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT age_category, price_cents FROM ticket_types WHERE is_active = 1"
+            );
+            for (Map<String, Object> row : rows) {
+                prices.put(((String) row.get("age_category")).toLowerCase(),
+                           ((Number) row.get("price_cents")).intValue());
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch ticket prices, using defaults");
+        }
+        
+        // Default prices if not found in database
+        if (prices.isEmpty()) {
+            prices.put("child", 900);
+            prices.put("adult", 1500);
+            prices.put("senior", 1100);
+        }
+        
+        // Calculate actual subtotal based on seat selections
+        int subtotal = 0;
+        for (CheckoutRequest.SeatSelection seat : request.getSelectedSeats()) {
+            String ageCategory = seat.getAgeCategory() != null ? 
+                seat.getAgeCategory().toLowerCase() : "adult";
+            int price = prices.getOrDefault(ageCategory, prices.getOrDefault("adult", 1500));
+            subtotal += price;
+        }
+        
+        log.info("Calculated preliminary subtotal: {} cents for {} seats", 
+                 subtotal, request.getSelectedSeats().size());
+        return subtotal;
     }
 }

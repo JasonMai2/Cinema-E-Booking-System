@@ -43,63 +43,54 @@ public class BookingService {
 
         String bookingNumber = generateBookingNumber();
 
+        // Calculate original subtotal (before discount)
         int subtotalCents = calculateSubtotal(showtimeId, selectedSeats);
-
-        int discountedSubtotal = subtotalCents;
+        
+        // Ensure discount doesn't exceed subtotal
+        int actualDiscountCents = 0;
         if (discountCents != null && discountCents > 0) {
-            discountedSubtotal = Math.max(0, subtotalCents - discountCents);
-            log.info("Applying discount: {} cents. Subtotal: {} -> {}",
-                     discountCents, subtotalCents, discountedSubtotal);
+            actualDiscountCents = Math.min(discountCents, subtotalCents);
+            log.info("Applying discount: {} cents on subtotal: {} cents",
+                     actualDiscountCents, subtotalCents);
         }
 
         int feesCents = calculateFees(selectedSeats.size());
-        int taxCents = calculateTax(discountedSubtotal + feesCents);
-        int totalCents = discountedSubtotal + feesCents + taxCents;
+        // Tax is calculated on (subtotal - discount + fees)
+        int taxableAmount = subtotalCents - actualDiscountCents + feesCents;
+        int taxCents = calculateTax(taxableAmount);
+        // Total = subtotal - discount + fees + tax
+        int totalCents = subtotalCents - actualDiscountCents + feesCents + taxCents;
 
         LocalDateTime now = LocalDateTime.now();
 
-        // FIXED SQL — showtime_id was missing
-        if (promoCodeId != null) {
-            jdbc.update("""
-                INSERT INTO bookings (
-                    booking_number, user_id, showtime_id, status,
-                    subtotal_cents, fees_cents, tax_cents, total_cents,
-                    promo_code_id, created_at
-                )
-                VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?)
-            """,
-            bookingNumber, userId, showtimeId,
-            discountedSubtotal, feesCents, taxCents, totalCents,
-            promoCodeId, Timestamp.valueOf(now)
-            );
-        } else {
-            jdbc.update("""
-                INSERT INTO bookings (
-                    booking_number, user_id, showtime_id, status,
-                    subtotal_cents, fees_cents, tax_cents, total_cents,
-                    created_at
-                )
-                VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, ?)
-            """,
-            bookingNumber, userId, showtimeId,
-            discountedSubtotal, feesCents, taxCents, totalCents,
-            Timestamp.valueOf(now)
-            );
-        }
+        // Store ORIGINAL subtotal and discount separately
+        jdbc.update("""
+            INSERT INTO bookings (
+                booking_number, user_id, showtime_id, status,
+                subtotal_cents, fees_cents, tax_cents, discount_cents, total_cents,
+                promo_code_id, created_at
+            )
+            VALUES (?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?)
+        """,
+        bookingNumber, userId, showtimeId,
+        subtotalCents, feesCents, taxCents, actualDiscountCents, totalCents,
+        promoCodeId, Timestamp.valueOf(now)
+        );
 
         Long bookingId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
-        log.info("Created booking id={}, number={}, total={} cents", 
-                 bookingId, bookingNumber, totalCents);
+        log.info("Created booking id={}, number={}, subtotal={}, discount={}, total={} cents", 
+                 bookingId, bookingNumber, subtotalCents, actualDiscountCents, totalCents);
 
         Booking booking = new Booking();
         booking.setId(bookingId);
         booking.setBookingNumber(bookingNumber);
         booking.setUserId(userId);
-        booking.setShowtimeId(showtimeId);     // <-- add this for completeness
+        booking.setShowtimeId(showtimeId);
         booking.setStatus("PENDING");
-        booking.setSubtotalCents(discountedSubtotal);
+        booking.setSubtotalCents(subtotalCents);
         booking.setFeesCents(feesCents);
         booking.setTaxCents(taxCents);
+        booking.setDiscountCents(actualDiscountCents);
         booking.setTotalCents(totalCents);
         booking.setPromoCodeId(promoCodeId);
         booking.setCreatedAt(now);

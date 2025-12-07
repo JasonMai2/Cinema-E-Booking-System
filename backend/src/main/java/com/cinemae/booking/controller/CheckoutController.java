@@ -131,10 +131,10 @@ public class CheckoutController {
         log.info("Getting order history for user: {}", userId);
 
         try {
-            // Corrected SQL — matches real DB schema
+            // Corrected SQL — includes discount_cents
             String sql = """
                 SELECT b.id, b.booking_number, b.status, b.total_cents, b.created_at,
-                       b.subtotal_cents, b.fees_cents, b.tax_cents, b.promo_code_id,
+                       b.subtotal_cents, b.fees_cents, b.tax_cents, b.discount_cents, b.promo_code_id,
                        pc.code AS promo_code, p.name AS promo_name
                 FROM bookings b
                 LEFT JOIN promotion_codes pc ON b.promo_code_id = pc.id
@@ -173,11 +173,9 @@ public class CheckoutController {
                     ((Number) booking.get("fees_cents")).intValue() : 0;
                 int taxCents = booking.get("tax_cents") != null ?
                     ((Number) booking.get("tax_cents")).intValue() : 0;
+                int discountCents = booking.get("discount_cents") != null ?
+                    ((Number) booking.get("discount_cents")).intValue() : 0;
                 int totalCents = ((Number) booking.get("total_cents")).intValue();
-                
-                // Calculate discount (total should be subtotal + fees + tax - discount)
-                int calculatedWithoutDiscount = subtotalCents + feesCents + taxCents;
-                int discountCents = Math.max(0, calculatedWithoutDiscount - totalCents);
                 
                 totals.put("subtotal", subtotalCents / 100.0);
                 totals.put("serviceFee", feesCents / 100.0);

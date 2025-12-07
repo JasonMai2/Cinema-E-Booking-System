@@ -1,27 +1,35 @@
 package com.cinemae.booking.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.cinemae.booking.service.EmailService;
-
-import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigInteger;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.cinemae.booking.service.EmailService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -34,7 +42,6 @@ public class AuthController {
     @Autowired
     private EmailService emailService;
 
-    @Autowired
     public AuthController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
@@ -141,12 +148,12 @@ public class AuthController {
             Map<String, Object> userIdResult = jdbc.queryForMap("SELECT id FROM users WHERE email = ?", email);
             Object userIdObj = userIdResult.get("id");
             Long userId;
-            if (userIdObj instanceof BigInteger) {
-                userId = ((BigInteger) userIdObj).longValue();
-            } else if (userIdObj instanceof Long) {
-                userId = (Long) userIdObj;
-            } else if (userIdObj instanceof Integer) {
-                userId = ((Integer) userIdObj).longValue();
+            if (userIdObj instanceof BigInteger bigInteger) {
+                userId = bigInteger.longValue();
+            } else if (userIdObj instanceof Long aLong) {
+                userId = aLong;
+            } else if (userIdObj instanceof Integer integer) {
+                userId = integer.longValue();
             } else {
                 userId = Long.valueOf(userIdObj.toString());
             }
@@ -293,10 +300,10 @@ public class AuthController {
             // Handle different date/time types that might be returned
             Object expiresAtObj = verification.get("expires_at");
             LocalDateTime expiresAt;
-            if (expiresAtObj instanceof Timestamp) {
-                expiresAt = ((Timestamp) expiresAtObj).toLocalDateTime();
-            } else if (expiresAtObj instanceof LocalDateTime) {
-                expiresAt = (LocalDateTime) expiresAtObj;
+            if (expiresAtObj instanceof Timestamp timestamp) {
+                expiresAt = timestamp.toLocalDateTime();
+            } else if (expiresAtObj instanceof LocalDateTime localDateTime) {
+                expiresAt = localDateTime;
             } else {
                 // Fallback - this shouldn't happen but provides safety
                 expiresAt = LocalDateTime.parse(expiresAtObj.toString());
@@ -319,12 +326,12 @@ public class AuthController {
             // Handle different numeric types that MySQL might return
             Object userIdObj = verification.get("user_id");
             Long userId;
-            if (userIdObj instanceof BigInteger) {
-                userId = ((BigInteger) userIdObj).longValue();
-            } else if (userIdObj instanceof Long) {
-                userId = (Long) userIdObj;
-            } else if (userIdObj instanceof Integer) {
-                userId = ((Integer) userIdObj).longValue();
+            if (userIdObj instanceof BigInteger bigInteger) {
+                userId = bigInteger.longValue();
+            } else if (userIdObj instanceof Long aLong) {
+                userId = aLong;
+            } else if (userIdObj instanceof Integer integer) {
+                userId = integer.longValue();
             } else {
                 userId = Long.valueOf(userIdObj.toString());
             }
@@ -380,12 +387,12 @@ public class AuthController {
             // Handle different numeric types that MySQL might return
             Object userIdObj = user.get("id");
             Long userId;
-            if (userIdObj instanceof BigInteger) {
-                userId = ((BigInteger) userIdObj).longValue();
-            } else if (userIdObj instanceof Long) {
-                userId = (Long) userIdObj;
-            } else if (userIdObj instanceof Integer) {
-                userId = ((Integer) userIdObj).longValue();
+            if (userIdObj instanceof BigInteger bigInteger) {
+                userId = bigInteger.longValue();
+            } else if (userIdObj instanceof Long aLong) {
+                userId = aLong;
+            } else if (userIdObj instanceof Integer integer) {
+                userId = integer.longValue();
             } else {
                 userId = Long.valueOf(userIdObj.toString());
             }

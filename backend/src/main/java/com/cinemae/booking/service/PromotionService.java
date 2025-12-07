@@ -5,7 +5,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -19,7 +18,6 @@ public class PromotionService {
     private static final Logger log = LoggerFactory.getLogger(PromotionService.class);
     private final JdbcTemplate jdbc;
 
-    @Autowired
     public PromotionService(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }

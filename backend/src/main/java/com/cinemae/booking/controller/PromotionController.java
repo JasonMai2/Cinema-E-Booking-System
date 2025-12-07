@@ -1,11 +1,18 @@
 package com.cinemae.booking.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/promotions")
@@ -13,7 +20,6 @@ public class PromotionController {
     
     private final JdbcTemplate jdbc;
 
-    @Autowired
     public PromotionController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }

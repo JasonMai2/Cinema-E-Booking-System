@@ -1,17 +1,17 @@
 package com.cinemae.booking.model;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 public class Booking {
     private Long id;
     private String bookingNumber;
     private Long userId;
-    private Long showtimeId;  // <-- ADDED FIELD
+    private Long showtimeId;
     private String status; // PENDING, PAID, CANCELLED, EXPIRED
     private Integer subtotalCents;
     private Integer feesCents;
     private Integer taxCents;
+    private Integer discountCents;
     private Integer totalCents;
     private Long promoCodeId;
     private LocalDateTime createdAt;
@@ -20,8 +20,8 @@ public class Booking {
 
     public Booking(Long id, String bookingNumber, Long userId, Long showtimeId,
                    String status, Integer subtotalCents, Integer feesCents,
-                   Integer taxCents, Integer totalCents, Long promoCodeId,
-                   LocalDateTime createdAt) {
+                   Integer taxCents, Integer discountCents, Integer totalCents, 
+                   Long promoCodeId, LocalDateTime createdAt) {
 
         this.id = id;
         this.bookingNumber = bookingNumber;
@@ -31,6 +31,7 @@ public class Booking {
         this.subtotalCents = subtotalCents;
         this.feesCents = feesCents;
         this.taxCents = taxCents;
+        this.discountCents = discountCents;
         this.totalCents = totalCents;
         this.promoCodeId = promoCodeId;
         this.createdAt = createdAt;
@@ -46,8 +47,8 @@ public class Booking {
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
 
-    public Long getShowtimeId() { return showtimeId; }  // <-- ADDED
-    public void setShowtimeId(Long showtimeId) { this.showtimeId = showtimeId; }  // <-- ADDED
+    public Long getShowtimeId() { return showtimeId; }
+    public void setShowtimeId(Long showtimeId) { this.showtimeId = showtimeId; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
@@ -60,6 +61,9 @@ public class Booking {
 
     public Integer getTaxCents() { return taxCents; }
     public void setTaxCents(Integer taxCents) { this.taxCents = taxCents; }
+
+    public Integer getDiscountCents() { return discountCents; }
+    public void setDiscountCents(Integer discountCents) { this.discountCents = discountCents; }
 
     public Integer getTotalCents() { return totalCents; }
     public void setTotalCents(Integer totalCents) { this.totalCents = totalCents; }

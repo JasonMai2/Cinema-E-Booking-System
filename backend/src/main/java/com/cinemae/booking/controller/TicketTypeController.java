@@ -1,13 +1,19 @@
 package com.cinemae.booking.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.bind.annotation.*;
-
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST Controller for managing ticket types and pricing.
@@ -19,7 +25,6 @@ public class TicketTypeController {
 
     private final JdbcTemplate jdbc;
 
-    @Autowired
     public TicketTypeController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }

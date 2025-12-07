@@ -1,7 +1,8 @@
 package com.cinemae.booking.service;
 
-import com.cinemae.booking.model.Booking;
-import com.cinemae.booking.model.Ticket;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -9,8 +10,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
+import com.cinemae.booking.model.Booking;
+import com.cinemae.booking.model.Ticket;
 
 @Service
 public class EmailService {
