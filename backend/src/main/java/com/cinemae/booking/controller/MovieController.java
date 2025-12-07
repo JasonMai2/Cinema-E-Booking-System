@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,7 @@ public class MovieController {
     private static final Logger log = LoggerFactory.getLogger(MovieController.class);
     private final JdbcTemplate jdbc;
 
+    @Autowired
     public MovieController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
@@ -235,37 +237,72 @@ public class MovieController {
     }
 
     /**
-     * Get "Now Playing" movies - movies with showtimes in the near future.
-     * Uses the v_now_playing database view.
+     * Get "Now Playing" movies - movies with showtimes in the next 14 days.
+     * Falls back to is_now_playing flag if no showtimes exist.
      */
     @GetMapping("/now-playing")
     public List<Map<String, Object>> getNowPlaying() {
+        // First try to get movies with actual showtimes in the next 14 days
         String sql = """
-            SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
+            SELECT DISTINCT m.id, m.title, m.mpaa_rating, m.synopsis, 
                    m.trailer_video_url, m.trailer_image_url,
-                   np.first_show, np.last_show
-            FROM v_now_playing np
-            JOIN movies m ON np.movie_id = m.id
-            ORDER BY np.first_show ASC
+                   MIN(s.starts_at) as first_show
+            FROM movies m
+            JOIN showtimes s ON s.movie_id = m.id
+            WHERE s.starts_at >= NOW() 
+              AND s.starts_at <= DATE_ADD(NOW(), INTERVAL 14 DAY)
+            GROUP BY m.id, m.title, m.mpaa_rating, m.synopsis, m.trailer_video_url, m.trailer_image_url
+            ORDER BY first_show ASC
             """;
-        return jdbc.queryForList(sql);
+        List<Map<String, Object>> result = jdbc.queryForList(sql);
+        
+        // If no movies with showtimes, fall back to is_now_playing flag
+        if (result.isEmpty()) {
+            String fallbackSql = """
+                SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
+                       m.trailer_video_url, m.trailer_image_url
+                FROM movies m
+                WHERE m.is_now_playing = 1
+                ORDER BY m.title ASC
+                """;
+            result = jdbc.queryForList(fallbackSql);
+        }
+        
+        return result;
     }
 
     /**
-     * Get "Coming Soon" movies - movies with showtimes in the future.
-     * Uses the v_coming_soon database view.
+     * Get "Coming Soon" movies - movies with showtimes more than 14 days out.
+     * Falls back to is_coming_soon flag if no showtimes exist.
      */
     @GetMapping("/coming-soon")
     public List<Map<String, Object>> getComingSoon() {
+        // First try to get movies with showtimes more than 14 days out
         String sql = """
-            SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
+            SELECT DISTINCT m.id, m.title, m.mpaa_rating, m.synopsis, 
                    m.trailer_video_url, m.trailer_image_url,
-                   cs.first_show
-            FROM v_coming_soon cs
-            JOIN movies m ON cs.movie_id = m.id
-            ORDER BY cs.first_show ASC
+                   MIN(s.starts_at) as first_show
+            FROM movies m
+            JOIN showtimes s ON s.movie_id = m.id
+            WHERE s.starts_at > DATE_ADD(NOW(), INTERVAL 14 DAY)
+            GROUP BY m.id, m.title, m.mpaa_rating, m.synopsis, m.trailer_video_url, m.trailer_image_url
+            ORDER BY first_show ASC
             """;
-        return jdbc.queryForList(sql);
+        List<Map<String, Object>> result = jdbc.queryForList(sql);
+        
+        // If no movies with future showtimes, fall back to is_coming_soon flag
+        if (result.isEmpty()) {
+            String fallbackSql = """
+                SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
+                       m.trailer_video_url, m.trailer_image_url
+                FROM movies m
+                WHERE m.is_coming_soon = 1
+                ORDER BY m.title ASC
+                """;
+            result = jdbc.queryForList(fallbackSql);
+        }
+        
+        return result;
     }
 
     /**

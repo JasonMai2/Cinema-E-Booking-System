@@ -290,7 +290,7 @@ export default function Checkout() {
                   <br />
                   {paymentMethods.length === 0 ? (
                     <div style={{ color: '#ff6b6b', marginBottom: 8 }}>
-                      No payment methods found. Please add one in your <a href="/profile" style={{ color: '#7a1f1f' }}>profile</a>.
+                      No payment methods found. Please add one in your <a href="/profile/edit" style={{ color: '#7a1f1f' }}>profile</a>.
                     </div>
                   ) : (
                     <select 

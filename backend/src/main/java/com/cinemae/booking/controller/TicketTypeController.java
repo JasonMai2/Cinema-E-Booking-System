@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,13 +26,15 @@ public class TicketTypeController {
 
     private final JdbcTemplate jdbc;
 
+    @Autowired
     public TicketTypeController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
     /**
-     * Get all active ticket types with their prices.
+     * Get all ticket types with their prices.
      * This endpoint is used by the frontend to display available ticket categories.
+     * Returns all ticket types (including inactive) for admin management.
      * 
      * @return List of ticket types with id, name, age_category, and price_cents
      */
@@ -41,8 +44,7 @@ public class TicketTypeController {
             List<Map<String, Object>> ticketTypes = jdbc.queryForList(
                 "SELECT id, name, age_category, price_cents, is_active, created_at, updated_at " +
                 "FROM ticket_types " +
-                "WHERE is_active = 1 " +
-                "ORDER BY price_cents DESC"
+                "ORDER BY is_active DESC, price_cents DESC"
             );
             return ticketTypes;
         } catch (Exception e) {
