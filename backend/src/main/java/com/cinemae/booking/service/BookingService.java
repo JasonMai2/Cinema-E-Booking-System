@@ -140,13 +140,21 @@ public class BookingService {
 
     private Map<String, Integer> getTicketTypePrices() {
         List<Map<String, Object>> rows = jdbc.queryForList(
-            "SELECT age_category, price_cents FROM ticket_types WHERE is_active = 1"
+            "SELECT name, age_category, price_cents FROM ticket_types WHERE is_active = 1"
         );
 
         Map<String, Integer> priceMap = new java.util.HashMap<>();
         for (Map<String, Object> row : rows) {
-            priceMap.put(((String) row.get("age_category")).toLowerCase(),
-                         (Integer) row.get("price_cents"));
+            // Use name (lowercase) as the primary key for price lookup
+            String name = (String) row.get("name");
+            if (name != null) {
+                priceMap.put(name.toLowerCase(), (Integer) row.get("price_cents"));
+            }
+            // Also add by age_category for backwards compatibility
+            String ageCategory = (String) row.get("age_category");
+            if (ageCategory != null) {
+                priceMap.put(ageCategory.toLowerCase(), (Integer) row.get("price_cents"));
+            }
         }
 
         if (priceMap.isEmpty()) {

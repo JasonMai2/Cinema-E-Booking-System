@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import TicketModal from "./TicketModal";
 import { useNavigate } from "react-router-dom";
+import TicketModal from "./TicketModal";
 
 const API_BASE = "http://localhost:8080/api";
 
@@ -13,7 +13,6 @@ export default function AdminTickets() {
 
   const [ticketFormData, setTicketFormData] = useState({
     name: "",
-    ageCategory: "",
     price: "",
     active: true,
   });
@@ -35,7 +34,6 @@ export default function AdminTickets() {
       const formatted = ticketList.map((t) => ({
         id: t.id,
         name: t.name,
-        ageCategory: t.age_category || t.ageCategory,
         price: ((t.price_cents || t.priceCents) / 100).toFixed(2),
         active: t.is_active !== undefined ? t.is_active : (t.active !== undefined ? t.active : true),
       }));
@@ -51,7 +49,6 @@ export default function AdminTickets() {
     setSelectedTicket(ticket);
     setTicketFormData({
       name: ticket.name,
-      ageCategory: ticket.ageCategory,
       price: ticket.price,
       active: ticket.active,
     });
@@ -71,14 +68,13 @@ export default function AdminTickets() {
       alert("Name is required");
       return;
     }
-    if (!ticketFormData.ageCategory) {
-      alert("Age category is required");
+    if (!ticketFormData.price || Number(ticketFormData.price) < 0) {
+      alert("Valid price is required");
       return;
     }
 
     const payload = {
       name: ticketFormData.name,
-      age_category: ticketFormData.ageCategory.toLowerCase(),
       price_cents: Math.round(Number(ticketFormData.price) * 100),
       is_active: ticketFormData.active,
     };
@@ -147,7 +143,6 @@ export default function AdminTickets() {
             setSelectedTicket(null);
             setTicketFormData({
               name: "",
-              ageCategory: "",
               price: "",
               active: true,
             });
@@ -166,8 +161,7 @@ export default function AdminTickets() {
             <div>
               <h3 className="itemInfoTitle">{t.name}</h3>
               <p className="itemInfoSubtitle">
-                  Category: {t.ageCategory} • Price: ${t.price} •{" "}
-                {t.active ? "Active" : "Inactive"}
+                Price: ${t.price} • {t.active ? "Active" : "Inactive"}
               </p>
             </div>
 

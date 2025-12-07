@@ -35,11 +35,14 @@ export default function OrderSummary() {
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data) && data.length > 0) {
-          setTicketTypes(data);
+          // Filter only active ticket types
+          const activeTypes = data.filter(t => t.is_active !== false && t.is_active !== 0);
+          setTicketTypes(activeTypes);
           const prices = {};
-          data.forEach(type => {
-            const category = (type.age_category || '').toLowerCase();
-            prices[category] = type.price_cents / 100;
+          activeTypes.forEach(type => {
+            // Use name (lowercase) as the key
+            const key = (type.name || '').toLowerCase();
+            prices[key] = type.price_cents / 100;
           });
           if (Object.keys(prices).length > 0) {
             setTicketPrices(prices);
@@ -64,10 +67,13 @@ export default function OrderSummary() {
   async function onUpdateOrder() {
     setLoading(true);
     try {
+      // Preserve ALL existing orderDraft fields, only update seats
       const payload = {
+        ...orderDraft, // Keep all existing fields (userId, paymentMethodId, promoCode, etc.)
         showId: selectedShow?.id || orderDraft?.showId,
         seats: selectedSeats || orderDraft?.seats || [],
         customer: customer || orderDraft?.customer || null,
+        userId: user?.id || orderDraft?.userId, // Ensure userId is preserved
       };
       await createOrderDraft(payload);
       alert('Order draft updated');
@@ -81,10 +87,13 @@ export default function OrderSummary() {
   async function onConfirmAndCheckout() {
     setLoading(true);
     try {
+      // Preserve ALL existing orderDraft fields
       const payload = {
+        ...orderDraft, // Keep all existing fields
         showId: selectedShow?.id || orderDraft?.showId,
         seats: selectedSeats || orderDraft?.seats || [],
         customer: customer || orderDraft?.customer || null,
+        userId: user?.id || orderDraft?.userId, // Ensure userId is preserved
       };
       await createOrderDraft(payload);
       navigate('/checkout');
@@ -162,14 +171,14 @@ export default function OrderSummary() {
                       <div>{s.row ? `${s.row}${s.number}` : s} {s.price ? `— $${(s.price||0).toFixed(2)}` : ''}</div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         <select value={s.ageCategory || 'adult'} onChange={(e) => {
-                          const newAge = e.target.value;
-                          const newPrice = ticketPrices[newAge] || ticketPrices.adult || 15.00;
-                          updateSeat(s.id, { ageCategory: newAge, price: newPrice });
+                          const newTicketType = e.target.value;
+                          const newPrice = ticketPrices[newTicketType] || 15.00;
+                          updateSeat(s.id, { ageCategory: newTicketType, price: newPrice });
                         }} style={{ background: '#0b0d0f', color: '#fff', border: '1px solid #222', borderRadius: 6, padding: '4px 6px' }}>
                           {ticketTypes.length > 0 ? (
                             ticketTypes.map(type => (
-                              <option key={type.id || type.age_category} value={(type.age_category || '').toLowerCase()}>
-                                {type.name || type.age_category} (${(type.price_cents / 100).toFixed(2)})
+                              <option key={type.id} value={(type.name || '').toLowerCase()}>
+                                {type.name} (${(type.price_cents / 100).toFixed(2)})
                               </option>
                             ))
                           ) : (

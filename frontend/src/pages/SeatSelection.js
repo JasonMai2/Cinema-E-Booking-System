@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import SeatMap from '../components/SeatMap.jsx';
-import bookingApi from '../services/bookingApi.js';
 import { useBooking } from '../context/BookingContext.js';
+import bookingApi from '../services/bookingApi.js';
 
 export default function SeatSelection() {
   const { showId: paramShowId } = useParams();
@@ -61,14 +61,23 @@ export default function SeatSelection() {
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data) && data.length > 0) {
-          setTicketTypes(data);
+          // Filter only active ticket types
+          const activeTypes = data.filter(t => t.is_active !== false && t.is_active !== 0);
+          setTicketTypes(activeTypes);
+          
+          // Build price map using ticket type name (lowercase) as key
           const prices = {};
-          data.forEach(type => {
-            const category = (type.age_category || '').toLowerCase();
-            prices[category] = type.price_cents / 100;
+          activeTypes.forEach(type => {
+            const key = (type.name || '').toLowerCase();
+            prices[key] = type.price_cents / 100;
           });
           if (Object.keys(prices).length > 0) {
             setTicketPrices(prices);
+          }
+          
+          // Set default ticket type to first available
+          if (activeTypes.length > 0) {
+            setAgeCategory(activeTypes[0].name.toLowerCase());
           }
         }
       })
@@ -164,21 +173,21 @@ export default function SeatSelection() {
     try {
       const seatIds = selectedSeats.map((s) => s.id);
       
-      // Call the backend API to reserve seats
-      const res = await bookingApi.reserveSeats(showId, { seats: seatIds });
+      // Just verify seats are still available (no locking yet)
+      const res = await bookingApi.checkSeatsAvailable(showId, { seats: seatIds });
       const data = res && res.data ? res.data : res;
       
       if (!data.ok) {
-        throw new Error(data.message || 'Failed to reserve seats');
+        throw new Error(data.message || 'Some seats are no longer available');
       }
       
       // Store resulting reservation/order in context
       if (setOrderDetails) setOrderDetails(data);
       
-      // Navigate to checkout
+      // Navigate to checkout - seats will be locked only when order is confirmed
       navigate('/checkout');
     } catch (err) {
-      console.error('Reserve seats failed:', err);
+      console.error('Check seats failed:', err);
       // Try to refresh seat map and show helpful message
       try {
         const res = await bookingApi.getSeatMap(showId);
@@ -194,7 +203,7 @@ export default function SeatSelection() {
       } catch (refreshErr) {
         console.error('Failed to refresh seats:', refreshErr);
       }
-      alert('Failed to reserve seats — some may no longer be available. Please reselect.');
+      alert('Some seats are no longer available. Please reselect.');
     } finally {
       setReserving(false);
     }
@@ -305,14 +314,14 @@ export default function SeatSelection() {
                           <div>{`${s.row}${s.number} — $${(s.price || 0).toFixed(2)}`}</div>
                           <div>
                             <select value={s.ageCategory || ageCategory} onChange={(e) => {
-                              const newAge = e.target.value;
-                              const newPrice = ticketPrices[newAge] || ticketPrices.adult || 15.00;
-                              updateSeat(s.id, { ageCategory: newAge, price: newPrice, originalPrice: s.originalPrice || s.price || 0 });
+                              const newTicketType = e.target.value;
+                              const newPrice = ticketPrices[newTicketType] || 15.00;
+                              updateSeat(s.id, { ageCategory: newTicketType, price: newPrice, originalPrice: s.originalPrice || s.price || 0 });
                             }} style={{ background: '#0b0d0f', color: '#fff', border: '1px solid #222', borderRadius: 6, padding: '4px 6px' }}>
                               {ticketTypes.length > 0 ? (
                                 ticketTypes.map(type => (
-                                  <option key={type.id || type.age_category} value={(type.age_category || '').toLowerCase()}>
-                                    {type.name || type.age_category} (${(type.price_cents / 100).toFixed(2)})
+                                  <option key={type.id} value={(type.name || '').toLowerCase()}>
+                                    {type.name} (${(type.price_cents / 100).toFixed(2)})
                                   </option>
                                 ))
                               ) : (

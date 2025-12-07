@@ -1,5 +1,5 @@
-import React from "react";
 import { X } from "lucide-react";
+import React from "react";
 
 export default function TicketModal({
   ticketFormData,
@@ -27,25 +27,10 @@ export default function TicketModal({
             name="name"
             value={ticketFormData.name}
             onChange={handleInputChange}
-            placeholder="e.g., Adult Ticket"
+            placeholder="e.g., Adult, Child, Student, Senior"
           />
-        </div>
-
-        <div className="formGroup">
-          <label className="label">Age Category *</label>
-          <select
-            className="input"
-            name="ageCategory"
-            value={ticketFormData.ageCategory || ''}
-            onChange={handleInputChange}
-          >
-            <option value="">Select a category</option>
-            <option value="child">Child</option>
-            <option value="adult">Adult</option>
-            <option value="senior">Senior</option>
-          </select>
           <p style={{ fontSize: '12px', color: '#888', marginTop: 4 }}>
-            This determines which ticket type appears in the dropdown during seat selection
+            This name will appear in the ticket type dropdown during seat selection
           </p>
         </div>
 

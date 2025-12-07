@@ -1,9 +1,20 @@
 package com.cinemae.booking.controller;
 
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.bind.annotation.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-import java.util.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
@@ -225,6 +236,83 @@ public class ShowtimeController {
         } catch (Exception e) {
             resp.put("ok", false);
             resp.put("message", "Failed to fetch seat map: " + e.getMessage());
+            return resp;
+        }
+    }
+
+    /**
+     * Check if seats are available without locking them.
+     * Used when user proceeds to checkout - actual locking happens at payment.
+     * POST /api/shows/{showId}/check-availability
+     */
+    @PostMapping("/shows/{showId}/check-availability")
+    public Map<String, Object> checkSeatsAvailable(
+            @PathVariable("showId") String showId,
+            @RequestBody Map<String, Object> body) {
+        
+        Map<String, Object> resp = new HashMap<>();
+        
+        try {
+            Long numericShowId;
+            try {
+                numericShowId = Long.parseLong(showId);
+            } catch (NumberFormatException e) {
+                resp.put("ok", false);
+                resp.put("message", "Invalid show ID format");
+                return resp;
+            }
+            
+            @SuppressWarnings("unchecked")
+            List<Object> seatIds = (List<Object>) body.get("seats");
+            
+            if (seatIds == null || seatIds.isEmpty()) {
+                resp.put("ok", false);
+                resp.put("message", "No seats provided");
+                return resp;
+            }
+            
+            // Check if seats are available (not booked or locked by others)
+            for (Object seatIdObj : seatIds) {
+                Long seatId = ((Number) seatIdObj).longValue();
+                
+                // Check if already booked
+                String checkSql = """
+                    SELECT COUNT(*) as cnt FROM tickets t
+                    JOIN bookings b ON t.booking_id = b.id
+                    WHERE t.showtime_id = ? AND t.seat_id = ?
+                    AND b.status IN ('CONFIRMED', 'PAID', 'PENDING')
+                    """;
+                
+                Integer count = jdbc.queryForObject(checkSql, Integer.class, numericShowId, seatId);
+                if (count != null && count > 0) {
+                    resp.put("ok", false);
+                    resp.put("message", "Seat is already booked by another customer");
+                    return resp;
+                }
+                
+                // Check for active locks by other users
+                String lockCheckSql = """
+                    SELECT COUNT(*) as cnt FROM seat_locks
+                    WHERE showtime_id = ? AND seat_id = ?
+                    AND expires_at > NOW()
+                    """;
+                
+                Integer lockCount = jdbc.queryForObject(lockCheckSql, Integer.class, numericShowId, seatId);
+                if (lockCount != null && lockCount > 0) {
+                    resp.put("ok", false);
+                    resp.put("message", "Seat is temporarily held by another customer");
+                    return resp;
+                }
+            }
+            
+            // All seats available - DO NOT lock them yet
+            resp.put("ok", true);
+            resp.put("message", "Seats are available");
+            return resp;
+            
+        } catch (Exception e) {
+            resp.put("ok", false);
+            resp.put("message", "Failed to check seat availability: " + e.getMessage());
             return resp;
         }
     }

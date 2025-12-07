@@ -29,6 +29,10 @@ const bookingApi = {
     const params = args[1] || undefined;
     return api.get(`/shows/${showId}/seats`, params ? { params } : undefined);
   },
+  checkSeatsAvailable(showId, body) {
+    // Check if seats are available without locking them
+    return api.post(`/shows/${showId}/check-availability`, body);
+  },
   reserveSeats(showId, body) {
     return api.post(`/shows/${showId}/reserve`, body);
   },

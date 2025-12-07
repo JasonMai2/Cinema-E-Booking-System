@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class TicketService {
     private static final Logger log = LoggerFactory.getLogger(TicketService.class);
     private final JdbcTemplate jdbc;
 
+    @Autowired
     public TicketService(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
@@ -69,17 +71,18 @@ public class TicketService {
 
         for (CheckoutRequest.SeatSelection seatSelection : selectedSeats) {
             String ticketNumber = generateTicketNumber();
-            String ageCategory = seatSelection.getAgeCategory() != null ? 
-                seatSelection.getAgeCategory().toUpperCase() : "ADULT";
+            // Store ticket type name (lowercase for consistency)
+            String ticketType = seatSelection.getAgeCategory() != null ? 
+                seatSelection.getAgeCategory().toLowerCase() : "adult";
             
-            // Get price for this age category
-            int priceCents = getPriceForCategory(showtimeId, ageCategory);
+            // Get price for this ticket type
+            int priceCents = getPriceForCategory(showtimeId, ticketType);
 
             // Insert ticket with all required fields
             jdbc.update(
                 "INSERT INTO tickets (ticket_number, booking_id, showtime_id, seat_id, age_category, price_cents) " +
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                ticketNumber, booking.getId(), showtimeId, seatSelection.getSeatId(), ageCategory, priceCents
+                ticketNumber, booking.getId(), showtimeId, seatSelection.getSeatId(), ticketType, priceCents
             );
 
             Long ticketId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
@@ -93,7 +96,7 @@ public class TicketService {
             ticket.setBookingId(booking.getId());
             ticket.setShowtimeId(showtimeId);
             ticket.setSeatId(seatSelection.getSeatId());
-            ticket.setAgeCategory(ageCategory);
+            ticket.setAgeCategory(ticketType);
             ticket.setPriceCents(priceCents);
             
             // Set display info
@@ -104,7 +107,7 @@ public class TicketService {
 
             tickets.add(ticket);
             
-            log.info("Generated ticket {} for seat {} ({})", ticketNumber, seatSelection.getSeatId(), ageCategory);
+            log.info("Generated ticket {} for seat {} ({})", ticketNumber, seatSelection.getSeatId(), ticketType);
         }
 
         return tickets;
@@ -118,34 +121,33 @@ public class TicketService {
     }
 
     /**
-     * Get price for a specific age category from ticket_types table.
+     * Get price for a specific ticket type from ticket_types table.
      */
-    private int getPriceForCategory(Long showtimeId, String ageCategory) {
-        // Get price from ticket_types table
+    private int getPriceForCategory(Long showtimeId, String ticketType) {
+        // Get price from ticket_types table by name
         try {
             Integer price = jdbc.queryForObject(
-                "SELECT price_cents FROM ticket_types WHERE age_category = ? AND is_active = 1 LIMIT 1",
+                "SELECT price_cents FROM ticket_types WHERE LOWER(name) = ? AND is_active = 1 LIMIT 1",
                 Integer.class,
-                ageCategory.toLowerCase()
+                ticketType.toLowerCase()
             );
             
             if (price != null) {
-                log.debug("Found price for {}: {} cents", ageCategory, price);
+                log.debug("Found price for {}: {} cents", ticketType, price);
                 return price;
             }
         } catch (Exception e) {
-            log.warn("Could not find price for category '{}' in database, using fallback", ageCategory);
+            log.warn("Could not find price for ticket type '{}' in database, using fallback", ticketType);
         }
 
-        // Fallback to default prices if category not found in database
-        // These should match the ticket_types table defaults
+        // Fallback to default prices if ticket type not found in database
         Map<String, Integer> defaultPrices = Map.of(
-            "CHILD", 900,     // $9.00
-            "ADULT", 1500,    // $15.00
-            "SENIOR", 1100    // $11.00
+            "child", 900,     // $9.00
+            "adult", 1500,    // $15.00
+            "senior", 1100    // $11.00
         );
 
-        return defaultPrices.getOrDefault(ageCategory.toUpperCase(), 1500);
+        return defaultPrices.getOrDefault(ticketType.toLowerCase(), 1500);
     }
 
     /**
