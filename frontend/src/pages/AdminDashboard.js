@@ -1,8 +1,8 @@
+import { DollarSign, Film, Percent, Ticket, Users } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { Film, Users, Percent, Ticket } from "lucide-react";
-import AdminUsers from "./AdminUsers";
-import AdminPromotions from "./AdminPromotions";
 import { useNavigate } from 'react-router-dom';
+import AdminPromotions from "./AdminPromotions";
+import AdminUsers from "./AdminUsers";
 
 import { useAuth } from "../context/AuthContext";
 import "./AdminDashboard.css";
@@ -387,6 +387,17 @@ export default function AdminDashboard() {
                   Manage
                   <br />
                   Ticket Prices
+                </h2>
+              </div>
+
+              <div className="adminCard" onClick={() => navigate('/admin/fees') }>
+                <div className="adminCardIcon">
+                  <DollarSign className="iconStyle" />
+                </div>
+                <h2 className="adminCardTitle">
+                  Manage
+                  <br />
+                  Taxes & Fees
                 </h2>
               </div>
 

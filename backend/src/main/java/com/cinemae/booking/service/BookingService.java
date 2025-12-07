@@ -161,7 +161,22 @@ public class BookingService {
     }
 
     private int calculateFees(int numSeats) {
-        // Try to get booking fee from price_rules table, fallback to $1.50
+        // Try to get service fee from settings table
+        try {
+            Integer serviceFeeCents = jdbc.queryForObject(
+                "SELECT value_int FROM settings WHERE setting_key = 'service_fee_cents' LIMIT 1",
+                Integer.class
+            );
+            if (serviceFeeCents != null) {
+                log.info("Using service fee from settings: {} cents per ticket", serviceFeeCents);
+                return numSeats * serviceFeeCents;
+            }
+        } catch (Exception e) {
+            // Table may not exist or no setting found
+            log.debug("service_fee_cents not found in settings, using default");
+        }
+        
+        // Try legacy price_rules table as fallback
         try {
             Integer bookingFeeCents = jdbc.queryForObject(
                 "SELECT booking_fee_cents FROM price_rules WHERE active = true AND scope = 'GLOBAL' LIMIT 1",
@@ -173,22 +188,28 @@ public class BookingService {
         } catch (Exception e) {
             // Table may not exist or no global rule found
         }
+        
+        log.info("Using default service fee: 150 cents per ticket");
         return numSeats * 150; // Fallback: $1.50 per ticket
     }
 
     private int calculateTax(int taxableAmount) {
-        // Try to get tax rate from settings, fallback to 8%
+        // Try to get tax rate from settings table
         try {
-            Double taxRate = jdbc.queryForObject(
-                "SELECT tax_rate FROM settings WHERE setting_key = 'tax_rate' LIMIT 1",
+            Double taxRatePercent = jdbc.queryForObject(
+                "SELECT value_decimal FROM settings WHERE setting_key = 'tax_rate_percent' LIMIT 1",
                 Double.class
             );
-            if (taxRate != null) {
-                return (int) Math.round(taxableAmount * taxRate);
+            if (taxRatePercent != null) {
+                log.info("Using tax rate from settings: {}%", taxRatePercent);
+                return (int) Math.round(taxableAmount * (taxRatePercent / 100.0));
             }
         } catch (Exception e) {
             // Table may not exist or no setting found
+            log.debug("tax_rate_percent not found in settings, using default");
         }
+        
+        log.info("Using default tax rate: 8%");
         return (int) Math.round(taxableAmount * 0.08); // Fallback: 8% tax
     }
 }

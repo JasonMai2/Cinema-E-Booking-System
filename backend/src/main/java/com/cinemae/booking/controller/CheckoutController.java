@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.cinemae.booking.dto.CheckoutRequest;
 import com.cinemae.booking.dto.CheckoutResult;
 import com.cinemae.booking.facade.CheckoutFacade;
+import com.cinemae.booking.model.Booking;
 
 /**
  * REST Controller for the checkout process and order management.
@@ -107,10 +108,21 @@ public class CheckoutController {
             CheckoutResult result = checkoutFacade.checkout(request);
 
             if (result.isSuccess()) {
+                Booking booking = result.getBooking();
+                Map<String, Object> totals = new HashMap<>();
+                totals.put("subtotal", booking.getSubtotalCents() / 100.0);
+                totals.put("serviceFee", booking.getFeesCents() / 100.0);
+                totals.put("tax", booking.getTaxCents() / 100.0);
+                totals.put("discount", booking.getDiscountCents() != null ? booking.getDiscountCents() / 100.0 : 0);
+                totals.put("total", booking.getTotalCents() / 100.0);
+                
                 return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "orderId", result.getBooking().getId(),
-                    "confirmationCode", result.getBooking().getBookingNumber()
+                    "orderId", booking.getId(),
+                    "bookingId", booking.getId(),
+                    "confirmationCode", booking.getBookingNumber(),
+                    "bookingNumber", booking.getBookingNumber(),
+                    "totals", totals
                 ));
             } else {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", result.getErrorMessage()));

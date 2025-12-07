@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 
-import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 export default function OrderHistory() {
   const { user } = useAuth();
@@ -10,6 +10,17 @@ export default function OrderHistory() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [taxRate, setTaxRate] = useState(8);
+
+  // Fetch fee settings
+  useEffect(() => {
+    fetch('/api/admin/fees')
+      .then(res => res.json())
+      .then(data => {
+        setTaxRate(data.taxRate || 8);
+      })
+      .catch(err => console.error('Failed to load fee settings:', err));
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -106,7 +117,7 @@ export default function OrderHistory() {
                     </div>
                   )}
                   <div style={{ color: '#cbd5da', fontSize: '14px' }}>
-                    Tax (8%): ${order.totals.tax?.toFixed(2) || (order.tax_cents / 100).toFixed(2) || '0.00'}
+                    Tax ({taxRate}%): ${order.totals.tax?.toFixed(2) || (order.tax_cents / 100).toFixed(2) || '0.00'}
                   </div>
                 </div>
               )}

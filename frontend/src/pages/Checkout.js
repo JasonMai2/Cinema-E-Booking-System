@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-import api from '../services/api.js';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import { useBooking } from '../context/BookingContext.js';
-import { useNavigate } from 'react-router-dom';
+import api from '../services/api.js';
 
 export default function Checkout() {
   const { selectedShow, selectedSeats, setCustomer, createOrderDraft, customer } = useBooking();
@@ -19,7 +19,25 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [ticketTypes, setTicketTypes] = useState([]);
+  const [feeSettings, setFeeSettings] = useState({ serviceFeePerTicket: 1.50, taxRate: 8 });
   const navigate = useNavigate();
+
+  // Load fee settings from database
+  useEffect(() => {
+    fetch('/api/admin/fees')
+      .then(res => res.json())
+      .then(data => {
+        setFeeSettings({
+          serviceFeePerTicket: data.serviceFee ? data.serviceFee / 100 : 1.50,
+          taxRate: data.taxRate || 8
+        });
+      })
+      .catch(err => {
+        console.error('Failed to load fee settings:', err);
+        // Use defaults
+        setFeeSettings({ serviceFeePerTicket: 1.50, taxRate: 8 });
+      });
+  }, []);
 
   // Load ticket types from database
   useEffect(() => {
@@ -73,10 +91,10 @@ export default function Checkout() {
     }
   }, [selectedShow, selectedSeats]);
 
-  // Calculate totals
+  // Calculate totals using dynamic fee settings
   const subtotal = useMemo(() => selectedSeats.reduce((s, x) => s + (x.price || 0), 0), [selectedSeats]);
-  const serviceFee = useMemo(() => selectedSeats.length * 1.50, [selectedSeats]); // $1.50 per ticket
-  const taxRate = 0.08; // 8% sales tax
+  const serviceFee = useMemo(() => selectedSeats.length * feeSettings.serviceFeePerTicket, [selectedSeats, feeSettings]);
+  const taxRate = feeSettings.taxRate / 100; // Convert percentage to decimal
   const subtotalCents = useMemo(() => Math.round(subtotal * 100), [subtotal]);
   
   // Calculate discount from validated promo
@@ -89,7 +107,7 @@ export default function Checkout() {
   
   // Calculate tax on (subtotal + fees - discount)
   const taxableAmount = useMemo(() => Math.max(0, subtotal + serviceFee - discount), [subtotal, serviceFee, discount]);
-  const tax = useMemo(() => Math.round(taxableAmount * taxRate * 100) / 100, [taxableAmount]);
+  const tax = useMemo(() => Math.round(taxableAmount * taxRate * 100) / 100, [taxableAmount, taxRate]);
   const total = useMemo(() => subtotal + serviceFee + tax - discount, [subtotal, serviceFee, tax, discount]);
 
   // Validate promo code against database
@@ -360,7 +378,7 @@ export default function Checkout() {
                   <strong>Promo ({promoValidation.name}):</strong> <span>-${discount.toFixed(2)}</span>
                 </div>
               )}
-              <div style={{ color: '#cbd5da' }}><strong>Sales Tax (8%):</strong> <span style={{ color: '#fff' }}>${tax.toFixed(2)}</span></div>
+              <div style={{ color: '#cbd5da' }}><strong>Sales Tax ({feeSettings.taxRate}%):</strong> <span style={{ color: '#fff' }}>${tax.toFixed(2)}</span></div>
               <div style={{ marginTop: 8, borderTop: '1px solid #222', paddingTop: 8, color: '#cbd5da', fontWeight: 'bold', fontSize: '16px' }}>
                 <strong>Total:</strong> <span style={{ color: '#fff' }}>${total.toFixed(2)}</span>
               </div>

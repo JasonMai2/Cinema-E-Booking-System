@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { useBooking } from '../context/BookingContext.js';
-import { useAuth } from '../context/AuthContext.js';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.js';
+import { useBooking } from '../context/BookingContext.js';
 
 export default function OrderSummary() {
   const { orderDraft, confirmOrder, selectedSeats, selectedShow, customer, createOrderDraft, updateSeat, removeSeat, setCustomer } = useBooking();
@@ -10,7 +10,24 @@ export default function OrderSummary() {
   const [loading, setLoading] = useState(false);
   const [ticketTypes, setTicketTypes] = useState([]);
   const [ticketPrices, setTicketPrices] = useState({ child: 9.00, adult: 15.00, senior: 11.00 });
+  const [feeSettings, setFeeSettings] = useState({ serviceFeePerTicket: 1.50, taxRate: 8 });
   const navigate = useNavigate();
+
+  // Fetch fee settings from backend
+  useEffect(() => {
+    fetch('/api/admin/fees')
+      .then(res => res.json())
+      .then(data => {
+        setFeeSettings({
+          serviceFeePerTicket: data.serviceFee ? data.serviceFee / 100 : 1.50,
+          taxRate: data.taxRate || 8
+        });
+      })
+      .catch(err => {
+        console.error('Failed to load fee settings:', err);
+        setFeeSettings({ serviceFeePerTicket: 1.50, taxRate: 8 });
+      });
+  }, []);
 
   // Fetch ticket types from backend
   useEffect(() => {
@@ -101,7 +118,7 @@ export default function OrderSummary() {
   }, [selectedSeats, orderDraft]);
 
   const subtotal = useMemo(() => (seatsList || []).reduce((s, x) => s + (x.price || 0), 0), [seatsList]);
-  const serviceFee = useMemo(() => seatsList.length * 1.50, [seatsList]);
+  const serviceFee = useMemo(() => seatsList.length * feeSettings.serviceFeePerTicket, [seatsList, feeSettings]);
   
   // Get discount from orderDraft if promo was applied
   const discount = useMemo(() => {
@@ -113,7 +130,7 @@ export default function OrderSummary() {
   
   // Tax is calculated on (subtotal + fees - discount)
   const taxableAmount = useMemo(() => Math.max(0, subtotal + serviceFee - discount), [subtotal, serviceFee, discount]);
-  const tax = useMemo(() => Math.round(taxableAmount * 0.08 * 100) / 100, [taxableAmount]);
+  const tax = useMemo(() => Math.round(taxableAmount * (feeSettings.taxRate / 100) * 100) / 100, [taxableAmount, feeSettings]);
   const total = useMemo(() => subtotal + serviceFee + tax - discount, [subtotal, serviceFee, tax, discount]);
 
   return (
@@ -182,7 +199,7 @@ export default function OrderSummary() {
                   Promo: {orderDraft.promoName || orderDraft.promoCode} (-${discount.toFixed(2)})
                 </div>
               )}
-              <div style={{ color: '#cbd5da' }}>Sales Tax (8%): <span style={{ color: '#fff' }}>${tax.toFixed(2)}</span></div>
+              <div style={{ color: '#cbd5da' }}>Sales Tax ({feeSettings.taxRate}%): <span style={{ color: '#fff' }}>${tax.toFixed(2)}</span></div>
               <div style={{ marginTop: 8, borderTop: '1px solid #222', paddingTop: 8, color: '#cbd5da', fontWeight: 'bold', fontSize: '16px' }}>
                 Total: <span style={{ color: '#fff' }}>${total.toFixed(2)}</span>
               </div>

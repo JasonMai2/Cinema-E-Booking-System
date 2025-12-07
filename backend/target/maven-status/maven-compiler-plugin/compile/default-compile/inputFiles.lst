@@ -1,6 +1,7 @@
 /Users/aryanpatel/Desktop/Fall 2025/SWE/PROD/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/BookingApplication.java
 /Users/aryanpatel/Desktop/Fall 2025/SWE/PROD/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/CorsConfig.java
 /Users/aryanpatel/Desktop/Fall 2025/SWE/PROD/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/MovieDto.java
+/Users/aryanpatel/Desktop/Fall 2025/SWE/PROD/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/controller/AdminController.java
 /Users/aryanpatel/Desktop/Fall 2025/SWE/PROD/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/controller/AuthController.java
 /Users/aryanpatel/Desktop/Fall 2025/SWE/PROD/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/controller/BookingController.java
 /Users/aryanpatel/Desktop/Fall 2025/SWE/PROD/Cinema-E-Booking-System/backend/src/main/java/com/cinemae/booking/controller/CheckoutController.java

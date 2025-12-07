@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
 import api from '../services/api';
-import bookingApi from '../services/bookingApi';
 
 const BookingContext = createContext(null);
 
@@ -75,13 +74,19 @@ export function BookingProvider({ children }) {
       }
       
       // Call the actual checkout API
+      // Map seats to include seatId (backend expects seatId, not id)
       const checkoutPayload = {
         userId: draft.userId,
         showId: draft.showId,
-        seats: (draft.seats || selectedSeats || []).map((s) => ({
-          seatId: typeof s === 'object' ? s.id : s,
-          ageCategory: (typeof s === 'object' ? s.ageCategory : 'adult').toUpperCase()
-        })),
+        seats: (draft.seats || selectedSeats || []).map((s) => {
+          const seatObj = typeof s === 'object' ? s : { id: s };
+          // The seat ID from the database is stored as 'id' in the frontend
+          // Backend expects 'seatId'
+          return {
+            seatId: seatObj.id,
+            ageCategory: (seatObj.ageCategory || 'adult').toUpperCase()
+          };
+        }),
         paymentMethodId: draft.paymentMethodId,
         promoCode: draft.promoCode || undefined,
       };
@@ -92,24 +97,21 @@ export function BookingProvider({ children }) {
       console.log('Checkout API response:', res);
       
       if (res?.data?.success) {
-        // Calculate totals from seats
         const seats = draft.seats || selectedSeats || [];
-        const subtotal = seats.reduce((s, x) => s + (x.price || 0), 0);
-        const serviceFee = seats.length * 1.50;
         
-        // Get discount from draft if promo was applied
-        const discount = draft.promoDiscount || 0;
-        
-        // Calculate tax on (subtotal + fees - discount)
-        const taxableAmount = Math.max(0, subtotal + serviceFee - discount);
-        const tax = Math.round(taxableAmount * 0.08 * 100) / 100; // 8% tax, rounded
-        const total = subtotal + serviceFee + tax - discount;
+        // Use totals from backend response if available, otherwise use what we have in draft
+        const backendTotals = res.data.totals || {};
+        const subtotal = backendTotals.subtotal ?? (seats.reduce((s, x) => s + (x.price || 0), 0));
+        const serviceFee = backendTotals.serviceFee ?? backendTotals.fees ?? draft.serviceFee ?? 0;
+        const discount = backendTotals.discount ?? draft.promoDiscount ?? 0;
+        const tax = backendTotals.tax ?? 0;
+        const total = backendTotals.total ?? (subtotal + serviceFee + tax - discount);
         
         const confirmation = {
-          orderId: res.data.bookingId || res.data.id,
-          id: res.data.bookingId || res.data.id,
-          bookingNumber: res.data.bookingNumber,
-          confirmationCode: res.data.bookingNumber || `CONF-${Math.floor(Math.random() * 900000 + 100000)}`,
+          orderId: res.data.bookingId || res.data.orderId || res.data.id,
+          id: res.data.bookingId || res.data.orderId || res.data.id,
+          bookingNumber: res.data.bookingNumber || res.data.confirmationCode,
+          confirmationCode: res.data.confirmationCode || res.data.bookingNumber || `CONF-${Math.floor(Math.random() * 900000 + 100000)}`,
           show: draft.show || selectedShow,
           showId: draft.showId || selectedShow?.id,
           seats: seats,

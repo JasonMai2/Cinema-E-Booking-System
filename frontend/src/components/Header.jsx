@@ -1,8 +1,8 @@
 import { Filter, Home, Search, User } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useSearch } from "../context/SearchContext.js";
 import ConfirmationModal from './ConfirmationModal';
 
@@ -155,6 +155,32 @@ export default function Header() {
               {displayName}
               <User size={20} style={{ marginLeft: "8px" }} />
             </div>
+            {/* Admin button - only show if user has ADMIN role */}
+            {user.roles && user.roles.some(r => r.name === 'ADMIN') && (
+              <button
+                onClick={() => { navigate('/admin'); }}
+                style={{
+                  backgroundColor: "#b8860b",
+                  color: "#fff",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#daa520";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#b8860b";
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                Admin
+              </button>
+            )}
             <button
               onClick={() => { navigate('/order-history'); }}
               style={{

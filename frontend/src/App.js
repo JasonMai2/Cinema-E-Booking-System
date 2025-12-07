@@ -1,14 +1,21 @@
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 
-import AdminDashboard from './pages/AdminDashboard';
+import React from 'react';
+import Header from './components/Header';
 import { AuthProvider } from './context/AuthContext';
-import BookingConfirmation from './pages/BookingConfirmation';
 import { BookingProvider } from './context/BookingContext';
+import { SearchProvider } from './context/SearchContext';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminFees from "./pages/AdminFees";
+import AdminMovies from "./pages/AdminMovies";
+import AdminPromotions from "./pages/AdminPromotions";
+import AdminTickets from "./pages/AdminTickets";
+import AdminUsers from "./pages/AdminUsers";
+import BookingConfirmation from './pages/BookingConfirmation';
 import Checkout from './pages/Checkout';
 import EditProfile from './pages/EditProfile';
 import EmailVerification from './pages/EmailVerification';
 import ForgotPassword from './pages/ForgotPassword';
-import Header from './components/Header';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import MovieDetails from './pages/MovieDetails';
@@ -16,20 +23,10 @@ import MovieSelection from './pages/MovieSelection';
 import OrderConfirmation from './pages/OrderConfirmation';
 import OrderHistory from './pages/OrderHistory';
 import OrderSummary from './pages/OrderSummary';
-import React from 'react';
 import RegistrationConfirmation from './pages/RegistrationConfirmation';
 import ResetPassword from './pages/ResetPassword';
-import { SearchProvider } from './context/SearchContext';
-import SearchResults from './pages/SearchResults';
 import SeatSelection from './pages/SeatSelection';
 import ShowTimes from './pages/ShowTimes';
-import AdminUsers from "./pages/AdminUsers";
-import AdminPromotions from "./pages/AdminPromotions";
-import AdminMovies from "./pages/AdminMovies";
-import AdminTickets from "./pages/AdminTickets";
-import UserModal from "./pages/UserModal";
-import PromotionModal from "./pages/PromotionModal";
-import MovieModal from "./pages/MovieModal";
 
 function App() {
   return (
@@ -65,6 +62,7 @@ function App() {
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/promotions" element={<AdminPromotions />} />
           <Route path="/admin/tickets" element={<AdminTickets />} />
+          <Route path="/admin/fees" element={<AdminFees />} />
           
           <Route path="/admin/movies" element={<AdminDashboard />} />
 

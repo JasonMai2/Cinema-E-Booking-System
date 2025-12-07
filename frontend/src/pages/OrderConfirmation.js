@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import bookingApi from '../services/bookingApi.js';
-import { useBooking } from '../context/BookingContext.js';
 import { useAuth } from '../context/AuthContext';
+import { useBooking } from '../context/BookingContext.js';
+import bookingApi from '../services/bookingApi.js';
 
 export default function OrderConfirmation() {
   const { orderId } = useParams();
@@ -12,7 +12,20 @@ export default function OrderConfirmation() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [feeSettings, setFeeSettings] = useState({ taxRate: 8 });
   const { orderDetails } = useBooking();
+
+  // Fetch fee settings
+  useEffect(() => {
+    fetch('/api/admin/fees')
+      .then(res => res.json())
+      .then(data => {
+        setFeeSettings({
+          taxRate: data.taxRate || 8
+        });
+      })
+      .catch(err => console.error('Failed to load fee settings:', err));
+  }, []);
 
   // Redirect to home if user is not authenticated
   useEffect(() => {
@@ -127,7 +140,7 @@ export default function OrderConfirmation() {
                 <span> (-${order.totals?.discount?.toFixed ? order.totals.discount.toFixed(2) : order.totals?.discount})</span>
               </div>
             )}
-            <div style={{ color: '#cbd5da' }}><strong>Sales Tax (8%):</strong> <span style={{ color: '#fff' }}>${order.totals?.tax?.toFixed ? order.totals.tax.toFixed(2) : (order.totals?.tax || '0.00')}</span></div>
+            <div style={{ color: '#cbd5da' }}><strong>Sales Tax ({feeSettings.taxRate}%):</strong> <span style={{ color: '#fff' }}>${order.totals?.tax?.toFixed ? order.totals.tax.toFixed(2) : (order.totals?.tax || '0.00')}</span></div>
             <div style={{ marginTop: 8, color: '#cbd5da', fontWeight: 'bold', fontSize: '16px' }}>
               <strong>Total:</strong> <span style={{ color: '#fff' }}>${order.totals?.total?.toFixed ? order.totals.total.toFixed(2) : (order.totals?.total || order.totals?.subtotal || '0.00')}</span>
             </div>
