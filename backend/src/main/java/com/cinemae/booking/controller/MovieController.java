@@ -237,72 +237,33 @@ public class MovieController {
     }
 
     /**
-     * Get "Now Playing" movies - movies with showtimes in the next 14 days.
-     * Falls back to is_now_playing flag if no showtimes exist.
+     * Get "Now Playing" movies - all movies marked with is_now_playing = 1
      */
     @GetMapping("/now-playing")
     public List<Map<String, Object>> getNowPlaying() {
-        // First try to get movies with actual showtimes in the next 14 days
         String sql = """
-            SELECT DISTINCT m.id, m.title, m.mpaa_rating, m.synopsis, 
-                   m.trailer_video_url, m.trailer_image_url,
-                   MIN(s.starts_at) as first_show
+            SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
+                   m.trailer_video_url, m.trailer_image_url
             FROM movies m
-            JOIN showtimes s ON s.movie_id = m.id
-            WHERE s.starts_at >= NOW() 
-              AND s.starts_at <= DATE_ADD(NOW(), INTERVAL 14 DAY)
-            GROUP BY m.id, m.title, m.mpaa_rating, m.synopsis, m.trailer_video_url, m.trailer_image_url
-            ORDER BY first_show ASC
+            WHERE m.is_now_playing = 1
+            ORDER BY m.title ASC
             """;
-        List<Map<String, Object>> result = jdbc.queryForList(sql);
-        
-        // If no movies with showtimes, fall back to is_now_playing flag
-        if (result.isEmpty()) {
-            String fallbackSql = """
-                SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
-                       m.trailer_video_url, m.trailer_image_url
-                FROM movies m
-                WHERE m.is_now_playing = 1
-                ORDER BY m.title ASC
-                """;
-            result = jdbc.queryForList(fallbackSql);
-        }
-        
-        return result;
+        return jdbc.queryForList(sql);
     }
 
     /**
-     * Get "Coming Soon" movies - movies with showtimes more than 14 days out.
-     * Falls back to is_coming_soon flag if no showtimes exist.
+     * Get "Coming Soon" movies - all movies marked with is_coming_soon = 1
      */
     @GetMapping("/coming-soon")
     public List<Map<String, Object>> getComingSoon() {
-        // First try to get movies with showtimes more than 14 days out
         String sql = """
-            SELECT DISTINCT m.id, m.title, m.mpaa_rating, m.synopsis, 
-                   m.trailer_video_url, m.trailer_image_url,
-                   MIN(s.starts_at) as first_show
+            SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
+                   m.trailer_video_url, m.trailer_image_url
             FROM movies m
-            JOIN showtimes s ON s.movie_id = m.id
-            WHERE s.starts_at > DATE_ADD(NOW(), INTERVAL 14 DAY)
-            GROUP BY m.id, m.title, m.mpaa_rating, m.synopsis, m.trailer_video_url, m.trailer_image_url
-            ORDER BY first_show ASC
+            WHERE m.is_coming_soon = 1
+            ORDER BY m.title ASC
             """;
-        List<Map<String, Object>> result = jdbc.queryForList(sql);
-        
-        // If no movies with future showtimes, fall back to is_coming_soon flag
-        if (result.isEmpty()) {
-            String fallbackSql = """
-                SELECT m.id, m.title, m.mpaa_rating, m.synopsis, 
-                       m.trailer_video_url, m.trailer_image_url
-                FROM movies m
-                WHERE m.is_coming_soon = 1
-                ORDER BY m.title ASC
-                """;
-            result = jdbc.queryForList(fallbackSql);
-        }
-        
-        return result;
+        return jdbc.queryForList(sql);
     }
 
     /**
